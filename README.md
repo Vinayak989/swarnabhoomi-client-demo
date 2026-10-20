@@ -12,7 +12,7 @@ Requirements: Java 17+, Maven, Node.js 20+. No database server is required. Dock
 4. In another terminal: `cd frontend` then `npm install` and `npm run dev`.
 5. Open the Vite URL in your browser. The API runs on `http://localhost:8080`.
 
-To run the packaged web app with Docker, use `docker compose up --build` from the project root and open `http://localhost:8080`. Compose stores the H2 database and photo uploads in a named local volume so they survive container recreation. To enable WhatsApp reminders, create a `.env` file in the project root with the WhatsApp settings listed below before starting Compose; the file is ignored by Git.
+To run the packaged web app with Docker, use `docker compose up --build` from the project root and open `http://localhost:8080`. Compose stores the H2 database and photo uploads in a named local volume so they survive container recreation. To enable WhatsApp or SMS reminders, create a `.env` file in the project root with the provider settings listed below before starting Compose; the file is ignored by Git.
 
 The backend reads `H2_FILE_PATH` for the database file location, plus optional `H2_USER` and `H2_PASSWORD` values. The JDBC URL sets `DB_CLOSE_DELAY=-1`, so H2 stays open until the Java process exits even if all database connections close. Do not place the H2 file inside a temporary directory if its data must survive restarts.
 
@@ -38,7 +38,7 @@ Render persistent disks require a paid web service; storage is billed separately
 
 ## Marathi WhatsApp reminders
 
-The **स्मरणपत्रे** tab stores the Marathi reminder reason, requested date and time, and the opted-in mobile number in H2. The backend checks due reminders every 15 seconds and sends them through Meta's WhatsApp Cloud API. Reminder times use India Standard Time (`Asia/Kolkata`). API responses show only a masked mobile number.
+The **स्मरणपत्रे** tab stores the Marathi reminder reason, requested date and time, and the opted-in mobile number in H2. The backend checks due reminders every 15 seconds and sends them through Meta's WhatsApp Cloud API, Twilio SMS, and an automated Twilio Voice call that reads the reminder in Marathi using Google Cloud Text-to-Speech. Reminder times use India Standard Time (`Asia/Kolkata`). API responses show only a masked mobile number.
 
 To enable delivery, configure a Meta WhatsApp Business sender and an approved Marathi utility message template with three body parameters for the reason, date, and time. For example, the template body can be `स्वर्णभूमी स्मरणपत्र: {{1}}. तारीख: {{2}}, वेळ: {{3}}.`. The configured template name and language code must match the template in WhatsApp Manager.
 
@@ -53,6 +53,27 @@ Set these backend environment variables locally or in the deployed service's env
 | `WHATSAPP_API_VERSION` | No | Graph API version; defaults to `v23.0` |
 | `REMINDER_POLL_INTERVAL_MS` | No | Scheduler interval in milliseconds; defaults to `15000` |
 
-For the Render Blueprint, set `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, and `WHATSAPP_REMINDER_TEMPLATE` in the service's Environment settings after creating or syncing the service. The Blueprint deliberately does not contain these secret or account-specific values. Redeploy after setting them, then confirm the reminders page no longer shows the WhatsApp configuration warning. The number ID must be the Meta **phone number ID**, not the public phone number, and the template name and language must exactly match an approved template in WhatsApp Manager.
+SMS reminders require explicit SMS consent, captured separately from WhatsApp consent. Set the following Twilio environment variables; provide either a sender number or a Messaging Service SID:
 
-The form requires the person creating the reminder to confirm WhatsApp opt-in. A reminder is marked as sent when Meta accepts the message request; this app does not yet consume delivery-status webhooks. Failed sends are marked for review and are not retried automatically.
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `TWILIO_ACCOUNT_SID` | Yes | Twilio account SID |
+| `TWILIO_AUTH_TOKEN` | Yes | Twilio auth token; keep it secret |
+| `TWILIO_FROM_NUMBER` | One of these | Twilio SMS-enabled sender number in E.164 format |
+| `TWILIO_MESSAGING_SERVICE_SID` | One of these | Twilio Messaging Service SID |
+
+Automated voice calls require separate call consent. Configure:
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `TWILIO_ACCOUNT_SID` | Yes | Twilio account SID |
+| `TWILIO_AUTH_TOKEN` | Yes | Twilio auth token; keep it secret |
+| `TWILIO_FROM_NUMBER` | Yes | Twilio Voice-enabled caller ID in E.164 format |
+| `GOOGLE_CLOUD_TTS_CREDENTIALS_JSON` | Yes | One-line Google Cloud service-account JSON with Text-to-Speech API access |
+| `APP_PUBLIC_URL` | For Docker/local hosting | Public HTTPS base URL Twilio can use to fetch generated audio |
+
+Enable the Google Cloud Text-to-Speech API for the service account's project and ensure it can synthesize the `mr-IN` voice. In Render, `RENDER_EXTERNAL_URL` supplies the public base URL automatically; set `APP_PUBLIC_URL` only if overriding it. For Docker Compose, set `APP_PUBLIC_URL` to the deployment's externally reachable HTTPS URL—localhost is not reachable by Twilio. Generated Marathi audio is served from a random, short-lived URL so Twilio can play it; it expires after 15 minutes. The service keeps this temporary audio in memory, so deploy as a single instance.
+
+For Render, configure Twilio, Google TTS, and WhatsApp values in the service's Environment settings after creating or syncing the service, then redeploy. Secret and account-specific values are not stored in the Blueprint. The reminders page reports whether each provider is configured. Twilio must support the destination country and caller ID, and Voice/SMS delivery may require country-specific permissions, registration, or regulatory setup. Check Twilio's current country-specific requirements, pricing, and account limits before enabling delivery. A reminder is marked sent when each provider accepts its request; this app does not confirm call answer or handset delivery.
+
+The form requires separate WhatsApp, SMS, and automated-call opt-ins. A reminder is marked sent when all enabled providers accept their requests; this app does not yet consume delivery or call-status webhooks, so accepted requests do not guarantee handset delivery or an answered call. Failed sends are marked for review and are not retried automatically.

@@ -27,6 +27,10 @@ public class FarmReminder {
     @Column(nullable = false, length = 16)
     private String status = "PENDING";
 
+    private Boolean smsConsent = false;
+
+    private Boolean callConsent = false;
+
     @Column(length = 300)
     private String deliveryNote;
 
@@ -42,6 +46,10 @@ public class FarmReminder {
     public void setScheduledAt(LocalDateTime value) { scheduledAt = value; }
     public String getStatus() { return status; }
     public void setStatus(String value) { status = value; }
+    public boolean isSmsConsent() { return Boolean.TRUE.equals(smsConsent); }
+    public void setSmsConsent(boolean value) { smsConsent = value; }
+    public boolean isCallConsent() { return Boolean.TRUE.equals(callConsent); }
+    public void setCallConsent(boolean value) { callConsent = value; }
     public String getDeliveryNote() { return deliveryNote; }
     public void setDeliveryNote(String value) { deliveryNote = value; }
     public LocalDateTime getSentAt() { return sentAt; }

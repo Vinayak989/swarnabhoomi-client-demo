@@ -30,3 +30,13 @@ services:
         value: mr
       - key: REMINDER_POLL_INTERVAL_MS
         value: "15000"
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+      - key: TWILIO_MESSAGING_SERVICE_SID
+        sync: false
+      - key: GOOGLE_CLOUD_TTS_CREDENTIALS_JSON
+        sync: false

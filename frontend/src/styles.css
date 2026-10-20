@@ -170,6 +170,8 @@ body{background:#f4f6ec}
 .reminder-card p{margin:8px 0 10px;color:#354b39;font-size:11px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}
 .reminder-card-bottom{padding-top:8px;border-top:1px solid #edf1eb;color:#718477;font-size:9px}
 .reminder-card-bottom>span{display:flex;align-items:center;gap:5px}.reminder-card-bottom small{color:#8c998e;font-size:8px;text-align:right}
+.reminder-failure-note{display:grid;gap:4px;margin-top:10px;padding:10px 11px;border:1px solid #f0d8d2;border-radius:8px;background:#fff7f5;color:#8e443c;font-size:10px;line-height:1.55;overflow-wrap:anywhere}
+.reminder-failure-note b{font-size:10px}.reminder-failure-note span{color:#76564f}
 .reminder-empty{min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:1px dashed #dce7d9;border-radius:11px;color:#849286;font-size:10px;text-align:center}
 .reminder-empty-icon{width:39px;height:39px;display:grid;place-items:center;border-radius:13px;background:#eff6ed;color:#59825c}
 .reminder-empty>b{color:#536b56;font-size:11px}.reminder-empty>span{color:#95a097;font-size:9px}

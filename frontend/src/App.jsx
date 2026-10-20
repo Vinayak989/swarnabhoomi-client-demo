@@ -75,11 +75,11 @@ function reminderDateTime(value){
 
 function ReminderPanel({apiFetch,onUnauthorized}){
   const [reminders,setReminders]=useState([]);
-  const [form,setForm]=useState(()=>({mobileNumber:'',scheduledAt:indiaDateTimeInput(new Date(Date.now()+30*60*1000)),reason:'',consent:false}));
-  const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[whatsAppConfigured,setWhatsAppConfigured]=useState(false),[configChecked,setConfigChecked]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+  const [form,setForm]=useState(()=>({mobileNumber:'',scheduledAt:indiaDateTimeInput(new Date(Date.now()+30*60*1000)),reason:'',consent:false,smsConsent:false,callConsent:false}));
+  const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[whatsAppConfigured,setWhatsAppConfigured]=useState(false),[smsConfigured,setSmsConfigured]=useState(false),[callConfigured,setCallConfigured]=useState(false),[configChecked,setConfigChecked]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
 
-  async function load(){
-    setLoading(true);
+  async function load(silent=false){
+    if(!silent)setLoading(true);
     try{
       const [listResponse,configResponse]=await Promise.all([apiFetch(`${API}/reminders`),apiFetch(`${API}/reminders/configuration`)]);
       if(listResponse.status===401||configResponse.status===401){onUnauthorized();return}
@@ -87,11 +87,18 @@ function ReminderPanel({apiFetch,onUnauthorized}){
       setReminders(await listResponse.json());
       const config=await configResponse.json();
       setWhatsAppConfigured(Boolean(config.whatsAppConfigured));
+      setSmsConfigured(Boolean(config.smsConfigured));
+      setCallConfigured(Boolean(config.callConfigured));
       setConfigChecked(true);
-    }catch(exception){setError(exception.message||'स्मरणपत्रे लोड करता आली नाहीत.')}finally{setLoading(false)}
+    }catch(exception){if(!silent)setError(exception.message||'स्मरणपत्रे लोड करता आली नाहीत.')}finally{if(!silent)setLoading(false)}
   }
 
   useEffect(()=>{load()},[apiFetch]);
+  useEffect(()=>{
+    if(!reminders.some(item=>item.status==='PENDING'||item.status==='SENDING'))return;
+    const timer=window.setTimeout(()=>load(true),15000);
+    return()=>window.clearTimeout(timer);
+  },[reminders,apiFetch]);
   const set=(key,value)=>setForm(current=>({...current,[key]:value}));
 
   async function save(event){
@@ -101,8 +108,8 @@ function ReminderPanel({apiFetch,onUnauthorized}){
       if(response.status===401){onUnauthorized();return}
       const result=await response.json().catch(()=>null);
       if(!response.ok)throw Error(result?.message||'स्मरणपत्र जतन करता आले नाही.');
-      setForm({mobileNumber:'',scheduledAt:indiaDateTimeInput(new Date(Date.now()+30*60*1000)),reason:'',consent:false});
-      setNotice(whatsAppConfigured?'स्मरणपत्र जतन झाले. नियोजित वेळी WhatsApp संदेश पाठवला जाईल.':'स्मरणपत्र जतन झाले. WhatsApp जोडणी पूर्ण झाल्यावर नियोजित संदेश पाठवता येईल.');
+      setForm({mobileNumber:'',scheduledAt:indiaDateTimeInput(new Date(Date.now()+30*60*1000)),reason:'',consent:false,smsConsent:false,callConsent:false});
+      setNotice('स्मरणपत्र जतन झाले. नियोजित वेळी कॉल, SMS आणि WhatsApp पाठवण्याचा प्रयत्न होईल.');
       await load();
     }catch(exception){setError(exception.message||'स्मरणपत्र जतन करता आले नाही.')}finally{setSaving(false)}
   }
@@ -119,10 +126,12 @@ function ReminderPanel({apiFetch,onUnauthorized}){
     }catch(exception){setError(exception.message||'स्मरणपत्र हटवता आले नाही.');}
   }
 
-  const statusLabel={PENDING:'पाठवण्याच्या प्रतीक्षेत',SENDING:'पाठवत आहे',SENT:'WhatsApp वर पाठवले',FAILED:'पाठवता आले नाही'};
+  const statusLabel={PENDING:'पाठवण्याच्या प्रतीक्षेत',SENDING:'पाठवत आहे',SENT:'संदेश पाठवले',FAILED:'पाठवता आले नाही'};
   return <section className="reminder-page" lang="mr">
-    <div className="reminder-hero"><div className="reminder-hero-icon"><Bell size={22}/></div><div><span className="eyebrow">शेतीकामासाठी वेळेवर आठवण</span><h1>स्मरणपत्रे</h1><p>तारीख, वेळ आणि कारण लिहा. निवडलेल्या मोबाईल नंबरवर WhatsApp स्मरणपत्र पाठवले जाईल.</p></div><div className="reminder-whatsapp-mark"><MessageCircle size={22}/><span>WhatsApp</span></div></div>
-    {configChecked&&!whatsAppConfigured&&<div className="reminder-alert"><MessageCircle size={18}/><span>सर्व्हरवर Meta WhatsApp Cloud API आणि Meta कडून मंजूर केलेला संदेश नमुना जोडणे आवश्यक आहे. जोडणी पूर्ण होईपर्यंत नियोजित संदेश पाठवला जाणार नाही.</span></div>}
+    <div className="reminder-hero"><div className="reminder-hero-icon"><Bell size={22}/></div><div><span className="eyebrow">शेतीकामासाठी वेळेवर आठवण</span><h1>स्मरणपत्रे</h1><p>निवडलेल्या मोबाईल नंबरवर मराठी व्हॉइस कॉल, SMS आणि WhatsApp द्वारे कारणासह स्मरणपत्र पाठवले जाईल.</p></div><div className="reminder-whatsapp-mark"><MessageCircle size={22}/><span>कॉल + SMS + WhatsApp</span></div></div>
+    {configChecked&&!whatsAppConfigured&&<div className="reminder-alert"><MessageCircle size={18}/><span>WhatsApp पाठवण्यासाठी सर्व्हरवर Meta Cloud API टोकन, phone number ID आणि मंजूर template कॉन्फिगर करा.</span></div>}
+    {configChecked&&!smsConfigured&&<div className="reminder-alert"><MessageCircle size={18}/><span>SMS पाठवण्यासाठी Twilio Account SID, Auth Token आणि sender number किंवा Messaging Service SID कॉन्फिगर करा.</span></div>}
+    {configChecked&&!callConfigured&&<div className="reminder-alert"><MessageCircle size={18}/><span>कॉलसाठी Twilio Voice नंबर, Google Cloud TTS credentials आणि सार्वजनिक HTTPS URL कॉन्फिगर करा.</span></div>}
     {error&&<div className="reminder-error" role="alert">{error}</div>}{notice&&<div className="reminder-success" role="status"><CheckCircle2 size={16}/>{notice}</div>}
     <div className="reminder-layout">
       <form className="reminder-form" onSubmit={save}>
@@ -131,10 +140,12 @@ function ReminderPanel({apiFetch,onUnauthorized}){
         <label className="reminder-field"><span>तारीख आणि वेळ</span><input type="datetime-local" value={form.scheduledAt} min={indiaDateTimeInput(new Date(Date.now()+60*1000))} onChange={event=>set('scheduledAt',event.target.value)} required/><small>वेळ भारताच्या स्थानिक वेळेनुसार (IST) घेतली जाईल.</small></label>
         <label className="reminder-field"><span>कारण <small>मराठीत लिहा</small></span><textarea lang="mr" rows="4" maxLength={300} value={form.reason} onChange={event=>set('reason',event.target.value)} placeholder="उदा. उद्या सकाळी कांद्याला पाणी द्यायचे आहे..." required/><small className="reminder-counter">{form.reason.length}/३००</small></label>
         <label className="reminder-consent"><input type="checkbox" checked={form.consent} onChange={event=>set('consent',event.target.checked)} required/><span>या नंबरवर WhatsApp स्मरणपत्र पाठवण्यास माझी संमती आहे.</span></label>
+        <label className="reminder-consent"><input type="checkbox" checked={form.smsConsent} onChange={event=>set('smsConsent',event.target.checked)} required/><span>या नंबरवर SMS स्मरणपत्र पाठवण्यास माझी संमती आहे.</span></label>
+        <label className="reminder-consent"><input type="checkbox" checked={form.callConsent} onChange={event=>set('callConsent',event.target.checked)} required/><span>या नंबरवर स्वयंचलित फोन कॉल करून स्मरणपत्र मोठ्याने वाचण्यास माझी संमती आहे. या कॉलचे शुल्क लागू होऊ शकते.</span></label>
         <button className="primary reminder-submit" disabled={saving}>{saving?<LoaderCircle className="spin" size={17}/>:<Plus size={17}/>} स्मरणपत्र जतन करा</button>
       </form>
       <div className="reminder-list-section"><div className="reminder-section-title"><div><span>तुमची यादी</span><h2>जतन केलेली स्मरणपत्रे</h2></div><span className="reminder-count">{reminders.length.toLocaleString('mr-IN')}</span></div>
-        {loading?<div className="reminder-empty"><LoaderCircle className="spin" size={22}/> स्मरणपत्रे लोड होत आहेत...</div>:reminders.length?<div className="reminder-list">{reminders.map(item=><article className="reminder-card" key={item.id}><div className="reminder-card-top"><span className={`reminder-status status-${item.status.toLowerCase()}`}><span/>{statusLabel[item.status]||item.status}</span><button type="button" className="reminder-delete" onClick={()=>remove(item.id)} aria-label="स्मरणपत्र हटवा" title="हटवा"><Trash2 size={15}/></button></div><div className="reminder-card-date"><CalendarDays size={16}/><b>{reminderDateTime(item.scheduledAt)}</b></div><p>{item.reason}</p><div className="reminder-card-bottom"><span><MessageCircle size={14}/>{item.mobileNumber}</span>{item.deliveryNote&&<small>{item.deliveryNote}</small>}</div></article>)}</div>:<div className="reminder-empty"><div className="reminder-empty-icon"><Bell size={20}/></div><b>अजून स्मरणपत्र नाही</b><span>पहिली आठवण तयार केल्यावर ती इथे दिसेल.</span></div>}
+        {loading?<div className="reminder-empty"><LoaderCircle className="spin" size={22}/> स्मरणपत्रे लोड होत आहेत...</div>:reminders.length?<div className="reminder-list">{reminders.map(item=><article className="reminder-card" key={item.id}><div className="reminder-card-top"><span className={`reminder-status status-${item.status.toLowerCase()}`}><span/>{statusLabel[item.status]||item.status}</span><button type="button" className="reminder-delete" onClick={()=>remove(item.id)} aria-label="स्मरणपत्र हटवा" title="हटवा"><Trash2 size={15}/></button></div><div className="reminder-card-date"><CalendarDays size={16}/><b>{reminderDateTime(item.scheduledAt)}</b></div><p>{item.reason}</p><div className="reminder-card-bottom"><span><MessageCircle size={14}/>{item.mobileNumber}</span>{item.status!=='FAILED'&&item.deliveryNote&&<small>{item.deliveryNote}</small>}</div>{item.status==='FAILED'&&<div className="reminder-failure-note" role="status"><b>WhatsApp संदेश का पाठवला नाही?</b><span>{item.deliveryNote||'पाठवताना कारण उपलब्ध झाले नाही. सर्व्हर लॉग तपासा.'}</span></div>}</article>)}</div>:<div className="reminder-empty"><div className="reminder-empty-icon"><Bell size={20}/></div><b>अजून स्मरणपत्र नाही</b><span>पहिली आठवण तयार केल्यावर ती इथे दिसेल.</span></div>}
       </div>
     </div>
   </section>;
