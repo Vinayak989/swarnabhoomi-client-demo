@@ -53,4 +53,6 @@ Set these backend environment variables locally or in the deployed service's env
 | `WHATSAPP_API_VERSION` | No | Graph API version; defaults to `v23.0` |
 | `REMINDER_POLL_INTERVAL_MS` | No | Scheduler interval in milliseconds; defaults to `15000` |
 
+For the Render Blueprint, set `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, and `WHATSAPP_REMINDER_TEMPLATE` in the service's Environment settings after creating or syncing the service. The Blueprint deliberately does not contain these secret or account-specific values. Redeploy after setting them, then confirm the reminders page no longer shows the WhatsApp configuration warning. The number ID must be the Meta **phone number ID**, not the public phone number, and the template name and language must exactly match an approved template in WhatsApp Manager.
+
 The form requires the person creating the reminder to confirm WhatsApp opt-in. A reminder is marked as sent when Meta accepts the message request; this app does not yet consume delivery-status webhooks. Failed sends are marked for review and are not retried automatically.
