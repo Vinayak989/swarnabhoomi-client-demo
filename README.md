@@ -10,7 +10,7 @@ Requirements: Java 17+, Maven, and Node.js 20+.
 2. In another terminal: `cd frontend` then `npm install` and `npm run dev`.
 3. Open the Vite URL in your browser. The API runs on `http://localhost:8080`.
 
-The weather lookup uses India Meteorological Department (IMD) district warning and rainfall forecast APIs. IMD publishes district-level weather data, not a direct PIN-code weather endpoint. This prototype looks up the PIN code's district through `api.postalpincode.in` (a non-government postal lookup service), then shows the matching IMD district forecast. Set `POSTAL_API_URL` to use a different compatible PIN lookup endpoint. If a remote service is unavailable, users can still select weather manually and save the entry.
+The weather lookup reads active district alerts from the India Meteorological Department (IMD) public nowcast RSS feed. PIN codes are mapped to a district through `api.postalpincode.in` (a non-government postal lookup service); set `POSTAL_API_URL` to use another compatible PIN lookup endpoint. The IMD feed provides district-level alerts, not exact farm conditions, so users can select the observed weather manually and save the entry. The app handles unavailable or non-JSON API responses with a Marathi error message.
 
 The local web release uses a single-user H2 database. The hosted demo is protected by one shared login; production multi-user accounts and cloud object storage can be added later.
 
