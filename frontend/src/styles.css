@@ -92,15 +92,24 @@ body{background:#f4f6ec}
 .analytics-chart-title{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:7px}
 .analytics-chart-title h3{margin:0;color:#425c46;font-size:12px}
 .analytics-chart-title span{color:#97a297;font-size:9px}
-.analytics-chart{min-height:190px;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;align-items:end;padding:11px 7px 4px;border:1px solid #eef2ec;border-radius:11px;background:linear-gradient(180deg,#fbfdfb,#f8faf6)}
-.analytics-bar-column{height:170px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px}
-.analytics-chart-value{width:100%;overflow:hidden;text-align:center;text-overflow:ellipsis;white-space:nowrap;color:#78877a;font-size:8px}
-.analytics-bar-track{width:min(25px,75%);height:112px;display:flex;align-items:flex-end;overflow:hidden;border-radius:6px 6px 3px 3px;background:#edf2eb}
-.analytics-bar{width:100%;min-height:3px;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,#80ae78,#4b8552);transition:height .3s ease}
-.analytics-cost .analytics-bar{background:linear-gradient(180deg,#efb37f,#d58b55)}
-.analytics-income .analytics-bar{background:linear-gradient(180deg,#80ae78,#4b8552)}
-.analytics-production .analytics-bar{background:linear-gradient(180deg,#8bb6cc,#5d91ab)}
-.analytics-chart-date{max-width:100%;overflow:hidden;color:#89968b;font-size:8px;text-overflow:ellipsis;white-space:nowrap}
+.analytics-chart-wrap{overflow-x:auto;border:1px solid #eef2ec;border-radius:11px;background:linear-gradient(180deg,#fbfdfb,#f8faf6);scrollbar-color:#c5d7c2 transparent;scrollbar-width:thin}
+.analytics-chart{display:block;width:100%;min-width:520px;height:auto;overflow:visible}
+.analytics-cost{--analytics-chart-color:#d58b55}
+.analytics-income{--analytics-chart-color:#4b8552}
+.analytics-production{--analytics-chart-color:#5d91ab}
+.analytics-grid-line{stroke:#e5ece3;stroke-width:1;stroke-dasharray:3 4}
+.analytics-axis-line{stroke:#bdcdbd;stroke-width:1}
+.analytics-axis-label,.analytics-x-label{fill:#829084;font-family:'Noto Sans Devanagari','DM Sans',sans-serif;font-size:9px}
+.analytics-area{opacity:1}
+.analytics-gradient-top{stop-color:var(--analytics-chart-color);stop-opacity:.24}
+.analytics-gradient-bottom{stop-color:var(--analytics-chart-color);stop-opacity:.015}
+.analytics-line{fill:none;stroke:var(--analytics-chart-color);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.analytics-point-halo{fill:#fff;stroke:var(--analytics-chart-color);stroke-width:1.5;opacity:.8}
+.analytics-point{fill:#fff;stroke:var(--analytics-chart-color);stroke-width:3}
+.analytics-point-group:hover .analytics-point{fill:var(--analytics-chart-color)}
+.analytics-chart-legend{display:flex;align-items:center;gap:7px;padding:0 12px 9px;color:#526a55;font-size:9px}
+.analytics-legend-line{width:18px;height:3px;border-radius:3px;background:var(--analytics-chart-color)}
+.analytics-chart-legend small{margin-left:auto;color:#98a398;font-size:8px}
 .analytics-empty{padding:42px 14px;text-align:center;border:1px dashed #dce6d9;border-radius:11px;color:#849286;font-size:11px}
 .analytics-note{margin:13px 20px 17px;color:#9aa59b;font-size:9px;text-align:right}
-@media(max-width:520px){.analytics-overlay{padding:10px}.analytics-dialog{border-radius:14px}.analytics-dialog-head{padding:15px 15px 13px}.analytics-kpis{gap:6px;padding:12px 13px}.analytics-kpis>div{padding:9px 7px}.analytics-kpis span{font-size:8px}.analytics-kpis strong{font-size:12px}.analytics-chart-section{padding:2px 13px 0}.analytics-chart{gap:4px;min-height:174px;padding-right:4px;padding-left:4px}.analytics-bar-column{height:154px}.analytics-bar-track{height:100px;width:min(21px,78%)}.analytics-chart-value,.analytics-chart-date{font-size:7px}.analytics-note{margin:11px 13px 15px}}
+@media(max-width:520px){.analytics-overlay{padding:10px}.analytics-dialog{border-radius:14px}.analytics-dialog-head{padding:15px 15px 13px}.analytics-kpis{gap:6px;padding:12px 13px}.analytics-kpis>div{padding:9px 7px}.analytics-kpis span{font-size:8px}.analytics-kpis strong{font-size:12px}.analytics-chart-section{padding:2px 13px 0}.analytics-chart{min-width:500px}.analytics-note{margin:11px 13px 15px}}
