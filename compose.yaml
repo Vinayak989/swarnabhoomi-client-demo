@@ -1,24 +1,22 @@
 services:
-  mysql:
-    image: mysql:8.4
-    container_name: swarnabhoomi-mysql
+  postgres:
+    image: postgres:16
+    container_name: swarnabhoomi-postgres
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: swarnabhoomi
-      MYSQL_USER: swarnabhoomi_app
-      MYSQL_PASSWORD: local-dev-password
-      MYSQL_ROOT_PASSWORD: local-root-password
+      POSTGRES_DB: swarnabhoomi
+      POSTGRES_USER: swarnabhoomi_app
+      POSTGRES_PASSWORD: local-dev-password
     ports:
-      # Keep the optional container beside the native MySQL service on port 3306.
-      - "127.0.0.1:3307:3306"
+      - "127.0.0.1:5432:5432"
     volumes:
-      - swarnabhoomi-mysql-data:/var/lib/mysql
+      - swarnabhoomi-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping --host=127.0.0.1 --user=root --password=$$MYSQL_ROOT_PASSWORD --silent"]
+      test: ["CMD-SHELL", "pg_isready --host=127.0.0.1 --username=$$POSTGRES_USER --dbname=$$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 20s
 
 volumes:
-  swarnabhoomi-mysql-data:
+  swarnabhoomi-postgres-data:

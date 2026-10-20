@@ -8,18 +8,18 @@ services:
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
     envVars:
-      - key: MYSQL_HOST
+      - key: POSTGRES_HOST
         sync: false
-      - key: MYSQL_PORT
-        value: "3306"
-      - key: MYSQL_DATABASE
+      - key: POSTGRES_PORT
+        value: "5432"
+      - key: POSTGRES_DATABASE
         value: swarnabhoomi
-      - key: MYSQL_USER
+      - key: POSTGRES_USER
         sync: false
-      - key: MYSQL_PASSWORD
+      - key: POSTGRES_PASSWORD
         sync: false
-      - key: MYSQL_SSL_MODE
-        value: DISABLED
+      - key: POSTGRES_SSL_MODE
+        sync: false
       - key: UPLOAD_DIR
         value: /tmp/uploads
       - key: APP_ACCESS_ENABLED
