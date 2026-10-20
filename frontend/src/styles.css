@@ -15,3 +15,12 @@ body{background:#f4f6ec}
 .sidebar{background:rgba(255,255,255,.94);backdrop-filter:blur(10px)}
 .welcome{background:linear-gradient(112deg,#e5f0df 0%,#edf3dc 58%,#e1edcf 100%);border:1px solid rgba(132,166,111,.12)}
 .welcome::after{content:none}
+
+/* Leafy sidebar accents with a quiet farm image near the bottom. */
+.sidebar{background-color:#f3f8ef;background-image:linear-gradient(180deg,rgba(247,251,244,.97) 0%,rgba(239,248,233,.95) 58%,rgba(225,241,216,.76) 100%),url('/images/farm-dawn-backdrop.jpg');background-position:center,center bottom;background-size:cover,auto 36%;background-repeat:no-repeat;border-right-color:#dce9d8;box-shadow:8px 0 28px rgba(37,74,40,.06)}
+.brand{color:#214d32}
+.brand-mark{background:#dcefd9;color:#347447}
+.nav{color:#5c7562;transition:background .18s,color .18s}
+.nav:hover:not(.active){background:rgba(65,130,74,.1);color:#2d6b3b}
+.nav.active{background:linear-gradient(112deg,#34794a,#4d9455);color:#fff;box-shadow:0 5px 14px rgba(45,107,57,.19)}
+.nav-label{color:#7c987d}
