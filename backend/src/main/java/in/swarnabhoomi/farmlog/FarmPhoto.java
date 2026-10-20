@@ -3,6 +3,7 @@ package in.swarnabhoomi.farmlog;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 @Entity
@@ -12,6 +13,7 @@ public class FarmPhoto {
     @Column(length = 36, nullable = false)
     private String id;
 
+    @Lob
     @Column(name = "photo_data", nullable = false)
     private byte[] data;
 

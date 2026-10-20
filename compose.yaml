@@ -1,22 +1,15 @@
 services:
-  postgres:
-    image: postgres:16
-    container_name: swarnabhoomi-postgres
+  swarnabhoomi:
+    build: .
+    container_name: swarnabhoomi-app
     restart: unless-stopped
     environment:
-      POSTGRES_DB: swarnabhoomi
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: local-dev-password
+      H2_FILE_PATH: /var/data/swarnabhoomi
+      UPLOAD_DIR: /var/data/uploads
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:8080:8080"
     volumes:
-      - swarnabhoomi-postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready --host=127.0.0.1 --username=$$POSTGRES_USER --dbname=$$POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 20s
+      - swarnabhoomi-h2-data:/var/data
 
 volumes:
-  swarnabhoomi-postgres-data:
+  swarnabhoomi-h2-data:

@@ -3,24 +3,18 @@ services:
     name: swarnabhoomi-demo
     runtime: docker
     region: singapore
-    # Free preview hosting; filesystem data is temporary on this plan.
-    plan: free
+    # Paid compute is required to attach persistent storage.
+    plan: 0.5c-512mb
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
+    disk:
+      name: swarnabhoomi-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
-      - key: POSTGRES_HOST
-        sync: false
-      - key: POSTGRES_PORT
-        value: "5432"
-      - key: POSTGRES_DATABASE
-        value: swarnabhoomi
-      - key: POSTGRES_USER
-        sync: false
-      - key: POSTGRES_PASSWORD
-        sync: false
-      - key: POSTGRES_SSL_MODE
-        sync: false
+      - key: H2_FILE_PATH
+        value: /var/data/swarnabhoomi
       - key: UPLOAD_DIR
-        value: /tmp/uploads
+        value: /var/data/uploads
       - key: APP_ACCESS_ENABLED
         value: "false"
