@@ -13,8 +13,4 @@ services:
       - key: UPLOAD_DIR
         value: /tmp/uploads
       - key: APP_ACCESS_ENABLED
-        value: "true"
-      - key: APP_ACCESS_USERNAME
-        value: client
-      - key: APP_ACCESS_PASSWORD
-        value: client
+        value: "false"
