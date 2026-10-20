@@ -68,3 +68,39 @@ body{background:#f4f6ec}
   .print-photo figcaption,.print-photo-missing{color:#718477;font-size:7.5pt}
   .print-footer{margin-top:14px;padding-top:7px;border-top:1px solid #dce6d9;text-align:center;color:#718477;font-size:8pt}
 }
+
+/* Compact analytics controls and the detail window for the three farm totals. */
+.stat-icon-analytics{position:relative}
+.analytics-symbol{position:absolute;right:-5px;bottom:-5px;width:18px;height:18px;padding:0;display:grid;place-items:center;border:1.5px solid #fff;border-radius:6px;background:#fff;color:#47794e;box-shadow:0 2px 7px rgba(35,72,37,.2);cursor:pointer;transition:transform .16s,background .16s,color .16s}
+.analytics-symbol:hover{transform:scale(1.12);background:#e8f4e8;color:#2e6d3d}
+.analytics-symbol:focus-visible{outline:2px solid #47794e;outline-offset:2px}
+.analytics-symbol svg{width:11px!important;height:11px!important}
+.analytics-overlay{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:18px;background:rgba(27,44,31,.42);backdrop-filter:blur(3px)}
+.analytics-dialog{width:min(590px,100%);max-height:min(88vh,720px);overflow:auto;border:1px solid #e2eadf;border-radius:17px;background:#fff;box-shadow:0 24px 80px rgba(20,40,24,.28);animation:analytics-enter .18s ease-out}
+@keyframes analytics-enter{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
+.analytics-dialog-head{display:flex;align-items:center;gap:12px;padding:19px 21px 16px;border-bottom:1px solid #edf1eb}
+.analytics-heading-icon{width:36px;height:36px;flex:none;display:grid;place-items:center;border-radius:11px;background:#edf5ec;color:#47794e}
+.analytics-dialog-head>div:nth-child(2){flex:1;min-width:0}
+.analytics-dialog-head span{color:#879588;font-size:10px}
+.analytics-dialog-head h2{margin:3px 0 0;color:#304936;font-size:17px}
+.analytics-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:16px 20px}
+.analytics-kpis>div{min-width:0;padding:11px 12px;border:1px solid #edf1eb;border-radius:10px;background:#fafcf9}
+.analytics-kpis span,.analytics-kpis small{display:block;color:#879588;font-size:9px}
+.analytics-kpis strong{display:block;margin-top:6px;color:#344d39;font-size:14px;overflow-wrap:anywhere}
+.analytics-kpis small{margin-top:4px;font-size:8px}
+.analytics-chart-section{padding:2px 20px 0}
+.analytics-chart-title{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:7px}
+.analytics-chart-title h3{margin:0;color:#425c46;font-size:12px}
+.analytics-chart-title span{color:#97a297;font-size:9px}
+.analytics-chart{min-height:190px;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;align-items:end;padding:11px 7px 4px;border:1px solid #eef2ec;border-radius:11px;background:linear-gradient(180deg,#fbfdfb,#f8faf6)}
+.analytics-bar-column{height:170px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px}
+.analytics-chart-value{width:100%;overflow:hidden;text-align:center;text-overflow:ellipsis;white-space:nowrap;color:#78877a;font-size:8px}
+.analytics-bar-track{width:min(25px,75%);height:112px;display:flex;align-items:flex-end;overflow:hidden;border-radius:6px 6px 3px 3px;background:#edf2eb}
+.analytics-bar{width:100%;min-height:3px;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,#80ae78,#4b8552);transition:height .3s ease}
+.analytics-cost .analytics-bar{background:linear-gradient(180deg,#efb37f,#d58b55)}
+.analytics-income .analytics-bar{background:linear-gradient(180deg,#80ae78,#4b8552)}
+.analytics-production .analytics-bar{background:linear-gradient(180deg,#8bb6cc,#5d91ab)}
+.analytics-chart-date{max-width:100%;overflow:hidden;color:#89968b;font-size:8px;text-overflow:ellipsis;white-space:nowrap}
+.analytics-empty{padding:42px 14px;text-align:center;border:1px dashed #dce6d9;border-radius:11px;color:#849286;font-size:11px}
+.analytics-note{margin:13px 20px 17px;color:#9aa59b;font-size:9px;text-align:right}
+@media(max-width:520px){.analytics-overlay{padding:10px}.analytics-dialog{border-radius:14px}.analytics-dialog-head{padding:15px 15px 13px}.analytics-kpis{gap:6px;padding:12px 13px}.analytics-kpis>div{padding:9px 7px}.analytics-kpis span{font-size:8px}.analytics-kpis strong{font-size:12px}.analytics-chart-section{padding:2px 13px 0}.analytics-chart{gap:4px;min-height:174px;padding-right:4px;padding-left:4px}.analytics-bar-column{height:154px}.analytics-bar-track{height:100px;width:min(21px,78%)}.analytics-chart-value,.analytics-chart-date{font-size:7px}.analytics-note{margin:11px 13px 15px}}
