@@ -122,11 +122,38 @@ public class WeatherController {
                     .replaceAll("\\s+", " ")
                     .replaceAll("\\s*,\\s*$", "")
                     .trim();
-            if (!description.isEmpty() && !warnings.contains(description)) {
-                warnings.add(description);
+            String translated = translateWarning(description);
+            if (!description.isEmpty() && !warnings.contains(translated)) {
+                warnings.add(translated);
             }
         }
         return warnings;
+    }
+
+    private String translateWarning(String value) {
+        String warning = value.toLowerCase(Locale.ROOT);
+        if (warning.contains("extremely heavy rain")) return "अतिवृष्टीचा इशारा";
+        if (warning.contains("very heavy rain")) return "अतिजोरदार पावसाचा इशारा";
+        if (warning.contains("moderate rain")) return "मध्यम पाऊस: ताशी ५ ते १५ मिमी";
+        if (warning.contains("light rain")) return "हलका पाऊस: ताशी ५ मिमीपेक्षा कमी";
+        if (warning.contains("heavy rain")) return "जोरदार पाऊस: ताशी १५ मिमीपेक्षा जास्त";
+        if (warning.contains("thunderstorm") || warning.contains("lightning")) {
+            return "मेघगर्जना व विजांसह वादळी पावसाचा इशारा";
+        }
+        if (warning.contains("hail")) return "गारपीट होण्याचा इशारा";
+        if (warning.contains("dust storm") || warning.contains("dust raising")) {
+            return "धुळीच्या वादळाचा इशारा";
+        }
+        if (warning.contains("strong surface wind")) return "जोरदार वाऱ्यांचा इशारा";
+        if (warning.contains("heat wave")) return "उष्णतेच्या लाटेचा इशारा";
+        if (warning.contains("hot day")) return "उष्ण दिवसाचा इशारा";
+        if (warning.contains("cold wave")) return "थंडीच्या लाटेचा इशारा";
+        if (warning.contains("fog")) return "धुक्याचा इशारा";
+        if (warning.contains("snow")) return "हिमवृष्टीचा इशारा";
+        if (warning.contains("no weather") || warning.contains("no warning")) {
+            return "सध्या सक्रिय जिल्हास्तरीय इशारा नाही";
+        }
+        return "जिल्ह्यासाठी IMD ने तात्काळ हवामान इशारा जारी केला आहे";
     }
 
     private String childText(Element parent, String name) {
