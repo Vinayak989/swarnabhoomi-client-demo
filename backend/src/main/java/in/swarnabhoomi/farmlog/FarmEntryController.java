@@ -2,6 +2,8 @@ package in.swarnabhoomi.farmlog;
 
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
@@ -11,6 +13,7 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.server.ResponseStatusException;
 import java.nio.file.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @RestController
@@ -18,8 +21,12 @@ import java.util.*;
 @CrossOrigin(origins = "http://localhost:5173")
 public class FarmEntryController {
     private final FarmEntryRepository repo;
+    private final FarmPhotoRepository photoRepo;
     @Value("${app.upload-dir:./uploads}") private String uploadDirectory;
-    public FarmEntryController(FarmEntryRepository repo) { this.repo = repo; }
+    public FarmEntryController(FarmEntryRepository repo, FarmPhotoRepository photoRepo) {
+        this.repo = repo;
+        this.photoRepo = photoRepo;
+    }
 
     @GetMapping("/entries") public List<FarmEntry> entries() { return repo.findAllByOrderByEntryDateDescIdDesc(); }
     @PostMapping("/entries") public FarmEntry create(@RequestBody FarmEntry entry) {
@@ -32,20 +39,63 @@ public class FarmEntryController {
     }
     @DeleteMapping("/entries/{id}") public void delete(@PathVariable Long id) { repo.deleteById(id); }
     @PostMapping("/photos") public Map<String,String> photo(@RequestParam("file") MultipartFile file) throws Exception {
-        if (file.isEmpty() || file.getSize() > 10_000_000) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "फोटो १० MB पेक्षा लहान असावा");
+        if (file.isEmpty() || file.getSize() > 10_000_000) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         String type = file.getContentType() == null ? "" : file.getContentType();
-        if (!type.startsWith("image/")) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "फक्त फोटो फाइल स्वीकारली जाते");
-        Path folder = Path.of(uploadDirectory).toAbsolutePath().normalize(); Files.createDirectories(folder);
-        String name = UUID.randomUUID() + file.getOriginalFilename().replaceAll("[^a-zA-Z0-9._-]", "_");
-        Files.copy(file.getInputStream(), folder.resolve(name), StandardCopyOption.REPLACE_EXISTING);
-        return Map.of("url", "/api/photos/" + name);
+        if (!type.startsWith("image/")) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+
+        String originalFilename = Optional.ofNullable(file.getOriginalFilename())
+                .filter(name -> !name.isBlank())
+                .orElse("farm-photo");
+        originalFilename = originalFilename.replace('\\', '/');
+        originalFilename = originalFilename.substring(originalFilename.lastIndexOf('/') + 1)
+                .replaceAll("[\\r\\n]", "_");
+        if (originalFilename.length() > 255) originalFilename = originalFilename.substring(originalFilename.length() - 255);
+
+        FarmPhoto storedPhoto = new FarmPhoto();
+        storedPhoto.setId(UUID.randomUUID().toString());
+        storedPhoto.setData(file.getBytes());
+        storedPhoto.setContentType(type);
+        storedPhoto.setOriginalFilename(originalFilename);
+        photoRepo.save(storedPhoto);
+        return Map.of("url", "/api/photos/" + storedPhoto.getId());
     }
-    @GetMapping("/photos/{name}") public ResponseEntity<Resource> getPhoto(@PathVariable String name) throws Exception {
+
+    @GetMapping("/photos/{name}") public ResponseEntity<?> getPhoto(@PathVariable String name) throws Exception {
+        FarmPhoto storedPhoto = photoRepo.findById(name).orElse(null);
+        if (storedPhoto != null) return storedPhotoResponse(storedPhoto, false);
+        return legacyPhotoResponse(name, false);
+    }
+
+    @GetMapping("/photos/{name}/download") public ResponseEntity<?> downloadPhoto(@PathVariable String name) throws Exception {
+        FarmPhoto storedPhoto = photoRepo.findById(name).orElse(null);
+        if (storedPhoto != null) return storedPhotoResponse(storedPhoto, true);
+        return legacyPhotoResponse(name, true);
+    }
+
+    private ResponseEntity<byte[]> storedPhotoResponse(FarmPhoto photo, boolean download) {
+        MediaType type = MediaType.parseMediaType(photo.getContentType());
+        ContentDisposition disposition = (download ? ContentDisposition.attachment() : ContentDisposition.inline())
+                .filename(photo.getOriginalFilename(), StandardCharsets.UTF_8)
+                .build();
+        return ResponseEntity.ok()
+                .contentType(type)
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .body(photo.getData());
+    }
+
+    private ResponseEntity<Resource> legacyPhotoResponse(String name, boolean download) throws Exception {
         Path folder = Path.of(uploadDirectory).toAbsolutePath().normalize();
         Path photo = folder.resolve(name).normalize();
         if (!photo.startsWith(folder) || !Files.isRegularFile(photo)) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         Resource resource = new UrlResource(photo.toUri());
         MediaType type = MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM);
-        return ResponseEntity.ok().contentType(type).body(resource);
+        ContentDisposition disposition = (download ? ContentDisposition.attachment() : ContentDisposition.inline())
+                .filename(photo.getFileName().toString(), StandardCharsets.UTF_8)
+                .build();
+        return ResponseEntity.ok()
+                .contentType(type)
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .body(resource);
     }
+
 }

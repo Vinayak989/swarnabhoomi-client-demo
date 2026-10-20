@@ -15,7 +15,6 @@ RUN mvn -B -DskipTests package
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 COPY --from=backend-build /build/backend/target/daily-farm-log-0.1.0.jar ./app.jar
-ENV H2_DB_PATH=/var/data/swarnabhoomi
 ENV UPLOAD_DIR=/var/data/uploads
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
