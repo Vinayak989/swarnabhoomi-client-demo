@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Sprout, Plus, Search, CloudSun, Sun, Cloud, CloudRain, ImagePlus, Leaf, Wallet, Boxes, TrendingUp, CalendarDays, ChevronRight, X, Save, Trash2, MapPin, LoaderCircle } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Sprout, Plus, Search, CloudSun, Sun, Cloud, CloudRain, ImagePlus, Leaf, Wallet, Boxes, TrendingUp, CalendarDays, ChevronRight, X, Save, Trash2, MapPin, LoaderCircle, Mic, MicOff } from 'lucide-react';
 
 const API = `${(import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')}/api`;
 const CROP_GROUPS = {
@@ -34,7 +34,7 @@ function App(){
     <main className="main"><header className="topbar"><div><span className="crumb">स्वर्णभूमी　/　</span><b>दैनिक नोंद</b></div><div className="today"><CalendarDays size={16}/>{new Date().toLocaleDateString('mr-IN',{weekday:'long',day:'numeric',month:'long'})}</div></header>
       <section className="welcome"><div><span className="eyebrow"><span className="pulse"/> तुमच्या शेताची डायरी</span><h1>नमस्कार, शेतकरी मित्रा! <span>🌱</span></h1><p>आज शेतात काय घडलं? तुमची नोंद इथे जतन करा.</p></div><button className="primary" onClick={()=>{setForm(fresh());setOpen(true)}}><Plus size={19}/> आजची नोंद लिहा</button><div className="welcome-art"><span>☀️</span><div>〰️〰️</div></div></section>
       <section className="stats"><Stat icon={<Wallet/>} label="एकूण खर्च" value={money(totals.cost)} tone="peach"/><Stat icon={<TrendingUp/>} label="एकूण उत्पन्न" value={money(totals.income)} tone="green"/><Stat icon={<Boxes/>} label="एकूण उत्पादन" value={`${totals.production.toLocaleString('mr-IN')} किलो`} tone="blue"/><div className="stat-card net"><div className="net-label">निव्वळ शिल्लक</div><strong>{money(totals.income-totals.cost)}</strong><span>आतापर्यंतची कमाई</span><div className="net-icon">↗</div></div></section>
-      <section className="entries-head"><div><h2>शेतातील नोंदी</h2><p>तुमच्या रोजच्या कामांचा लेखाजोखा</p></div><div className="tools"><label className="search"><Search size={17}/><input placeholder="नोंदी शोधा..." value={search} onChange={e=>setSearch(e.target.value)}/></label><button className="filter">सर्व नोंदी⌄</button></div></section>
+      <section className="entries-head"><div><h2>शेतातील नोंदी</h2><p>तुमच्या रोजच्या कामांचा लेखाजोखा</p></div><div className="tools"><div className="search"><Search size={17}/><input placeholder="नोंदी शोधा..." value={search} onChange={e=>setSearch(e.target.value)}/><VoiceButton value={search} onChange={setSearch}/></div><button className="filter">सर्व नोंदी⌄</button></div></section>
       {!filtered.length?<div className="empty"><div className="empty-icon">🌾</div><h3>{entries.length?'नोंद सापडली नाही':'तुमची पहिली नोंद लिहा'}</h3><p>शेतातल्या छोट्या-मोठ्या गोष्टी नोंदवा. त्या पुढच्या हंगामात उपयोगी पडतील.</p><button className="primary" onClick={()=>{setForm(fresh());setOpen(true)}}><Plus size={18}/> नवी नोंद</button></div>:<div className="entry-list">{filtered.map(e=><article className="entry-card" key={e.id}><div className="entry-date"><div className="date-icon"><CalendarDays size={18}/></div><div><b>{day(e.entryDate)}</b><small>{e.weather||'हवामान नोंदले नाही'}</small></div></div><div className="entry-crop"><small>पीक / विभाग</small><b>{e.farmSection||'—'}</b></div><div className="entry-work"><small>आजची कामे</small><b>{e.workDone||'—'}</b></div><div className="entry-money"><small>खर्च　·　उत्पन्न</small><b>{money(Number(e.laborCost||0)+Number(e.materialsCost||0)+Number(e.otherCost||0))} <span>·</span> {money(e.saleIncome)}</b></div><div className="entry-actions">{e.photoUrl&&<ProtectedPhoto src={e.photoUrl} auth={auth} alt="शेत फोटो"/>}<button className="delete" title="नोंद हटवा" onClick={()=>remove(e.id)}><Trash2 size={16}/></button></div></article>)}</div>}
       <footer>🌿　तुमच्या कष्टांना योग्य नोंद — स्वर्णभूमी</footer>
     </main>
@@ -54,5 +54,37 @@ function App(){
 }
 function ProtectedPhoto({src,auth,alt}){const [image,setImage]=useState('');useEffect(()=>{let active=true,objectUrl='';const source=src.startsWith('http://localhost:8080/')?`/api/photos/${src.slice('http://localhost:8080/'.length)}`:src;const headers=auth?{Authorization:`Basic ${auth}`}:{ };fetch(source,{headers}).then(r=>{if(!r.ok)throw Error();return r.blob()}).then(blob=>{if(active){objectUrl=URL.createObjectURL(blob);setImage(objectUrl)}}).catch(()=>{});return()=>{active=false;if(objectUrl)URL.revokeObjectURL(objectUrl)}},[src,auth]);return image?<img src={image} alt={alt}/>:null}
 function Stat({icon,label,value,tone}){return <div className="stat-card"><div className={`stat-icon ${tone}`}>{icon}</div><div><small>{label}</small><strong>{value}</strong></div></div>}
-function Field({label,required,children}){return <label className="field"><span>{label}{required&&<i> *</i>}</span>{children}</label>}
+function Field({label,required,children}){
+  const id=React.useId();
+  const voiceEnabled=React.isValidElement(children)&&(children.type==='textarea'||(children.type==='input'&&(!children.props.type||children.props.type==='text')));
+  const input=React.isValidElement(children)?React.cloneElement(children,{id:children.props.id||id}):children;
+  const onVoiceChange=transcript=>children.props.onChange?.({target:{value:transcript}});
+  return <div className="field"><label className="field-label" htmlFor={id}>{label}{required&&<i> *</i>}</label>{voiceEnabled?<div className="voice-field">{input}<VoiceButton value={children.props.value||''} onChange={onVoiceChange}/></div>:input}</div>;
+}
+function VoiceButton({value,onChange}){
+  const [listening,setListening]=useState(false),[notice,setNotice]=useState('');
+  const recognitionRef=useRef(null),latestValue=useRef(value||'');
+  useEffect(()=>{latestValue.current=value||''},[value]);
+  useEffect(()=>()=>recognitionRef.current?.abort(),[]);
+  function toggle(){
+    if(listening){recognitionRef.current?.stop();return}
+    const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SpeechRecognition){setNotice('आवाजातून मजकूर भरण्यासाठी Chrome वापरा.');return}
+    const recognition=new SpeechRecognition();
+    recognition.lang='mr-IN';recognition.continuous=true;recognition.interimResults=true;
+    recognition.onstart=()=>{setListening(true);setNotice('')};
+    recognition.onend=()=>setListening(false);
+    recognition.onerror=event=>{setListening(false);if(event.error==='not-allowed')setNotice('मायक्रोफोनची परवानगी द्या.');else if(event.error!=='aborted')setNotice('आवाज ओळखता आला नाही; पुन्हा प्रयत्न करा.');};
+    recognition.onresult=event=>{
+      let transcript='';
+      for(let i=event.resultIndex;i<event.results.length;i++)if(event.results[i].isFinal)transcript+=event.results[i][0].transcript;
+      transcript=transcript.trim();if(!transcript)return;
+      const current=String(latestValue.current||''),next=`${current}${current&&!/\s$/.test(current)?' ':''}${transcript}`;
+      latestValue.current=next;onChange(next);
+    };
+    recognitionRef.current=recognition;
+    try{recognition.start()}catch{setNotice('मायक्रोफोन सुरू करता आला नाही.');}
+  }
+  return <span className={`voice-control ${listening?'listening':''}`}><button type="button" className="voice-button" onClick={toggle} title={notice||(listening?'बोलणे थांबवा':'मराठीत बोलून मजकूर भरा')} aria-label={notice|| (listening?'बोलणे थांबवा':'मराठीत बोलून मजकूर भरा')}>{listening?<MicOff size={15}/>:<Mic size={15}/>}</button>{notice&&<span className="voice-message" role="status">{notice}</span>}</span>;
+}
 export default App;
