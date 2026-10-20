@@ -35,3 +35,22 @@ The root `Dockerfile` packages the React app into the Spring Boot server. `rende
 Existing records in PostgreSQL, MySQL, or the former H2 file under `/tmp` are not automatically copied into the persistent H2 database. Back up and migrate them separately before syncing the Blueprint if they need to be retained.
 
 Render persistent disks require a paid web service; storage is billed separately. Review [Render's current pricing](https://render.com/pricing) before creating the service. To deploy, push this project to a Git provider and create a Render Blueprint from its repository, or use the connected Render integration. The generated `*.onrender.com` URL is then shareable.
+
+## Marathi WhatsApp reminders
+
+The **स्मरणपत्रे** tab stores the Marathi reminder reason, requested date and time, and the opted-in mobile number in H2. The backend checks due reminders every 15 seconds and sends them through Meta's WhatsApp Cloud API. Reminder times use India Standard Time (`Asia/Kolkata`). API responses show only a masked mobile number.
+
+To enable delivery, configure a Meta WhatsApp Business sender and an approved Marathi utility message template with three body parameters for the reason, date, and time. For example, the template body can be `स्वर्णभूमी स्मरणपत्र: {{1}}. तारीख: {{2}}, वेळ: {{3}}.`. The configured template name and language code must match the template in WhatsApp Manager.
+
+Set these backend environment variables locally or in the deployed service's environment settings:
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `WHATSAPP_ACCESS_TOKEN` | Yes | Meta Cloud API access token |
+| `WHATSAPP_PHONE_NUMBER_ID` | Yes | Registered WhatsApp Business sender's phone number ID |
+| `WHATSAPP_REMINDER_TEMPLATE` | Yes | Approved template name |
+| `WHATSAPP_TEMPLATE_LANGUAGE` | No | Template language code; defaults to `mr` |
+| `WHATSAPP_API_VERSION` | No | Graph API version; defaults to `v23.0` |
+| `REMINDER_POLL_INTERVAL_MS` | No | Scheduler interval in milliseconds; defaults to `15000` |
+
+The form requires the person creating the reminder to confirm WhatsApp opt-in. A reminder is marked as sent when Meta accepts the message request; this app does not yet consume delivery-status webhooks. Failed sends are marked for review and are not retried automatically.

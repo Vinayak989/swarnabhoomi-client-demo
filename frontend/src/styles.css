@@ -126,3 +126,52 @@ body{background:#f4f6ec}
 .image-download:hover{background:#eaf4e8;border-color:#bcd4b9}
 .image-lightbox-full{display:block;flex:1 1 0;width:100%;height:0;min-width:0;min-height:0;object-fit:contain;background:#f5f7f2}
 @media(max-width:520px){.image-lightbox{padding:8px}.image-lightbox-dialog{width:100%;height:94vh;max-height:calc(100vh - 16px);border-radius:11px}.image-lightbox-header{min-height:48px;padding:7px 9px 7px 12px}.image-lightbox-header>strong{font-size:11px}.image-download{height:32px;padding:0 8px;font-size:9px}}
+
+.reminder-page{padding:34px 0 26px}
+.reminder-hero{min-height:142px;display:flex;align-items:center;gap:17px;padding:25px 29px;border:1px solid rgba(132,166,111,.15);border-radius:17px;background:linear-gradient(112deg,#e5f0df 0%,#edf3dc 58%,#e1edcf 100%);position:relative;overflow:hidden}
+.reminder-hero-icon{width:48px;height:48px;flex:none;display:grid;place-items:center;border-radius:15px;background:rgba(255,255,255,.75);color:#41814b}
+.reminder-hero h1{margin:5px 0;color:#294732;font-size:23px}
+.reminder-hero p{max-width:590px;margin:0;color:#718477;font-size:11px;line-height:1.7}
+.reminder-whatsapp-mark{margin-left:auto;display:flex;align-items:center;gap:7px;padding:9px 12px;border:1px solid #cfe2cb;border-radius:20px;background:rgba(255,255,255,.58);color:#47794e;font-size:10px;font-weight:700;white-space:nowrap}
+.reminder-alert,.reminder-error,.reminder-success{display:flex;align-items:flex-start;gap:9px;margin:14px 0 0;padding:11px 13px;border-radius:9px;font-size:10px;line-height:1.65}
+.reminder-alert{border:1px solid #f0dfb9;background:#fff9e9;color:#806732}
+.reminder-alert svg,.reminder-success svg{flex:none;margin-top:1px}
+.reminder-error{border:1px solid #f0d6d2;background:#fff3f1;color:#a34d45}
+.reminder-success{border:1px solid #d6e8d2;background:#f0f8ed;color:#47794e}
+.reminder-layout{display:grid;grid-template-columns:minmax(290px,.88fr) minmax(0,1.12fr);align-items:start;gap:18px;margin-top:17px}
+.reminder-form,.reminder-list-section{min-width:0;padding:21px;border:1px solid #e5ebe2;border-radius:14px;background:rgba(255,255,255,.94);box-shadow:0 8px 22px rgba(36,68,40,.045)}
+.reminder-section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:19px}
+.reminder-section-title>div>span{color:#829084;font-size:9px;font-weight:700;letter-spacing:.4px}
+.reminder-section-title h2{margin:4px 0 0;color:#304736;font-size:15px}
+.reminder-step,.reminder-count{min-width:28px;height:28px;display:grid;place-items:center;padding:0 8px;border-radius:9px;background:#eef5eb;color:#4d8053;font-size:10px;font-weight:700}
+.reminder-field{display:flex;flex-direction:column;gap:7px;margin:0 0 14px;color:#65766a;font-size:10px;font-weight:700}
+.reminder-field>span{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.reminder-field>span small,.reminder-field>small{color:#94a096;font-size:9px;font-weight:400}
+.reminder-field input,.reminder-field textarea{width:100%;border:1px solid #e1e8de;border-radius:8px;background:#fff;padding:10px 11px;color:#384d3d;font:inherit;font-size:11px;outline:none}
+.reminder-field textarea{resize:vertical;min-height:92px;line-height:1.65}
+.reminder-field input:focus,.reminder-field textarea:focus{border-color:#87b18c;box-shadow:0 0 0 3px #eaf3e8}
+.reminder-field .reminder-counter{text-align:right;margin-top:-3px}
+.reminder-consent{display:flex;align-items:flex-start;gap:8px;margin:5px 0 15px;color:#68796c;font-size:9px;line-height:1.6;cursor:pointer}
+.reminder-consent input{width:15px;height:15px;flex:none;margin:0;accent-color:#39784a}
+.reminder-submit{width:100%;min-height:40px}
+.reminder-list-section{padding-bottom:17px}
+.reminder-list{display:grid;gap:10px}
+.reminder-card{min-width:0;padding:13px 14px;border:1px solid #e6ece3;border-radius:11px;background:#fcfdfb}
+.reminder-card-top,.reminder-card-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.reminder-status{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:20px;background:#f0f5ec;color:#60805f;font-size:8px;font-weight:700}
+.reminder-status>span{width:6px;height:6px;border-radius:50%;background:#8ca780}
+.status-sent{background:#eaf5e8;color:#39784a}.status-sent>span{background:#4c9a58}
+.status-failed{background:#fff0ed;color:#ac5a4e}.status-failed>span{background:#c96f60}
+.status-sending{background:#edf3fb;color:#5678a2}.status-sending>span{background:#6d93bf}
+.reminder-delete{width:28px;height:28px;display:grid;place-items:center;border:1px solid #ecedeb;border-radius:8px;background:#fff;color:#9a7772;cursor:pointer}
+.reminder-delete:hover{border-color:#e9c8c2;background:#fff5f3;color:#a74f43}
+.reminder-card-date{display:flex;align-items:flex-start;gap:7px;margin-top:10px;color:#47794e;font-size:10px;line-height:1.65}
+.reminder-card-date svg{flex:none;margin-top:1px}
+.reminder-card p{margin:8px 0 10px;color:#354b39;font-size:11px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}
+.reminder-card-bottom{padding-top:8px;border-top:1px solid #edf1eb;color:#718477;font-size:9px}
+.reminder-card-bottom>span{display:flex;align-items:center;gap:5px}.reminder-card-bottom small{color:#8c998e;font-size:8px;text-align:right}
+.reminder-empty{min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:1px dashed #dce7d9;border-radius:11px;color:#849286;font-size:10px;text-align:center}
+.reminder-empty-icon{width:39px;height:39px;display:grid;place-items:center;border-radius:13px;background:#eff6ed;color:#59825c}
+.reminder-empty>b{color:#536b56;font-size:11px}.reminder-empty>span{color:#95a097;font-size:9px}
+@media(max-width:900px){.reminder-layout{grid-template-columns:1fr}.reminder-form,.reminder-list-section{padding:18px}.reminder-list-section{order:2}}
+@media(max-width:700px){.sidebar .nav:not(.active){display:flex}.sidebar .nav{width:100%;justify-content:center;gap:0;margin-top:23px;padding:11px 0}.sidebar .nav+.nav{margin-top:8px}.sidebar .nav svg{width:19px;height:19px}.reminder-page{padding-top:23px}.reminder-hero{align-items:flex-start;padding:18px 15px;gap:11px}.reminder-hero-icon{width:39px;height:39px;border-radius:12px}.reminder-hero h1{font-size:18px}.reminder-hero p{font-size:9px}.reminder-whatsapp-mark{position:absolute;right:13px;top:13px;padding:6px}.reminder-whatsapp-mark span{display:none}.reminder-layout{gap:12px;margin-top:12px}.reminder-form,.reminder-list-section{padding:15px}.reminder-section-title h2{font-size:13px}.reminder-card{padding:11px}.reminder-card-date{font-size:9px}}
