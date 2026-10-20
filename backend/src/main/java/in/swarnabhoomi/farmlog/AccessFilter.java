@@ -23,7 +23,8 @@ public class AccessFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String path = request.getRequestURI();
-        if (!enabled || !path.startsWith("/api/") || path.equals("/api/health")) {
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())
+                || !enabled || !path.startsWith("/api/") || path.equals("/api/health")) {
             chain.doFilter(request, response);
             return;
         }

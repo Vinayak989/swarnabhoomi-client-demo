@@ -23,7 +23,6 @@ import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/weather")
-@CrossOrigin(origins = "http://localhost:5173")
 public class WeatherController {
     private static final Logger log = LoggerFactory.getLogger(WeatherController.class);
     private static final String IMD_WARNING_RSS =

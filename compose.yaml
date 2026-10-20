@@ -9,7 +9,8 @@ services:
       MYSQL_PASSWORD: local-dev-password
       MYSQL_ROOT_PASSWORD: local-root-password
     ports:
-      - "127.0.0.1:3306:3306"
+      # Keep the optional container beside the native MySQL service on port 3306.
+      - "127.0.0.1:3307:3306"
     volumes:
       - swarnabhoomi-mysql-data:/var/lib/mysql
     healthcheck:

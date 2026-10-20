@@ -18,7 +18,6 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "http://localhost:5173")
 public class FarmEntryController {
     private final FarmEntryRepository repo;
     private final FarmPhotoRepository photoRepo;
