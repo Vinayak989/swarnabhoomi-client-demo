@@ -12,7 +12,7 @@ Requirements: Java 17+, Maven, Node.js 20+. No database server is required. Dock
 4. In another terminal: `cd frontend` then `npm install` and `npm run dev`.
 5. Open the Vite URL in your browser. The API runs on `http://localhost:8080`.
 
-To run the packaged web app with Docker, use `docker compose up --build` from the project root and open `http://localhost:8080`. Compose stores the H2 database and photo uploads in a named local volume so they survive container recreation.
+To run the packaged web app with Docker, use `docker compose up --build` from the project root and open `http://localhost:8080`. Compose stores the H2 database and photo uploads in a named local volume so they survive container recreation. To enable WhatsApp reminders, create a `.env` file in the project root with the WhatsApp settings listed below before starting Compose; the file is ignored by Git.
 
 The backend reads `H2_FILE_PATH` for the database file location, plus optional `H2_USER` and `H2_PASSWORD` values. The JDBC URL sets `DB_CLOSE_DELAY=-1`, so H2 stays open until the Java process exits even if all database connections close. Do not place the H2 file inside a temporary directory if its data must survive restarts.
 
@@ -42,7 +42,7 @@ The **स्मरणपत्रे** tab stores the Marathi reminder reason, r
 
 To enable delivery, configure a Meta WhatsApp Business sender and an approved Marathi utility message template with three body parameters for the reason, date, and time. For example, the template body can be `स्वर्णभूमी स्मरणपत्र: {{1}}. तारीख: {{2}}, वेळ: {{3}}.`. The configured template name and language code must match the template in WhatsApp Manager.
 
-Set these backend environment variables locally or in the deployed service's environment settings:
+Set these backend environment variables locally or in the deployed service's environment settings. For Docker Compose, put the required values in the root `.env` file (for example, `WHATSAPP_ACCESS_TOKEN=...`); Compose passes them into the backend container:
 
 | Variable | Required | Purpose |
 | --- | --- | --- |

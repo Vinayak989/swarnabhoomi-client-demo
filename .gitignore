@@ -6,5 +6,6 @@ backend/uploads/
 .tools/
 *.log
 *.zip
+.env
 .idea/
 .vscode/
