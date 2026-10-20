@@ -1,0 +1,8 @@
+.git
+.tools
+**/node_modules
+**/target
+backend/data
+backend/uploads
+frontend/dist
+*.log

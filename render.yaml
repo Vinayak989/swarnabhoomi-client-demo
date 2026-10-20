@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: swarnabhoomi-demo
+    runtime: docker
+    region: singapore
+    # Free preview hosting; filesystem data is temporary on this plan.
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: H2_DB_PATH
+        value: /tmp/swarnabhoomi
+      - key: UPLOAD_DIR
+        value: /tmp/uploads
+      - key: APP_ACCESS_ENABLED
+        value: "true"
+      - key: APP_ACCESS_USERNAME
+        value: client
+      - key: APP_ACCESS_PASSWORD
+        generateValue: true
