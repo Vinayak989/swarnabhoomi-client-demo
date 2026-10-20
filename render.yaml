@@ -17,4 +17,4 @@ services:
       - key: APP_ACCESS_USERNAME
         value: client
       - key: APP_ACCESS_PASSWORD
-        generateValue: true
+        generateValue: false
