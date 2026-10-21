@@ -21,10 +21,13 @@ import java.util.*;
 public class FarmEntryController {
     private final FarmEntryRepository repo;
     private final FarmPhotoRepository photoRepo;
+    private final PhotoObjectStorage photoStorage;
     @Value("${app.upload-dir:./uploads}") private String uploadDirectory;
-    public FarmEntryController(FarmEntryRepository repo, FarmPhotoRepository photoRepo) {
+    public FarmEntryController(FarmEntryRepository repo, FarmPhotoRepository photoRepo,
+            PhotoObjectStorage photoStorage) {
         this.repo = repo;
         this.photoRepo = photoRepo;
+        this.photoStorage = photoStorage;
     }
 
     @GetMapping("/entries") public List<FarmEntry> entries() { return repo.findAllByOrderByEntryDateDescIdDesc(); }
@@ -51,10 +54,11 @@ public class FarmEntryController {
         if (originalFilename.length() > 255) originalFilename = originalFilename.substring(originalFilename.length() - 255);
 
         FarmPhoto storedPhoto = new FarmPhoto();
-        storedPhoto.setId(UUID.randomUUID().toString());
+        storedPhoto.setId(photoStorage.newPhotoId());
         storedPhoto.setData(file.getBytes());
         storedPhoto.setContentType(type);
         storedPhoto.setOriginalFilename(originalFilename);
+        photoStorage.store(storedPhoto);
         photoRepo.save(storedPhoto);
         return Map.of("url", "/api/photos/" + storedPhoto.getId());
     }
@@ -79,7 +83,7 @@ public class FarmEntryController {
         return ResponseEntity.ok()
                 .contentType(type)
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
-                .body(photo.getData());
+                .body(photoStorage.load(photo));
     }
 
     private ResponseEntity<Resource> legacyPhotoResponse(String name, boolean download) throws Exception {

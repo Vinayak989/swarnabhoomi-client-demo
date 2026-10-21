@@ -1,6 +1,6 @@
 # Swarnabhoomi — Daily Farm Log
 
-A Marathi-first web application with a React frontend and Java Spring Boot API. Diary entries and uploaded photo bytes are stored in a file-based H2 database. Photos uploaded before database photo storage was added remain readable from `backend/uploads/` when that folder is available.
+A Marathi-first web application with a React frontend and Java Spring Boot API. By default, diary entries and uploaded photo bytes are stored in a file-based H2 database. Production deployments can use PostgreSQL for relational data and a private S3 bucket for photos and database backups.
 
 ## Run locally
 
@@ -18,7 +18,45 @@ The backend reads `H2_FILE_PATH` for the database file location, plus optional `
 
 The weather lookup reads active district alerts from the India Meteorological Department (IMD) public nowcast RSS feed. PIN codes are mapped to a district through `api.postalpincode.in` (a non-government postal lookup service); set `POSTAL_API_URL` to use another compatible PIN lookup endpoint. The IMD feed provides district-level alerts, not exact farm conditions, so users can select the observed weather manually and save the entry. The app handles unavailable or non-JSON API responses with a Marathi error message.
 
-The app uses H2 for both diary entries and photo bytes. New photos are stored in the `farm_photo` table as binary large objects (up to 10 MB) and served by the `/api/photos/{id}` endpoint. Existing filesystem photos remain readable as a legacy fallback when their files are available.
+By default, the app uses H2 for both diary entries and photo bytes. New photos are stored in the `farm_photo` table as binary large objects (up to 10 MB) and served by the `/api/photos/{id}` endpoint. When an S3 bucket is configured, new photos are stored in S3 while the database keeps their object key. Existing filesystem photos remain readable as a legacy fallback when their files are available.
+
+## AWS PostgreSQL and S3 storage
+
+For an AWS deployment, configure a PostgreSQL database and set these environment variables on the app:
+
+| Variable | Example | Purpose |
+| --- | --- | --- |
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://<RDS-endpoint>:5432/swarnabhoomi?sslmode=require` | PostgreSQL JDBC connection |
+| `SPRING_DATASOURCE_DRIVER` | `org.postgresql.Driver` | Select the PostgreSQL driver |
+| `SPRING_DATASOURCE_USERNAME` | `swarnabhoomi` | PostgreSQL application user |
+| `SPRING_DATASOURCE_PASSWORD` | Secret value | PostgreSQL application password |
+| `S3_BUCKET` | `your-private-bucket-name` | Private bucket for photos and backups |
+| `AWS_REGION` | `ap-southeast-2` | Region containing the bucket |
+| `AWS_ACCESS_KEY_ID` | Secret value | Access key for a dedicated, restricted AWS IAM user |
+| `AWS_SECRET_ACCESS_KEY` | Secret value | Secret key for that IAM user |
+| `AWS_SESSION_TOKEN` | Optional | Required when using temporary AWS credentials |
+| `DATABASE_BACKUP_ENABLED` | `true` | Enable scheduled PostgreSQL backups to S3 |
+| `DATABASE_BACKUP_CRON` | `0 0 2 * * *` | Backup schedule in UTC; default is 02:00 daily |
+
+To use access keys instead of an EC2 instance role, create a dedicated AWS IAM user with only the required S3 permissions for this bucket, then set its keys as environment variables. Never use root-user keys, commit keys, put them in the Docker image, or send them in chat. For Docker Compose, store the values in the root `.env` file on the server; `.env` is ignored by Git. Restrict access to that file and rotate the keys if they are exposed. With `S3_BUCKET` set, the app requires both access-key variables; an optional session token supports temporary credentials. Keep the bucket private, enable encryption, and restrict the RDS security group to the app's security group. Scheduled backups use `pg_dump`, are encrypted with S3-managed encryption, and are uploaded under `backups/postgres/`; configure an S3 lifecycle rule to expire old backups according to your retention needs. RDS automated backups should also remain enabled.
+
+Example server-side `.env` settings (replace placeholders locally; do not commit the file):
+
+```dotenv
+SPRING_DATASOURCE_URL=jdbc:postgresql://<RDS-endpoint>:5432/swarnabhoomi?sslmode=require
+SPRING_DATASOURCE_DRIVER=org.postgresql.Driver
+SPRING_DATASOURCE_USERNAME=<database-user>
+SPRING_DATASOURCE_PASSWORD=<database-password>
+S3_BUCKET=<private-bucket-name>
+AWS_REGION=ap-southeast-2
+AWS_ACCESS_KEY_ID=<restricted-iam-user-access-key>
+AWS_SECRET_ACCESS_KEY=<restricted-iam-user-secret-key>
+DATABASE_BACKUP_ENABLED=true
+```
+
+The IAM user's S3 policy should allow `s3:GetObject` and `s3:PutObject` only for `arn:aws:s3:::<private-bucket-name>/photos/*` and `arn:aws:s3:::<private-bucket-name>/backups/postgres/*`. No bucket listing or public-access permission is needed.
+
+To migrate the existing H2 data, first stop the normal app to prevent writes and reminder sends, take a separate copy of its persistent `/var/data` volume, then run the app once with the `migration` Spring profile, `REMINDER_SCHEDULER_ENABLED=false`, the existing H2 volume mounted at `/var/data`, and the PostgreSQL/S3 settings above. The migration copies entries, reminders, and photos, then stores photo objects in S3. It is safe to rerun after an interrupted attempt; existing PostgreSQL rows are not overwritten. Verify record counts and photos before switching normal app traffic to PostgreSQL. Keep the original H2 volume unchanged until verification and rollback are no longer needed.
 
 ## Temporary client demo from your PC
 

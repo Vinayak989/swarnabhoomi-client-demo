@@ -14,6 +14,7 @@ RUN mvn -B -DskipTests package
 
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
+RUN apk add --no-cache postgresql-client
 COPY --from=backend-build /build/backend/target/daily-farm-log-0.1.0.jar ./app.jar
 ENV UPLOAD_DIR=/var/data/uploads
 EXPOSE 8080
