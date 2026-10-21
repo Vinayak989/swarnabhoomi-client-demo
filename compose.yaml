@@ -23,7 +23,7 @@ services:
       SPRING_DATASOURCE_DRIVER: ${SPRING_DATASOURCE_DRIVER:-org.h2.Driver}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-${H2_USER:-sa}}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-${H2_PASSWORD:-}}
-      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5vl:3b}
       S3_BUCKET: ${S3_BUCKET:-}
       AWS_REGION: ${AWS_REGION:-ap-southeast-2}
@@ -37,10 +37,9 @@ services:
       - "${APP_BIND_ADDRESS:-127.0.0.1}:8080:8080"
     volumes:
       - swarnabhoomi-h2-data:/var/data
-    depends_on:
-      - ollama
-
   ollama:
+    profiles:
+      - ai
     image: ollama/ollama:latest
     container_name: swarnabhoomi-ollama
     restart: unless-stopped
