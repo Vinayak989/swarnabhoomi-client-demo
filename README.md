@@ -12,7 +12,9 @@ Requirements: Java 17+, Maven, Node.js 20+. No database server is required. Dock
 4. In another terminal: `cd frontend` then `npm install` and `npm run dev`.
 5. Open the Vite URL in your browser. The API runs on `http://localhost:8080`.
 
-To run the packaged web app with Docker, use `docker compose up --build` from the project root and open `http://localhost:8080`. Compose stores the H2 database and photo uploads in a named local volume so they survive container recreation. To enable WhatsApp or SMS reminders, create a `.env` file in the project root with the provider settings listed below before starting Compose; the file is ignored by Git.
+To run the packaged web app with Docker, use `docker compose up --build` from the project root, download the assistant model once with `docker compose exec ollama ollama pull qwen2.5vl:3b`, and open `http://localhost:8080`. Compose stores the H2 database, photo uploads, and Ollama model in named local volumes so they survive container recreation. Ollama is only reachable inside the Compose network and is not published as a host port. To enable WhatsApp or SMS reminders, create a `.env` file in the project root with the provider settings listed below before starting Compose; the file is ignored by Git.
+
+For direct-IP testing on an EC2 instance, set `APP_BIND_ADDRESS=0.0.0.0` in the server's ignored `.env` file and allow inbound TCP port `8080` only from your own public IPv4 `/32` in the EC2 security group. The default bind address remains `127.0.0.1`.
 
 The backend reads `H2_FILE_PATH` for the database file location, plus optional `H2_USER` and `H2_PASSWORD` values. The JDBC URL sets `DB_CLOSE_DELAY=-1`, so H2 stays open until the Java process exits even if all database connections close. Do not place the H2 file inside a temporary directory if its data must survive restarts.
 
