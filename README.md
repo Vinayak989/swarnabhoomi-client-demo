@@ -16,6 +16,15 @@ To run the packaged web app with Docker, use `docker compose up --build` from th
 
 The backend reads `H2_FILE_PATH` for the database file location, plus optional `H2_USER` and `H2_PASSWORD` values. The JDBC URL sets `DB_CLOSE_DELAY=-1`, so H2 stays open until the Java process exits even if all database connections close. Do not place the H2 file inside a temporary directory if its data must survive restarts.
 
+The AI farmer assistant uses a local Ollama server; no cloud API key is required. Install Ollama, start its server, and download a vision-capable model:
+
+```powershell
+ollama pull qwen2.5vl:3b
+ollama serve
+```
+
+The backend connects to `http://localhost:11434` by default. Set `OLLAMA_BASE_URL` to use another Ollama host or `OLLAMA_MODEL` to choose another installed vision-capable model. Farmers can type or speak a question and attach a photo from the camera or photo library; images are compressed in the browser and limited to 4 MB before being sent to the local Ollama server for analysis. The browser uses Marathi speech recognition and speech synthesis when supported; typed questions remain available in other browsers. Keep Ollama running while using the assistant.
+
 The weather lookup reads active district alerts from the India Meteorological Department (IMD) public nowcast RSS feed. PIN codes are mapped to a district through `api.postalpincode.in` (a non-government postal lookup service); set `POSTAL_API_URL` to use another compatible PIN lookup endpoint. The IMD feed provides district-level alerts, not exact farm conditions, so users can select the observed weather manually and save the entry. The app handles unavailable or non-JSON API responses with a Marathi error message.
 
 By default, the app uses H2 for both diary entries and photo bytes. New photos are stored in the `farm_photo` table as binary large objects (up to 10 MB) and served by the `/api/photos/{id}` endpoint. When an S3 bucket is configured, new photos are stored in S3 while the database keeps their object key. Existing filesystem photos remain readable as a legacy fallback when their files are available.
