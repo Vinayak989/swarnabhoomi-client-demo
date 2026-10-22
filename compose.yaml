@@ -7,6 +7,9 @@ services:
       H2_FILE_PATH: /var/data/swarnabhoomi
       H2_USER: ${H2_USER:-sa}
       H2_PASSWORD: ${H2_PASSWORD:-}
+      APP_ACCESS_ENABLED: ${APP_ACCESS_ENABLED:-false}
+      APP_ACCESS_USERNAME: ${APP_ACCESS_USERNAME:-swarnabhoomi}
+      APP_ACCESS_PASSWORD: ${APP_ACCESS_PASSWORD:-}
       UPLOAD_DIR: /var/data/uploads
       WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
@@ -34,9 +37,29 @@ services:
       DATABASE_BACKUP_CRON: ${DATABASE_BACKUP_CRON:-0 0 2 * * *}
       DB_BACKUP_DIRECTORY: ${DB_BACKUP_DIRECTORY:-/var/data/backups}
     ports:
-      - "${APP_BIND_ADDRESS:-127.0.0.1}:8080:8080"
+      - "127.0.0.1:8080:8080"
     volumes:
       - swarnabhoomi-h2-data:/var/data
+
+  caddy:
+    profiles:
+      - public
+    image: caddy:2-alpine
+    container_name: swarnabhoomi-caddy
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - swarnabhoomi
+
   ollama:
     profiles:
       - ai
@@ -47,5 +70,7 @@ services:
       - ollama-data:/root/.ollama
 
 volumes:
+  caddy-config:
+  caddy-data:
   swarnabhoomi-h2-data:
   ollama-data:
