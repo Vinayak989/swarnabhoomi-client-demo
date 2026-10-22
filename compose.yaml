@@ -41,25 +41,6 @@ services:
     volumes:
       - swarnabhoomi-h2-data:/var/data
 
-  caddy:
-    profiles:
-      - public
-    image: caddy:2-alpine
-    container_name: swarnabhoomi-caddy
-    restart: unless-stopped
-    environment:
-      APP_DOMAIN: ${APP_DOMAIN:-}
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
-    depends_on:
-      - swarnabhoomi
-
   ollama:
     profiles:
       - ai
@@ -70,7 +51,5 @@ services:
       - ollama-data:/root/.ollama
 
 volumes:
-  caddy-config:
-  caddy-data:
   swarnabhoomi-h2-data:
   ollama-data:
