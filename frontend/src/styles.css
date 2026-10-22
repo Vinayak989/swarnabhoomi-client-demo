@@ -132,7 +132,6 @@ body{background:#f4f6ec}
 .reminder-hero-icon{width:48px;height:48px;flex:none;display:grid;place-items:center;border-radius:15px;background:rgba(255,255,255,.75);color:#41814b}
 .reminder-hero h1{margin:5px 0;color:#294732;font-size:23px}
 .reminder-hero p{max-width:590px;margin:0;color:#718477;font-size:11px;line-height:1.7}
-.reminder-whatsapp-mark{margin-left:auto;display:flex;align-items:center;gap:7px;padding:9px 12px;border:1px solid #cfe2cb;border-radius:20px;background:rgba(255,255,255,.58);color:#47794e;font-size:10px;font-weight:700;white-space:nowrap}
 .reminder-error,.reminder-success{display:flex;align-items:flex-start;gap:9px;margin:14px 0 0;padding:11px 13px;border-radius:9px;font-size:10px;line-height:1.65}
 .reminder-success svg{flex:none;margin-top:1px}
 .reminder-error{border:1px solid #f0d6d2;background:#fff3f1;color:#a34d45}
@@ -150,8 +149,6 @@ body{background:#f4f6ec}
 .reminder-field textarea{resize:vertical;min-height:92px;line-height:1.65}
 .reminder-field input:focus,.reminder-field textarea:focus{border-color:#87b18c;box-shadow:0 0 0 3px #eaf3e8}
 .reminder-field .reminder-counter{text-align:right;margin-top:-3px}
-.reminder-consent{display:flex;align-items:flex-start;gap:8px;margin:5px 0 15px;color:#68796c;font-size:9px;line-height:1.6;cursor:pointer}
-.reminder-consent input{width:15px;height:15px;flex:none;margin:0;accent-color:#39784a}
 .reminder-push{display:grid;gap:9px;margin:6px 0 16px;padding:12px;border:1px solid #dce9d8;border-radius:9px;background:#f7fbf5}
 .reminder-push>div{display:grid;gap:4px;color:#3e6845;font-size:10px}
 .reminder-push>div span,.reminder-push>small{color:#7a897c;font-size:9px;line-height:1.6}
@@ -179,4 +176,4 @@ body{background:#f4f6ec}
 .reminder-empty-icon{width:39px;height:39px;display:grid;place-items:center;border-radius:13px;background:#eff6ed;color:#59825c}
 .reminder-empty>b{color:#536b56;font-size:11px}.reminder-empty>span{color:#95a097;font-size:9px}
 @media(max-width:900px){.reminder-layout{grid-template-columns:1fr}.reminder-form,.reminder-list-section{padding:18px}.reminder-list-section{order:2}}
-@media(max-width:700px){.sidebar .nav:not(.active){display:flex}.sidebar .nav{width:100%;justify-content:center;gap:0;margin-top:23px;padding:11px 0}.sidebar .nav+.nav{margin-top:8px}.sidebar .nav svg{width:19px;height:19px}.reminder-page{padding-top:23px}.reminder-hero{align-items:flex-start;padding:18px 15px;gap:11px}.reminder-hero-icon{width:39px;height:39px;border-radius:12px}.reminder-hero h1{font-size:18px}.reminder-hero p{font-size:9px}.reminder-whatsapp-mark{position:absolute;right:13px;top:13px;padding:6px}.reminder-whatsapp-mark span{display:none}.reminder-layout{gap:12px;margin-top:12px}.reminder-form,.reminder-list-section{padding:15px}.reminder-section-title h2{font-size:13px}.reminder-card{padding:11px}.reminder-card-date{font-size:9px}}
+@media(max-width:700px){.sidebar .nav:not(.active){display:flex}.sidebar .nav{width:100%;justify-content:center;gap:0;margin-top:23px;padding:11px 0}.sidebar .nav+.nav{margin-top:8px}.sidebar .nav svg{width:19px;height:19px}.reminder-page{padding-top:23px}.reminder-hero{align-items:flex-start;padding:18px 15px;gap:11px}.reminder-hero-icon{width:39px;height:39px;border-radius:12px}.reminder-hero h1{font-size:18px}.reminder-hero p{font-size:9px}.reminder-layout{gap:12px;margin-top:12px}.reminder-form,.reminder-list-section{padding:15px}.reminder-section-title h2{font-size:13px}.reminder-card{padding:11px}.reminder-card-date{font-size:9px}}

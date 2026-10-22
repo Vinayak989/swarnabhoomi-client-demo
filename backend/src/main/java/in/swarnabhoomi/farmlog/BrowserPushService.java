@@ -92,7 +92,7 @@ public class BrowserPushService {
 
     public boolean send(FarmReminder reminder) {
         BrowserPushSubscription subscription = reminder.getBrowserSubscription();
-        if (subscription == null) return true;
+        if (subscription == null) return false;
         if (!subscription.isActive()) return false;
         requireConfigured();
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Sprout, Plus, Search, CloudSun, Sun, Cloud, CloudRain, ImagePlus, Leaf, Wallet, Boxes, TrendingUp, CalendarDays, ChevronRight, X, Save, Trash2, MapPin, LoaderCircle, Mic, MicOff, FileDown, Activity, Bell, MessageCircle, CheckCircle2 } from 'lucide-react';
+import { Sprout, Plus, Search, CloudSun, Sun, Cloud, CloudRain, ImagePlus, Leaf, Wallet, Boxes, TrendingUp, CalendarDays, ChevronRight, X, Save, Trash2, MapPin, LoaderCircle, Mic, MicOff, FileDown, Activity, Bell, CheckCircle2 } from 'lucide-react';
 import farmLogo from './image/WhatsApp Image 2026-10-20 at 2.00.01 PM.jpeg';
 import AssistantPanel from './AssistantPanel.jsx';
 import './brand.css';
@@ -82,7 +82,7 @@ function reminderDateTime(value){
 
 function ReminderPanel({apiFetch,onUnauthorized}){
   const [reminders,setReminders]=useState([]);
-  const [form,setForm]=useState(()=>({mobileNumber:'',scheduledAt:indiaDateTimeInput(new Date(Date.now()+30*60*1000)),reason:'',consent:false,smsConsent:false,callConsent:false}));
+  const [form,setForm]=useState(()=>({scheduledAt:indiaDateTimeInput(new Date(Date.now()+30*60*1000)),reason:''}));
   const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[pushBusy,setPushBusy]=useState(false),[browserSubscriptionId,setBrowserSubscriptionId]=useState(()=>localStorage.getItem('swarnabhoomi-push-subscription')||''),[error,setError]=useState(''),[notice,setNotice]=useState('');
 
   async function load(silent=false){
@@ -144,15 +144,13 @@ function ReminderPanel({apiFetch,onUnauthorized}){
   async function save(event){
     event.preventDefault();setSaving(true);setError('');setNotice('');
     try{
-      const hasPhoneChannel=form.consent||form.smsConsent||form.callConsent;
-      if(hasPhoneChannel&&!form.mobileNumber.trim())throw Error('फोन, SMS किंवा WhatsApp निवडल्यास मोबाईल नंबर लिहा.');
-      if(!hasPhoneChannel&&!browserSubscriptionId)throw Error('किमान एक सूचना माध्यम निवडा किंवा या डिव्हाइसवर वेब सूचना सुरू करा.');
-      const response=await apiFetch(`${API}/reminders`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...form,browserSubscriptionId:browserSubscriptionId?Number(browserSubscriptionId):null})});
+      if(!browserSubscriptionId)throw Error('स्मरणपत्रे मिळवण्यासाठी आधी या डिव्हाइसवर सूचना सुरू करा.');
+      const response=await apiFetch(`${API}/reminders`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...form,browserSubscriptionId:Number(browserSubscriptionId)})});
       if(response.status===401){onUnauthorized();return}
       const result=await response.json().catch(()=>null);
       if(!response.ok)throw Error(result?.message||'स्मरणपत्र जतन करता आले नाही.');
-      setForm({mobileNumber:'',scheduledAt:indiaDateTimeInput(new Date(Date.now()+30*60*1000)),reason:'',consent:false,smsConsent:false,callConsent:false});
-      setNotice('स्मरणपत्र जतन झाले. नियोजित वेळी निवडलेल्या माध्यमांवर सूचना पाठवण्याचा प्रयत्न होईल.');
+      setForm({scheduledAt:indiaDateTimeInput(new Date(Date.now()+30*60*1000)),reason:''});
+      setNotice('स्मरणपत्र जतन झाले. ठरलेल्या वेळी या डिव्हाइसवर सूचना येईल.');
       await load();
     }catch(exception){setError(exception.message||'स्मरणपत्र जतन करता आले नाही.')}finally{setSaving(false)}
   }
@@ -171,22 +169,18 @@ function ReminderPanel({apiFetch,onUnauthorized}){
 
   const statusLabel={PENDING:'पाठवण्याच्या प्रतीक्षेत',SENDING:'पाठवत आहे',SENT:'सूचना पाठवल्या',FAILED:'पाठवता आले नाही'};
   return <section className="reminder-page" lang="mr">
-    <div className="reminder-hero"><div className="reminder-hero-icon"><Bell size={22}/></div><div><span className="eyebrow">शेतीकामासाठी वेळेवर आठवण</span><h1>स्मरणपत्रे</h1><p>निवडलेल्या मोबाईल नंबरवर कॉल, SMS, WhatsApp आणि या ब्राउझरच्या वेब सूचनेद्वारे आठवण मिळवा.</p></div><div className="reminder-whatsapp-mark"><MessageCircle size={22}/><span>मोबाईल + वेब सूचना</span></div></div>
+    <div className="reminder-hero"><div className="reminder-hero-icon"><Bell size={22}/></div><div><span className="eyebrow">शेतीकामासाठी वेळेवर आठवण</span><h1>स्मरणपत्रे</h1><p>ठरलेल्या वेळी या डिव्हाइसवर सूचना मिळवा, वेबसाइट बंद असली तरीही.</p></div></div>
     {error&&<div className="reminder-error" role="alert">{error}</div>}{notice&&<div className="reminder-success" role="status"><CheckCircle2 size={16}/>{notice}</div>}
     <div className="reminder-layout">
       <form className="reminder-form" onSubmit={save}>
         <div className="reminder-section-title"><div><span>नवीन आठवण</span><h2>स्मरणपत्र तयार करा</h2></div><span className="reminder-step">१ / १</span></div>
-        <label className="reminder-field"><span>मोबाईल नंबर <small>फोन / SMS / WhatsApp साठी आवश्यक</small></span><input type="tel" inputMode="tel" autoComplete="tel" value={form.mobileNumber} onChange={event=>set('mobileNumber',event.target.value)} placeholder="उदा. +91 98765 43210" maxLength={22}/><small>फक्त वेब सूचना निवडल्यास मोबाईल नंबर आवश्यक नाही.</small></label>
         <label className="reminder-field"><span>तारीख आणि वेळ</span><input type="datetime-local" value={form.scheduledAt} min={indiaDateTimeInput(new Date(Date.now()+60*1000))} onChange={event=>set('scheduledAt',event.target.value)} required/><small>वेळ भारताच्या स्थानिक वेळेनुसार (IST) घेतली जाईल.</small></label>
         <label className="reminder-field"><span>कारण <small>मराठीत लिहा</small></span><textarea lang="mr" rows="4" maxLength={300} value={form.reason} onChange={event=>set('reason',event.target.value)} placeholder="उदा. उद्या सकाळी कांद्याला पाणी द्यायचे आहे..." required/><small className="reminder-counter">{form.reason.length}/३००</small></label>
-        <label className="reminder-push"><div><b>वेब / मोबाईल सूचना</b><span>वेबसाइट बंद असतानाही या डिव्हाइसवर स्मरणपत्र मिळवा.</span></div><button type="button" className="secondary reminder-push-button" disabled={pushBusy} onClick={browserSubscriptionId?disableBrowserPush:enableBrowserPush}>{pushBusy?<LoaderCircle className="spin" size={15}/>:<Bell size={15}/>} {browserSubscriptionId?'सूचना बंद करा':'या डिव्हाइसवर सुरू करा'}</button><small>ब्राउझर परवानगी आवश्यक. सूचना बंद करायच्या असल्यास येथे कधीही बंद करा.</small></label>
-        <label className="reminder-consent"><input type="checkbox" checked={form.consent} onChange={event=>set('consent',event.target.checked)}/><span>या नंबरवर WhatsApp स्मरणपत्र पाठवण्यास माझी संमती आहे.</span></label>
-        <label className="reminder-consent"><input type="checkbox" checked={form.smsConsent} onChange={event=>set('smsConsent',event.target.checked)}/><span>या नंबरवर SMS स्मरणपत्र पाठवण्यास माझी संमती आहे.</span></label>
-        <label className="reminder-consent"><input type="checkbox" checked={form.callConsent} onChange={event=>set('callConsent',event.target.checked)}/><span>या नंबरवर स्वयंचलित फोन कॉल करून स्मरणपत्र मोठ्याने वाचण्यास माझी संमती आहे. या कॉलचे शुल्क लागू होऊ शकते.</span></label>
+        <div className="reminder-push"><div><b>या डिव्हाइसवर स्मरणपत्र सूचना</b><span>परवानगी दिल्यावर ठरलेल्या वेळी सूचना येईल. वेबसाइट बंद असतानाही सूचना मिळू शकते.</span></div><button type="button" className="secondary reminder-push-button" disabled={pushBusy} onClick={browserSubscriptionId?disableBrowserPush:enableBrowserPush}>{pushBusy?<LoaderCircle className="spin" size={15}/>:<Bell size={15}/>} {browserSubscriptionId?'सूचना बंद करा':'सूचना सुरू करा'}</button><small>{browserSubscriptionId?'सूचना या डिव्हाइसवर सुरू आहेत.':'स्मरणपत्र जतन करण्यापूर्वी या डिव्हाइसवर सूचना सुरू करा.'} आवाज आणि कंपन डिव्हाइसच्या सूचना सेटिंग्जवर अवलंबून आहेत.</small></div>
         <button className="primary reminder-submit" disabled={saving}>{saving?<LoaderCircle className="spin" size={17}/>:<Plus size={17}/>} स्मरणपत्र जतन करा</button>
       </form>
       <div className="reminder-list-section"><div className="reminder-section-title"><div><span>तुमची यादी</span><h2>जतन केलेली स्मरणपत्रे</h2></div><span className="reminder-count">{reminders.length.toLocaleString('mr-IN')}</span></div>
-        {loading?<div className="reminder-empty"><LoaderCircle className="spin" size={22}/> स्मरणपत्रे लोड होत आहेत...</div>:reminders.length?<div className="reminder-list">{reminders.map(item=><article className="reminder-card" key={item.id}><div className="reminder-card-top"><span className={`reminder-status status-${item.status.toLowerCase()}`}><span/>{statusLabel[item.status]||item.status}</span><button type="button" className="reminder-delete" onClick={()=>remove(item.id)} aria-label="स्मरणपत्र हटवा" title="हटवा"><Trash2 size={15}/></button></div><div className="reminder-card-date"><CalendarDays size={16}/><b>{reminderDateTime(item.scheduledAt)}</b></div><p>{item.reason}</p><div className="reminder-card-bottom"><span><MessageCircle size={14}/>{item.mobileNumber||'वेब सूचना'}</span>{item.status!=='FAILED'&&item.deliveryNote&&<small>{item.deliveryNote}</small>}</div>{item.status==='FAILED'&&<div className="reminder-failure-note" role="status"><b>सूचना पाठवता आली नाही</b><span>{item.deliveryNote||'पाठवताना कारण उपलब्ध झाले नाही. सर्व्हर लॉग तपासा.'}</span></div>}</article>)}</div>:<div className="reminder-empty"><div className="reminder-empty-icon"><Bell size={20}/></div><b>अजून स्मरणपत्र नाही</b><span>पहिली आठवण तयार केल्यावर ती इथे दिसेल.</span></div>}
+        {loading?<div className="reminder-empty"><LoaderCircle className="spin" size={22}/> स्मरणपत्रे लोड होत आहेत...</div>:reminders.length?<div className="reminder-list">{reminders.map(item=><article className="reminder-card" key={item.id}><div className="reminder-card-top"><span className={`reminder-status status-${item.status.toLowerCase()}`}><span/>{statusLabel[item.status]||item.status}</span><button type="button" className="reminder-delete" onClick={()=>remove(item.id)} aria-label="स्मरणपत्र हटवा" title="हटवा"><Trash2 size={15}/></button></div><div className="reminder-card-date"><CalendarDays size={16}/><b>{reminderDateTime(item.scheduledAt)}</b></div><p>{item.reason}</p><div className="reminder-card-bottom"><span><Bell size={14}/>या डिव्हाइसवर सूचना</span>{item.status!=='FAILED'&&item.deliveryNote&&<small>{item.deliveryNote}</small>}</div>{item.status==='FAILED'&&<div className="reminder-failure-note" role="status"><b>सूचना पाठवता आली नाही</b><span>{item.deliveryNote||'पाठवताना कारण उपलब्ध झाले नाही. सर्व्हर लॉग तपासा.'}</span></div>}</article>)}</div>:<div className="reminder-empty"><div className="reminder-empty-icon"><Bell size={20}/></div><b>अजून स्मरणपत्र नाही</b><span>पहिली आठवण तयार केल्यावर ती इथे दिसेल.</span></div>}
       </div>
     </div>
   </section>;

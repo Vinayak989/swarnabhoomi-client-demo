@@ -12,7 +12,7 @@ Requirements: Java 17+, Maven, Node.js 20+. No database server is required. Dock
 4. In another terminal: `cd frontend` then `npm install` and `npm run dev`.
 5. Open the Vite URL in your browser. The API runs on `http://localhost:8080`.
 
-To run the packaged web app with Docker, use `docker compose up --build` from the project root and open `http://localhost:8080`. Compose stores the H2 database and photo uploads in a named local volume so they survive container recreation. To enable the optional AI assistant, start Ollama with `docker compose --profile ai up -d ollama`, then download the model once with `docker compose exec ollama ollama pull qwen2.5vl:3b`. The Ollama model is stored in its own named volume, and Ollama is only reachable inside the Compose network; it is not published as a host port. To enable WhatsApp, SMS, or web-push reminders, set the provider values and `WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY`, and `WEB_PUSH_SUBJECT` in a `.env` file in the project root before starting Compose; the file is ignored by Git.
+To run the packaged web app with Docker, use `docker compose up --build` from the project root and open `http://localhost:8080`. Compose stores the H2 database and photo uploads in a named local volume so they survive container recreation. To enable the optional AI assistant, start Ollama with `docker compose --profile ai up -d ollama`, then download the model once with `docker compose exec ollama ollama pull qwen2.5vl:3b`. The Ollama model is stored in its own named volume, and Ollama is only reachable inside the Compose network; it is not published as a host port. Web-push reminders use `WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY`, and `WEB_PUSH_SUBJECT` in the ignored root `.env` file.
 
 For a shareable EC2 deployment, configure `APP_ACCESS_ENABLED=true`, `APP_ACCESS_USERNAME`, and a strong `APP_ACCESS_PASSWORD` in the server's ignored `.env` file. Keep the application bound to localhost and serve it through the EC2 host's HTTPS reverse proxy. This EC2 setup uses Apache with a Certbot-managed Let's Encrypt certificate; allow inbound TCP ports 80 and 443 in the security group, and redirect all HTTP requests to HTTPS.
 
@@ -85,52 +85,10 @@ Existing records in PostgreSQL, MySQL, or the former H2 file under `/tmp` are no
 
 Render persistent disks require a paid web service; storage is billed separately. Review [Render's current pricing](https://render.com/pricing) before creating the service. To deploy, push this project to a Git provider and create a Render Blueprint from its repository, or use the connected Render integration. The generated `*.onrender.com` URL is then shareable.
 
-## Marathi WhatsApp reminders
+## Web push reminders
 
-The **स्मरणपत्रे** tab stores the Marathi reminder reason, requested date and time, and only the contact details for the notification channels the user selected. The backend checks due reminders every 15 seconds. Reminder times use India Standard Time (`Asia/Kolkata`). API responses show only a masked mobile number.
-
-To enable delivery, configure a Meta WhatsApp Business sender and an approved Marathi utility message template with three body parameters for the reason, date, and time. For example, the template body can be `स्वर्णभूमी स्मरणपत्र: {{1}}. तारीख: {{2}}, वेळ: {{3}}.`. The configured template name and language code must match the template in WhatsApp Manager.
-
-### Web push reminders
-
-Users can enable browser push in the **स्मरणपत्रे** tab. Push notifications are delivered when a scheduled reminder becomes due, including when the website is closed. They are associated only with the browser subscription that created that reminder. Browser permission is required; Android and desktop browsers with Push API support are supported. On iPhone/iPad, install the site to the Home Screen first (iOS 16.4 or later), then allow notifications.
+The **स्मरणपत्रे** tab has one delivery method: a browser/device notification at the scheduled time, including when the website is closed. Users must enable notifications on each device and allow browser permission before creating reminders. Reminder times use India Standard Time (`Asia/Kolkata`). Browser and operating-system settings control notification sound and vibration; vibration is best-effort where supported. On iPhone/iPad, install the site to the Home Screen first (iOS 16.4 or later), then allow notifications.
 
 Configure VAPID keys as `WEB_PUSH_PUBLIC_KEY` and `WEB_PUSH_PRIVATE_KEY`. Generate a fresh key pair locally with `npx web-push generate-vapid-keys`; keep the private key secret and enter the values directly in the hosting service's environment settings. Do not commit either key. For Docker Compose, put both keys in the ignored root `.env` file. `WEB_PUSH_SUBJECT` should be a contact `mailto:` address or the service's HTTPS URL; for Render, use `https://swarnabhoomi-demo.onrender.com`. Redeploy after adding the variables. Without these values, the browser push control reports that push is not configured.
 
-When creating a reminder, the user can select any combination of WhatsApp, SMS, voice call, and web push. A phone number is required only for phone-based channels; at least one notification channel must be selected.
-
-Set these backend environment variables locally or in the deployed service's environment settings. For Docker Compose, put the required values in the root `.env` file (for example, `WHATSAPP_ACCESS_TOKEN=...`); Compose passes them into the backend container:
-
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `WHATSAPP_ACCESS_TOKEN` | Yes | Meta Cloud API access token |
-| `WHATSAPP_PHONE_NUMBER_ID` | Yes | Registered WhatsApp Business sender's phone number ID |
-| `WHATSAPP_REMINDER_TEMPLATE` | Yes | Approved template name |
-| `WHATSAPP_TEMPLATE_LANGUAGE` | No | Template language code; defaults to `mr` |
-| `WHATSAPP_API_VERSION` | No | Graph API version; defaults to `v23.0` |
-| `REMINDER_POLL_INTERVAL_MS` | No | Scheduler interval in milliseconds; defaults to `15000` |
-
-SMS reminders require explicit SMS consent, captured separately from WhatsApp consent. Set the following Twilio environment variables; provide either a sender number or a Messaging Service SID:
-
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `TWILIO_ACCOUNT_SID` | Yes | Twilio account SID |
-| `TWILIO_AUTH_TOKEN` | Yes | Twilio auth token; keep it secret |
-| `TWILIO_FROM_NUMBER` | One of these | Twilio SMS-enabled sender number in E.164 format |
-| `TWILIO_MESSAGING_SERVICE_SID` | One of these | Twilio Messaging Service SID |
-
-Automated voice calls require separate call consent. Configure:
-
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `TWILIO_ACCOUNT_SID` | Yes | Twilio account SID |
-| `TWILIO_AUTH_TOKEN` | Yes | Twilio auth token; keep it secret |
-| `TWILIO_FROM_NUMBER` | Yes | Twilio Voice-enabled caller ID in E.164 format |
-| `GOOGLE_CLOUD_TTS_CREDENTIALS_JSON` | Yes | One-line Google Cloud service-account JSON with Text-to-Speech API access |
-| `APP_PUBLIC_URL` | For Docker/local hosting | Public HTTPS base URL Twilio can use to fetch generated audio |
-
-Enable the Google Cloud Text-to-Speech API for the service account's project and ensure it can synthesize the `mr-IN` voice. In Render, `RENDER_EXTERNAL_URL` supplies the public base URL automatically; set `APP_PUBLIC_URL` only if overriding it. For Docker Compose, set `APP_PUBLIC_URL` to the deployment's externally reachable HTTPS URL—localhost is not reachable by Twilio. Generated Marathi audio is served from a random, short-lived URL so Twilio can play it; it expires after 15 minutes. The service keeps this temporary audio in memory, so deploy as a single instance.
-
-For Render, configure Twilio, Google TTS, and WhatsApp values in the service's Environment settings after creating or syncing the service, then redeploy. Secret and account-specific values are not stored in the Blueprint. The reminders page reports whether each provider is configured. Twilio must support the destination country and caller ID, and Voice/SMS delivery may require country-specific permissions, registration, or regulatory setup. Check Twilio's current country-specific requirements, pricing, and account limits before enabling delivery. A reminder is marked sent when each provider accepts its request; this app does not confirm call answer or handset delivery.
-
-The form requires separate WhatsApp, SMS, and automated-call opt-ins. A reminder is marked sent when all enabled providers accept their requests; this app does not yet consume delivery or call-status webhooks, so accepted requests do not guarantee handset delivery or an answered call. Failed sends are marked for review and are not retried automatically.
+The backend checks due reminders every 15 seconds. A reminder is marked sent when the browser push service accepts the notification; handset presentation and sound depend on browser and device settings. Failed sends are marked for review and are not retried automatically.

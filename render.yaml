@@ -18,16 +18,6 @@ services:
         value: /var/data/uploads
       - key: APP_ACCESS_ENABLED
         value: "false"
-      - key: WHATSAPP_ACCESS_TOKEN
-        sync: false
-      - key: WHATSAPP_PHONE_NUMBER_ID
-        sync: false
-      - key: WHATSAPP_REMINDER_TEMPLATE
-        sync: false
-      - key: WHATSAPP_API_VERSION
-        value: v23.0
-      - key: WHATSAPP_TEMPLATE_LANGUAGE
-        value: mr
       - key: REMINDER_POLL_INTERVAL_MS
         value: "15000"
       - key: WEB_PUSH_PUBLIC_KEY
@@ -36,16 +26,6 @@ services:
         sync: false
       - key: WEB_PUSH_SUBJECT
         value: https://swarnabhoomi-demo.onrender.com
-      - key: TWILIO_ACCOUNT_SID
-        sync: false
-      - key: TWILIO_AUTH_TOKEN
-        sync: false
-      - key: TWILIO_FROM_NUMBER
-        sync: false
-      - key: TWILIO_MESSAGING_SERVICE_SID
-        sync: false
-      - key: GOOGLE_CLOUD_TTS_CREDENTIALS_JSON
-        sync: false
       - key: SPRING_DATASOURCE_URL
         sync: false
       - key: SPRING_DATASOURCE_USERNAME

@@ -28,11 +28,6 @@ public class AccessFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
             return;
         }
-        if ("GET".equalsIgnoreCase(request.getMethod())
-                && path.matches("/api/reminders/call-audio/[0-9a-fA-F-]{36}")) {
-            chain.doFilter(request, response);
-            return;
-        }
         if (authorized(request.getHeader("Authorization"))) {
             chain.doFilter(request, response);
             return;
