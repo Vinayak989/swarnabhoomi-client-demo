@@ -83,7 +83,7 @@ function reminderDateTime(value){
 function ReminderPanel({apiFetch,onUnauthorized}){
   const [reminders,setReminders]=useState([]);
   const [form,setForm]=useState(()=>({scheduledAt:indiaDateTimeInput(new Date(Date.now()+30*60*1000)),reason:''}));
-  const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[pushBusy,setPushBusy]=useState(false),[browserSubscriptionId,setBrowserSubscriptionId]=useState(()=>localStorage.getItem('swarnabhoomi-push-subscription')||''),[error,setError]=useState(''),[notice,setNotice]=useState('');
+  const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[pushBusy,setPushBusy]=useState(false),[completingId,setCompletingId]=useState(null),[browserSubscriptionId,setBrowserSubscriptionId]=useState(()=>localStorage.getItem('swarnabhoomi-push-subscription')||''),[error,setError]=useState(''),[notice,setNotice]=useState('');
 
   async function load(silent=false){
     if(!silent)setLoading(true);
@@ -167,7 +167,19 @@ function ReminderPanel({apiFetch,onUnauthorized}){
     }catch(exception){setError(exception.message||'स्मरणपत्र हटवता आले नाही.');}
   }
 
-  const statusLabel={PENDING:'पाठवण्याच्या प्रतीक्षेत',SENDING:'पाठवत आहे',SENT:'सूचना पाठवल्या',FAILED:'पाठवता आले नाही'};
+  async function complete(id){
+    setCompletingId(id);setError('');setNotice('');
+    try{
+      const response=await apiFetch(`${API}/reminders/${id}/complete`,{method:'PATCH'});
+      if(response.status===401){onUnauthorized();return}
+      const result=await response.json().catch(()=>null);
+      if(!response.ok)throw Error(result?.message||'स्मरणपत्र पूर्ण करता आले नाही.');
+      setReminders(current=>current.map(item=>item.id===id?result:item));
+      setNotice('स्मरणपत्र पूर्ण झाले.');
+    }catch(exception){setError(exception.message||'स्मरणपत्र पूर्ण करता आले नाही.')}finally{setCompletingId(null)}
+  }
+
+  const statusLabel={PENDING:'प्रलंबित',SENDING:'सूचना पाठवत आहे',SENT:'सूचना पाठवल्या',COMPLETED:'पूर्ण',FAILED:'पाठवता आले नाही'};
   return <section className="reminder-page" lang="mr">
     <div className="reminder-hero"><div className="reminder-hero-icon"><Bell size={22}/></div><div><span className="eyebrow">शेतीकामासाठी वेळेवर आठवण</span><h1>स्मरणपत्रे</h1><p>ठरलेल्या वेळी या डिव्हाइसवर सूचना मिळवा, वेबसाइट बंद असली तरीही.</p></div></div>
     {error&&<div className="reminder-error" role="alert">{error}</div>}{notice&&<div className="reminder-success" role="status"><CheckCircle2 size={16}/>{notice}</div>}
@@ -180,7 +192,7 @@ function ReminderPanel({apiFetch,onUnauthorized}){
         <button className="primary reminder-submit" disabled={saving}>{saving?<LoaderCircle className="spin" size={17}/>:<Plus size={17}/>} स्मरणपत्र जतन करा</button>
       </form>
       <div className="reminder-list-section"><div className="reminder-section-title"><div><span>तुमची यादी</span><h2>जतन केलेली स्मरणपत्रे</h2></div><span className="reminder-count">{reminders.length.toLocaleString('mr-IN')}</span></div>
-        {loading?<div className="reminder-empty"><LoaderCircle className="spin" size={22}/> स्मरणपत्रे लोड होत आहेत...</div>:reminders.length?<div className="reminder-list">{reminders.map(item=><article className="reminder-card" key={item.id}><div className="reminder-card-top"><span className={`reminder-status status-${item.status.toLowerCase()}`}><span/>{statusLabel[item.status]||item.status}</span><button type="button" className="reminder-delete" onClick={()=>remove(item.id)} aria-label="स्मरणपत्र हटवा" title="हटवा"><Trash2 size={15}/></button></div><div className="reminder-card-date"><CalendarDays size={16}/><b>{reminderDateTime(item.scheduledAt)}</b></div><p>{item.reason}</p><div className="reminder-card-bottom"><span><Bell size={14}/>या डिव्हाइसवर सूचना</span>{item.status!=='FAILED'&&item.deliveryNote&&<small>{item.deliveryNote}</small>}</div>{item.status==='FAILED'&&<div className="reminder-failure-note" role="status"><b>सूचना पाठवता आली नाही</b><span>{item.deliveryNote||'पाठवताना कारण उपलब्ध झाले नाही. सर्व्हर लॉग तपासा.'}</span></div>}</article>)}</div>:<div className="reminder-empty"><div className="reminder-empty-icon"><Bell size={20}/></div><b>अजून स्मरणपत्र नाही</b><span>पहिली आठवण तयार केल्यावर ती इथे दिसेल.</span></div>}
+        {loading?<div className="reminder-empty"><LoaderCircle className="spin" size={22}/> स्मरणपत्रे लोड होत आहेत...</div>:reminders.length?<div className="reminder-list">{reminders.map(item=>{const overdue=item.status==='PENDING'&&new Date(`${item.scheduledAt}+05:30`).getTime()<=Date.now();return <article className={`reminder-card${overdue?' reminder-card-overdue':''}`} key={item.id}><div className="reminder-card-top"><span className={`reminder-status status-${item.status.toLowerCase()}`}><span/>{overdue?'वेळ निघून गेली':statusLabel[item.status]||item.status}</span><button type="button" className="reminder-delete" onClick={()=>remove(item.id)} aria-label="स्मरणपत्र हटवा" title="हटवा"><Trash2 size={15}/></button></div><div className="reminder-card-date"><CalendarDays size={16}/><b>{reminderDateTime(item.scheduledAt)}</b></div><p>{item.reason}</p><div className="reminder-card-bottom"><span><Bell size={14}/>या डिव्हाइसवर सूचना</span>{item.status!=='FAILED'&&item.deliveryNote&&<small>{item.deliveryNote}</small>}</div>{item.status==='PENDING'&&<button type="button" className="reminder-complete" disabled={completingId===item.id} onClick={()=>complete(item.id)}>{completingId===item.id?<LoaderCircle className="spin" size={14}/>:<CheckCircle2 size={14}/>} पूर्ण करा</button>}{item.status==='FAILED'&&<div className="reminder-failure-note" role="status"><b>सूचना पाठवता आली नाही</b><span>{item.deliveryNote||'पाठवताना कारण उपलब्ध झाले नाही. सर्व्हर लॉग तपासा.'}</span></div>}</article>})}</div>:<div className="reminder-empty"><div className="reminder-empty-icon"><Bell size={20}/></div><b>अजून स्मरणपत्र नाही</b><span>पहिली आठवण तयार केल्यावर ती इथे दिसेल.</span></div>}
       </div>
     </div>
   </section>;

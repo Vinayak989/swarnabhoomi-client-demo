@@ -157,11 +157,15 @@ body{background:#f4f6ec}
 .reminder-list-section{padding-bottom:17px}
 .reminder-list{display:grid;gap:10px}
 .reminder-card{min-width:0;padding:13px 14px;border:1px solid #e6ece3;border-radius:11px;background:#fcfdfb}
+.reminder-card-overdue{border-color:#e3a29a;background:#fff4f2;box-shadow:0 0 0 1px rgba(185,72,59,.08)}
+.reminder-card-overdue .reminder-card-date,.reminder-card-overdue .reminder-card p{color:#9e3f35}
 .reminder-card-top,.reminder-card-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .reminder-status{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:20px;background:#f0f5ec;color:#60805f;font-size:8px;font-weight:700}
 .reminder-status>span{width:6px;height:6px;border-radius:50%;background:#8ca780}
 .status-sent{background:#eaf5e8;color:#39784a}.status-sent>span{background:#4c9a58}
 .status-failed{background:#fff0ed;color:#ac5a4e}.status-failed>span{background:#c96f60}
+.status-completed{background:#eaf5e8;color:#39784a}.status-completed>span{background:#4c9a58}
+.reminder-card-overdue .reminder-status{background:#fde2de;color:#a7352b}.reminder-card-overdue .reminder-status>span{background:#c8463a}
 .status-sending{background:#edf3fb;color:#5678a2}.status-sending>span{background:#6d93bf}
 .reminder-delete{width:28px;height:28px;display:grid;place-items:center;border:1px solid #ecedeb;border-radius:8px;background:#fff;color:#9a7772;cursor:pointer}
 .reminder-delete:hover{border-color:#e9c8c2;background:#fff5f3;color:#a74f43}
@@ -170,6 +174,9 @@ body{background:#f4f6ec}
 .reminder-card p{margin:8px 0 10px;color:#354b39;font-size:11px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}
 .reminder-card-bottom{padding-top:8px;border-top:1px solid #edf1eb;color:#718477;font-size:9px}
 .reminder-card-bottom>span{display:flex;align-items:center;gap:5px}.reminder-card-bottom small{color:#8c998e;font-size:8px;text-align:right}
+.reminder-complete{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:7px 10px;border:1px solid #c9ddc4;border-radius:7px;background:#f2f8ef;color:#39784a;font-size:9px;font-weight:700;cursor:pointer}
+.reminder-complete:hover:not(:disabled){border-color:#8db38a;background:#e9f4e5}
+.reminder-complete:disabled{opacity:.65;cursor:wait}
 .reminder-failure-note{display:grid;gap:4px;margin-top:10px;padding:10px 11px;border:1px solid #f0d8d2;border-radius:8px;background:#fff7f5;color:#8e443c;font-size:10px;line-height:1.55;overflow-wrap:anywhere}
 .reminder-failure-note b{font-size:10px}.reminder-failure-note span{color:#76564f}
 .reminder-empty{min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:1px dashed #dce7d9;border-radius:11px;color:#849286;font-size:10px;text-align:center}

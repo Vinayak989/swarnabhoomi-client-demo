@@ -66,6 +66,17 @@ public class FarmReminderService {
         repository.deleteById(id);
     }
 
+    public synchronized ReminderView complete(Long id) {
+        FarmReminder reminder = repository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (!"PENDING".equals(reminder.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "फक्त प्रलंबित स्मरणपत्र पूर्ण करता येते.");
+        }
+        reminder.setStatus("COMPLETED");
+        reminder.setDeliveryNote("वापरकर्त्याने पूर्ण केले.");
+        return view(repository.save(reminder));
+    }
+
     @Scheduled(fixedDelayString = "${app.reminders.poll-interval-ms:15000}")
     public synchronized void sendDueReminders() {
         LocalDateTime now = LocalDateTime.now(FARM_TIME_ZONE);
