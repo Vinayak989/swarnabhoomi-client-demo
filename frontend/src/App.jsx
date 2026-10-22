@@ -1,10 +1,15 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Sprout, Plus, Search, CloudSun, Sun, Cloud, CloudRain, ImagePlus, Leaf, Wallet, Boxes, TrendingUp, CalendarDays, ChevronRight, X, Save, Trash2, MapPin, LoaderCircle, Mic, MicOff, FileDown, Activity, Bell, MessageCircle, CheckCircle2 } from 'lucide-react';
 import farmLogo from './image/WhatsApp Image 2026-10-20 at 2.00.01 PM.jpeg';
 import AssistantPanel from './AssistantPanel.jsx';
 import './brand.css';
 
 const API = `${(import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')}/api`;
+function decodeVapidKey(value){
+  const padding='='.repeat((4-value.length%4)%4);
+  const base64=(value+padding).replace(/-/g,'+').replace(/_/g,'/');
+  return Uint8Array.from(atob(base64),character=>character.charCodeAt(0));
+}
 const CROP_GROUPS = {
   'धान्य व तृणधान्ये':['भात / तांदूळ','गहू','ज्वारी','बाजरी','मका','नाचणी / रागी','बार्ली / जव','वरई / भगर','राळा','कोद्रा','कुटकी','सामा','राजगिरा'],
   'कडधान्ये':['तूर','हरभरा','मूग','उडीद','मसूर','मटकी','चवळी','वाटाणा','कुळीथ','वाल','पावटा','राजमा'],
@@ -24,7 +29,7 @@ const ANALYTICS={cost:{label:'एकूण खर्च',value:entryCost,format:
 function App(){
   const [activeTab,setActiveTab]=useState('entries');
   const [entries,setEntries]=useState([]),[form,setForm]=useState(fresh),[open,setOpen]=useState(false),[search,setSearch]=useState(''),[loading,setLoading]=useState(false),[weatherBusy,setWeatherBusy]=useState(false),[weatherError,setWeatherError]=useState(''),[preview,setPreview]=useState(''),[auth,setAuth]=useState(()=>sessionStorage.getItem('swarnabhoomi-auth')||''),[authRequired,setAuthRequired]=useState(false),[loginError,setLoginError]=useState(''),[printing,setPrinting]=useState(false),[pdfBusy,setPdfBusy]=useState(false),[printEntries,setPrintEntries]=useState([]),[printPhotos,setPrintPhotos]=useState({}),[activeRecord,setActiveRecord]=useState(null),[analyticsMetric,setAnalyticsMetric]=useState(null),[assistantMessages,setAssistantMessages]=useState([]);
-  const apiFetch=(url,options={})=>fetch(url,{...options,headers:{...(options.headers||{}),...(auth?{Authorization:`Basic ${auth}`}:{})}});
+  const apiFetch=useCallback((url,options={})=>fetch(url,{...options,headers:{...(options.headers||{}),...(auth?{Authorization:`Basic ${auth}`}:{})}}),[auth]);
   const load=async()=>{try{const r=await apiFetch(`${API}/entries`);if(r.status===401){setAuthRequired(true);return}if(r.ok){setEntries(await r.json());setAuthRequired(false)}}catch{}};
   useEffect(()=>{load()},[auth]);
   useEffect(()=>{if(!printing)return;const originalTitle=document.title;document.title='Swarnabhoomi-Dainik-Sheti-Nondi';const finish=()=>{document.title=originalTitle;setPrinting(false);setPrintPhotos(current=>{Object.values(current).forEach(URL.revokeObjectURL);return {}})};const timer=window.setTimeout(()=>window.print(),350);window.addEventListener('afterprint',finish);return()=>{window.clearTimeout(timer);window.removeEventListener('afterprint',finish);document.title=originalTitle}},[printing]);
@@ -78,20 +83,15 @@ function reminderDateTime(value){
 function ReminderPanel({apiFetch,onUnauthorized}){
   const [reminders,setReminders]=useState([]);
   const [form,setForm]=useState(()=>({mobileNumber:'',scheduledAt:indiaDateTimeInput(new Date(Date.now()+30*60*1000)),reason:'',consent:false,smsConsent:false,callConsent:false}));
-  const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[whatsAppConfigured,setWhatsAppConfigured]=useState(false),[smsConfigured,setSmsConfigured]=useState(false),[callConfigured,setCallConfigured]=useState(false),[configChecked,setConfigChecked]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+  const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[pushBusy,setPushBusy]=useState(false),[browserSubscriptionId,setBrowserSubscriptionId]=useState(()=>localStorage.getItem('swarnabhoomi-push-subscription')||''),[error,setError]=useState(''),[notice,setNotice]=useState('');
 
   async function load(silent=false){
     if(!silent)setLoading(true);
     try{
-      const [listResponse,configResponse]=await Promise.all([apiFetch(`${API}/reminders`),apiFetch(`${API}/reminders/configuration`)]);
-      if(listResponse.status===401||configResponse.status===401){onUnauthorized();return}
-      if(!listResponse.ok||!configResponse.ok)throw Error('स्मरणपत्रे लोड करता आली नाहीत.');
+      const listResponse=await apiFetch(`${API}/reminders`);
+      if(listResponse.status===401){onUnauthorized();return}
+      if(!listResponse.ok)throw Error('स्मरणपत्रे लोड करता आली नाहीत.');
       setReminders(await listResponse.json());
-      const config=await configResponse.json();
-      setWhatsAppConfigured(Boolean(config.whatsAppConfigured));
-      setSmsConfigured(Boolean(config.smsConfigured));
-      setCallConfigured(Boolean(config.callConfigured));
-      setConfigChecked(true);
     }catch(exception){if(!silent)setError(exception.message||'स्मरणपत्रे लोड करता आली नाहीत.')}finally{if(!silent)setLoading(false)}
   }
 
@@ -103,15 +103,56 @@ function ReminderPanel({apiFetch,onUnauthorized}){
   },[reminders,apiFetch]);
   const set=(key,value)=>setForm(current=>({...current,[key]:value}));
 
+  async function enableBrowserPush(){
+    setPushBusy(true);setError('');setNotice('');
+    try{
+      if(!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window))throw Error('या ब्राउझरमध्ये वेब सूचना उपलब्ध नाहीत.');
+      const permission=Notification.permission==='granted'?'granted':await Notification.requestPermission();
+      if(permission!=='granted')throw Error('वेब सूचना परवानगी मिळाली नाही. ब्राउझरच्या site settings मध्ये परवानगी द्या.');
+      const keyResponse=await apiFetch(`${API}/push/subscriptions/public-key`);
+      if(keyResponse.status===401){onUnauthorized();return}
+      const keyResult=await keyResponse.json().catch(()=>null);
+      if(!keyResponse.ok)throw Error(keyResult?.message||'सर्व्हरवर वेब सूचना कॉन्फिगर केलेल्या नाहीत.');
+      const registration=await navigator.serviceWorker.register('/sw.js');
+      const subscription=await registration.pushManager.getSubscription()||await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:decodeVapidKey(keyResult.publicKey)});
+      const response=await apiFetch(`${API}/push/subscriptions`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(subscription.toJSON())});
+      const result=await response.json().catch(()=>null);
+      if(response.status===401){onUnauthorized();return}
+      if(!response.ok)throw Error(result?.message||'वेब सूचना सुरू करता आल्या नाहीत.');
+      const subscriptionId=String(result.id);
+      localStorage.setItem('swarnabhoomi-push-subscription',subscriptionId);
+      setBrowserSubscriptionId(subscriptionId);
+      setNotice('या ब्राउझरवर वेब सूचना सुरू झाल्या.');
+    }catch(exception){setError(exception.message||'वेब सूचना सुरू करता आल्या नाहीत.')}finally{setPushBusy(false)}
+  }
+
+  async function disableBrowserPush(){
+    setPushBusy(true);setError('');setNotice('');
+    try{
+      const response=await apiFetch(`${API}/push/subscriptions/${browserSubscriptionId}`,{method:'DELETE'});
+      if(response.status===401){onUnauthorized();return}
+      if(!response.ok&&response.status!==404)throw Error('वेब सूचना बंद करता आल्या नाहीत.');
+      const registration=await navigator.serviceWorker.getRegistration('/');
+      const subscription=await registration?.pushManager.getSubscription();
+      await subscription?.unsubscribe();
+      localStorage.removeItem('swarnabhoomi-push-subscription');
+      setBrowserSubscriptionId('');
+      setNotice('या ब्राउझरवरील वेब सूचना बंद केल्या.');
+    }catch(exception){setError(exception.message||'वेब सूचना बंद करता आल्या नाहीत.')}finally{setPushBusy(false)}
+  }
+
   async function save(event){
     event.preventDefault();setSaving(true);setError('');setNotice('');
     try{
-      const response=await apiFetch(`${API}/reminders`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
+      const hasPhoneChannel=form.consent||form.smsConsent||form.callConsent;
+      if(hasPhoneChannel&&!form.mobileNumber.trim())throw Error('फोन, SMS किंवा WhatsApp निवडल्यास मोबाईल नंबर लिहा.');
+      if(!hasPhoneChannel&&!browserSubscriptionId)throw Error('किमान एक सूचना माध्यम निवडा किंवा या डिव्हाइसवर वेब सूचना सुरू करा.');
+      const response=await apiFetch(`${API}/reminders`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...form,browserSubscriptionId:browserSubscriptionId?Number(browserSubscriptionId):null})});
       if(response.status===401){onUnauthorized();return}
       const result=await response.json().catch(()=>null);
       if(!response.ok)throw Error(result?.message||'स्मरणपत्र जतन करता आले नाही.');
       setForm({mobileNumber:'',scheduledAt:indiaDateTimeInput(new Date(Date.now()+30*60*1000)),reason:'',consent:false,smsConsent:false,callConsent:false});
-      setNotice('स्मरणपत्र जतन झाले. नियोजित वेळी कॉल, SMS आणि WhatsApp पाठवण्याचा प्रयत्न होईल.');
+      setNotice('स्मरणपत्र जतन झाले. नियोजित वेळी निवडलेल्या माध्यमांवर सूचना पाठवण्याचा प्रयत्न होईल.');
       await load();
     }catch(exception){setError(exception.message||'स्मरणपत्र जतन करता आले नाही.')}finally{setSaving(false)}
   }
@@ -128,26 +169,24 @@ function ReminderPanel({apiFetch,onUnauthorized}){
     }catch(exception){setError(exception.message||'स्मरणपत्र हटवता आले नाही.');}
   }
 
-  const statusLabel={PENDING:'पाठवण्याच्या प्रतीक्षेत',SENDING:'पाठवत आहे',SENT:'संदेश पाठवले',FAILED:'पाठवता आले नाही'};
+  const statusLabel={PENDING:'पाठवण्याच्या प्रतीक्षेत',SENDING:'पाठवत आहे',SENT:'सूचना पाठवल्या',FAILED:'पाठवता आले नाही'};
   return <section className="reminder-page" lang="mr">
-    <div className="reminder-hero"><div className="reminder-hero-icon"><Bell size={22}/></div><div><span className="eyebrow">शेतीकामासाठी वेळेवर आठवण</span><h1>स्मरणपत्रे</h1><p>निवडलेल्या मोबाईल नंबरवर मराठी व्हॉइस कॉल, SMS आणि WhatsApp द्वारे कारणासह स्मरणपत्र पाठवले जाईल.</p></div><div className="reminder-whatsapp-mark"><MessageCircle size={22}/><span>कॉल + SMS + WhatsApp</span></div></div>
-    {configChecked&&!whatsAppConfigured&&<div className="reminder-alert"><MessageCircle size={18}/><span>WhatsApp पाठवण्यासाठी सर्व्हरवर Meta Cloud API टोकन, phone number ID आणि मंजूर template कॉन्फिगर करा.</span></div>}
-    {configChecked&&!smsConfigured&&<div className="reminder-alert"><MessageCircle size={18}/><span>SMS पाठवण्यासाठी Twilio Account SID, Auth Token आणि sender number किंवा Messaging Service SID कॉन्फिगर करा.</span></div>}
-    {configChecked&&!callConfigured&&<div className="reminder-alert"><MessageCircle size={18}/><span>कॉलसाठी Twilio Voice नंबर, Google Cloud TTS credentials आणि सार्वजनिक HTTPS URL कॉन्फिगर करा.</span></div>}
+    <div className="reminder-hero"><div className="reminder-hero-icon"><Bell size={22}/></div><div><span className="eyebrow">शेतीकामासाठी वेळेवर आठवण</span><h1>स्मरणपत्रे</h1><p>निवडलेल्या मोबाईल नंबरवर कॉल, SMS, WhatsApp आणि या ब्राउझरच्या वेब सूचनेद्वारे आठवण मिळवा.</p></div><div className="reminder-whatsapp-mark"><MessageCircle size={22}/><span>मोबाईल + वेब सूचना</span></div></div>
     {error&&<div className="reminder-error" role="alert">{error}</div>}{notice&&<div className="reminder-success" role="status"><CheckCircle2 size={16}/>{notice}</div>}
     <div className="reminder-layout">
       <form className="reminder-form" onSubmit={save}>
         <div className="reminder-section-title"><div><span>नवीन आठवण</span><h2>स्मरणपत्र तयार करा</h2></div><span className="reminder-step">१ / १</span></div>
-        <label className="reminder-field"><span>मोबाईल नंबर</span><input type="tel" inputMode="tel" autoComplete="tel" value={form.mobileNumber} onChange={event=>set('mobileNumber',event.target.value)} placeholder="उदा. +91 98765 43210" maxLength={22} required/><small>१० अंकी भारतीय नंबर किंवा देशाच्या कोडसह नंबर लिहा.</small></label>
+        <label className="reminder-field"><span>मोबाईल नंबर <small>फोन / SMS / WhatsApp साठी आवश्यक</small></span><input type="tel" inputMode="tel" autoComplete="tel" value={form.mobileNumber} onChange={event=>set('mobileNumber',event.target.value)} placeholder="उदा. +91 98765 43210" maxLength={22}/><small>फक्त वेब सूचना निवडल्यास मोबाईल नंबर आवश्यक नाही.</small></label>
         <label className="reminder-field"><span>तारीख आणि वेळ</span><input type="datetime-local" value={form.scheduledAt} min={indiaDateTimeInput(new Date(Date.now()+60*1000))} onChange={event=>set('scheduledAt',event.target.value)} required/><small>वेळ भारताच्या स्थानिक वेळेनुसार (IST) घेतली जाईल.</small></label>
         <label className="reminder-field"><span>कारण <small>मराठीत लिहा</small></span><textarea lang="mr" rows="4" maxLength={300} value={form.reason} onChange={event=>set('reason',event.target.value)} placeholder="उदा. उद्या सकाळी कांद्याला पाणी द्यायचे आहे..." required/><small className="reminder-counter">{form.reason.length}/३००</small></label>
-        <label className="reminder-consent"><input type="checkbox" checked={form.consent} onChange={event=>set('consent',event.target.checked)} required/><span>या नंबरवर WhatsApp स्मरणपत्र पाठवण्यास माझी संमती आहे.</span></label>
-        <label className="reminder-consent"><input type="checkbox" checked={form.smsConsent} onChange={event=>set('smsConsent',event.target.checked)} required/><span>या नंबरवर SMS स्मरणपत्र पाठवण्यास माझी संमती आहे.</span></label>
-        <label className="reminder-consent"><input type="checkbox" checked={form.callConsent} onChange={event=>set('callConsent',event.target.checked)} required/><span>या नंबरवर स्वयंचलित फोन कॉल करून स्मरणपत्र मोठ्याने वाचण्यास माझी संमती आहे. या कॉलचे शुल्क लागू होऊ शकते.</span></label>
+        <label className="reminder-push"><div><b>वेब / मोबाईल सूचना</b><span>वेबसाइट बंद असतानाही या डिव्हाइसवर स्मरणपत्र मिळवा.</span></div><button type="button" className="secondary reminder-push-button" disabled={pushBusy} onClick={browserSubscriptionId?disableBrowserPush:enableBrowserPush}>{pushBusy?<LoaderCircle className="spin" size={15}/>:<Bell size={15}/>} {browserSubscriptionId?'सूचना बंद करा':'या डिव्हाइसवर सुरू करा'}</button><small>ब्राउझर परवानगी आवश्यक. सूचना बंद करायच्या असल्यास येथे कधीही बंद करा.</small></label>
+        <label className="reminder-consent"><input type="checkbox" checked={form.consent} onChange={event=>set('consent',event.target.checked)}/><span>या नंबरवर WhatsApp स्मरणपत्र पाठवण्यास माझी संमती आहे.</span></label>
+        <label className="reminder-consent"><input type="checkbox" checked={form.smsConsent} onChange={event=>set('smsConsent',event.target.checked)}/><span>या नंबरवर SMS स्मरणपत्र पाठवण्यास माझी संमती आहे.</span></label>
+        <label className="reminder-consent"><input type="checkbox" checked={form.callConsent} onChange={event=>set('callConsent',event.target.checked)}/><span>या नंबरवर स्वयंचलित फोन कॉल करून स्मरणपत्र मोठ्याने वाचण्यास माझी संमती आहे. या कॉलचे शुल्क लागू होऊ शकते.</span></label>
         <button className="primary reminder-submit" disabled={saving}>{saving?<LoaderCircle className="spin" size={17}/>:<Plus size={17}/>} स्मरणपत्र जतन करा</button>
       </form>
       <div className="reminder-list-section"><div className="reminder-section-title"><div><span>तुमची यादी</span><h2>जतन केलेली स्मरणपत्रे</h2></div><span className="reminder-count">{reminders.length.toLocaleString('mr-IN')}</span></div>
-        {loading?<div className="reminder-empty"><LoaderCircle className="spin" size={22}/> स्मरणपत्रे लोड होत आहेत...</div>:reminders.length?<div className="reminder-list">{reminders.map(item=><article className="reminder-card" key={item.id}><div className="reminder-card-top"><span className={`reminder-status status-${item.status.toLowerCase()}`}><span/>{statusLabel[item.status]||item.status}</span><button type="button" className="reminder-delete" onClick={()=>remove(item.id)} aria-label="स्मरणपत्र हटवा" title="हटवा"><Trash2 size={15}/></button></div><div className="reminder-card-date"><CalendarDays size={16}/><b>{reminderDateTime(item.scheduledAt)}</b></div><p>{item.reason}</p><div className="reminder-card-bottom"><span><MessageCircle size={14}/>{item.mobileNumber}</span>{item.status!=='FAILED'&&item.deliveryNote&&<small>{item.deliveryNote}</small>}</div>{item.status==='FAILED'&&<div className="reminder-failure-note" role="status"><b>WhatsApp संदेश का पाठवला नाही?</b><span>{item.deliveryNote||'पाठवताना कारण उपलब्ध झाले नाही. सर्व्हर लॉग तपासा.'}</span></div>}</article>)}</div>:<div className="reminder-empty"><div className="reminder-empty-icon"><Bell size={20}/></div><b>अजून स्मरणपत्र नाही</b><span>पहिली आठवण तयार केल्यावर ती इथे दिसेल.</span></div>}
+        {loading?<div className="reminder-empty"><LoaderCircle className="spin" size={22}/> स्मरणपत्रे लोड होत आहेत...</div>:reminders.length?<div className="reminder-list">{reminders.map(item=><article className="reminder-card" key={item.id}><div className="reminder-card-top"><span className={`reminder-status status-${item.status.toLowerCase()}`}><span/>{statusLabel[item.status]||item.status}</span><button type="button" className="reminder-delete" onClick={()=>remove(item.id)} aria-label="स्मरणपत्र हटवा" title="हटवा"><Trash2 size={15}/></button></div><div className="reminder-card-date"><CalendarDays size={16}/><b>{reminderDateTime(item.scheduledAt)}</b></div><p>{item.reason}</p><div className="reminder-card-bottom"><span><MessageCircle size={14}/>{item.mobileNumber||'वेब सूचना'}</span>{item.status!=='FAILED'&&item.deliveryNote&&<small>{item.deliveryNote}</small>}</div>{item.status==='FAILED'&&<div className="reminder-failure-note" role="status"><b>सूचना पाठवता आली नाही</b><span>{item.deliveryNote||'पाठवताना कारण उपलब्ध झाले नाही. सर्व्हर लॉग तपासा.'}</span></div>}</article>)}</div>:<div className="reminder-empty"><div className="reminder-empty-icon"><Bell size={20}/></div><b>अजून स्मरणपत्र नाही</b><span>पहिली आठवण तयार केल्यावर ती इथे दिसेल.</span></div>}
       </div>
     </div>
   </section>;

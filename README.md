@@ -8,11 +8,11 @@ Requirements: Java 17+, Maven, Node.js 20+. No database server is required. Dock
 
 1. H2 starts automatically when Spring Boot launches. By default, its database file is `backend/data/swarnabhoomi.mv.db`.
 2. To store the H2 database elsewhere, set `H2_FILE_PATH` to a file path without the `.mv.db` suffix. Optional credentials are `H2_USER` and `H2_PASSWORD`.
-3. In one terminal: `cd backend` then `mvn spring-boot:run`.
+3. In one terminal: `cd backend` then `mvn spring-boot:run`. Spring Boot loads the optional project-root `.env` file for local environment settings.
 4. In another terminal: `cd frontend` then `npm install` and `npm run dev`.
 5. Open the Vite URL in your browser. The API runs on `http://localhost:8080`.
 
-To run the packaged web app with Docker, use `docker compose up --build` from the project root and open `http://localhost:8080`. Compose stores the H2 database and photo uploads in a named local volume so they survive container recreation. To enable the optional AI assistant, start Ollama with `docker compose --profile ai up -d ollama`, then download the model once with `docker compose exec ollama ollama pull qwen2.5vl:3b`. The Ollama model is stored in its own named volume, and Ollama is only reachable inside the Compose network; it is not published as a host port. To enable WhatsApp or SMS reminders, create a `.env` file in the project root with the provider settings listed below before starting Compose; the file is ignored by Git.
+To run the packaged web app with Docker, use `docker compose up --build` from the project root and open `http://localhost:8080`. Compose stores the H2 database and photo uploads in a named local volume so they survive container recreation. To enable the optional AI assistant, start Ollama with `docker compose --profile ai up -d ollama`, then download the model once with `docker compose exec ollama ollama pull qwen2.5vl:3b`. The Ollama model is stored in its own named volume, and Ollama is only reachable inside the Compose network; it is not published as a host port. To enable WhatsApp, SMS, or web-push reminders, set the provider values and `WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY`, and `WEB_PUSH_SUBJECT` in a `.env` file in the project root before starting Compose; the file is ignored by Git.
 
 For a shareable EC2 deployment, configure `APP_ACCESS_ENABLED=true`, `APP_ACCESS_USERNAME`, and a strong `APP_ACCESS_PASSWORD` in the server's ignored `.env` file. Keep the application bound to localhost and serve it through the EC2 host's HTTPS reverse proxy. This EC2 setup uses Apache with a Certbot-managed Let's Encrypt certificate; allow inbound TCP ports 80 and 443 in the security group, and redirect all HTTP requests to HTTPS.
 
@@ -87,9 +87,17 @@ Render persistent disks require a paid web service; storage is billed separately
 
 ## Marathi WhatsApp reminders
 
-The **स्मरणपत्रे** tab stores the Marathi reminder reason, requested date and time, and the opted-in mobile number in H2. The backend checks due reminders every 15 seconds and sends them through Meta's WhatsApp Cloud API, Twilio SMS, and an automated Twilio Voice call that reads the reminder in Marathi using Google Cloud Text-to-Speech. Reminder times use India Standard Time (`Asia/Kolkata`). API responses show only a masked mobile number.
+The **स्मरणपत्रे** tab stores the Marathi reminder reason, requested date and time, and only the contact details for the notification channels the user selected. The backend checks due reminders every 15 seconds. Reminder times use India Standard Time (`Asia/Kolkata`). API responses show only a masked mobile number.
 
 To enable delivery, configure a Meta WhatsApp Business sender and an approved Marathi utility message template with three body parameters for the reason, date, and time. For example, the template body can be `स्वर्णभूमी स्मरणपत्र: {{1}}. तारीख: {{2}}, वेळ: {{3}}.`. The configured template name and language code must match the template in WhatsApp Manager.
+
+### Web push reminders
+
+Users can enable browser push in the **स्मरणपत्रे** tab. Push notifications are delivered when a scheduled reminder becomes due, including when the website is closed. They are associated only with the browser subscription that created that reminder. Browser permission is required; Android and desktop browsers with Push API support are supported. On iPhone/iPad, install the site to the Home Screen first (iOS 16.4 or later), then allow notifications.
+
+Configure VAPID keys as `WEB_PUSH_PUBLIC_KEY` and `WEB_PUSH_PRIVATE_KEY`. Generate a fresh key pair locally with `npx web-push generate-vapid-keys`; keep the private key secret and enter the values directly in the hosting service's environment settings. Do not commit either key. For Docker Compose, put both keys in the ignored root `.env` file. `WEB_PUSH_SUBJECT` should be a contact `mailto:` address or the service's HTTPS URL; for Render, use `https://swarnabhoomi-demo.onrender.com`. Redeploy after adding the variables. Without these values, the browser push control reports that push is not configured.
+
+When creating a reminder, the user can select any combination of WhatsApp, SMS, voice call, and web push. A phone number is required only for phone-based channels; at least one notification channel must be selected.
 
 Set these backend environment variables locally or in the deployed service's environment settings. For Docker Compose, put the required values in the root `.env` file (for example, `WHATSAPP_ACCESS_TOKEN=...`); Compose passes them into the backend container:
 

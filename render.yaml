@@ -30,6 +30,12 @@ services:
         value: mr
       - key: REMINDER_POLL_INTERVAL_MS
         value: "15000"
+      - key: WEB_PUSH_PUBLIC_KEY
+        sync: false
+      - key: WEB_PUSH_PRIVATE_KEY
+        sync: false
+      - key: WEB_PUSH_SUBJECT
+        value: https://swarnabhoomi-demo.onrender.com
       - key: TWILIO_ACCOUNT_SID
         sync: false
       - key: TWILIO_AUTH_TOKEN

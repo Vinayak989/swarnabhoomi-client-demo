@@ -17,13 +17,18 @@ public class FarmReminderService {
     private final WhatsAppReminderSender sender;
     private final SmsReminderSender smsSender;
     private final VoiceReminderSender voiceSender;
+    private final BrowserPushSubscriptionRepository pushSubscriptionRepository;
+    private final BrowserPushService browserPushService;
 
     public FarmReminderService(FarmReminderRepository repository, WhatsAppReminderSender sender,
-            SmsReminderSender smsSender, VoiceReminderSender voiceSender) {
+            SmsReminderSender smsSender, VoiceReminderSender voiceSender,
+            BrowserPushSubscriptionRepository pushSubscriptionRepository, BrowserPushService browserPushService) {
         this.repository = repository;
         this.sender = sender;
         this.smsSender = smsSender;
         this.voiceSender = voiceSender;
+        this.pushSubscriptionRepository = pushSubscriptionRepository;
+        this.browserPushService = browserPushService;
     }
 
     public List<ReminderView> list() {
@@ -50,14 +55,9 @@ public class FarmReminderService {
         if (reason.isBlank() || reason.length() > 300) {
             throw badRequest("कारण लिहा (जास्तीत जास्त ३०० अक्षरे).");
         }
-        if (!request.consent()) {
-            throw badRequest("या नंबरवर WhatsApp स्मरणपत्रे पाठवण्यासाठी संमती आवश्यक आहे.");
-        }
-        if (!request.smsConsent()) {
-            throw badRequest("या नंबरवर SMS स्मरणपत्रे पाठवण्यासाठी संमती आवश्यक आहे.");
-        }
-        if (!request.callConsent()) {
-            throw badRequest("या नंबरवर स्वयंचलित स्मरणपत्र कॉलसाठी संमती आवश्यक आहे.");
+        boolean hasPhoneChannel = request.consent() || request.smsConsent() || request.callConsent();
+        if (!hasPhoneChannel && request.browserSubscriptionId() == null) {
+            throw badRequest("किमान एक सूचना माध्यम निवडा.");
         }
         LocalDateTime now = LocalDateTime.now(FARM_TIME_ZONE);
         if (!request.scheduledAt().isAfter(now)) {
@@ -67,11 +67,18 @@ public class FarmReminderService {
         FarmReminder reminder = new FarmReminder();
         reminder.setScheduledAt(request.scheduledAt());
         reminder.setReason(reason);
-        reminder.setMobileNumber(normalizeMobileNumber(request.mobileNumber()));
+        reminder.setMobileNumber(hasPhoneChannel ? normalizeMobileNumber(request.mobileNumber()) : "");
         reminder.setStatus("PENDING");
-        reminder.setSmsConsent(true);
-        reminder.setCallConsent(true);
+        reminder.setWhatsappConsent(request.consent());
+        reminder.setSmsConsent(request.smsConsent());
+        reminder.setCallConsent(request.callConsent());
         reminder.setDeliveryNote("पाठवण्याच्या प्रतीक्षेत");
+        if (request.browserSubscriptionId() != null) {
+            BrowserPushSubscription subscription = pushSubscriptionRepository.findById(request.browserSubscriptionId())
+                    .filter(BrowserPushSubscription::isActive)
+                    .orElseThrow(() -> badRequest("वेब सूचना सदस्यता कालबाह्य आहे. कृपया वेब सूचना पुन्हा सुरू करा."));
+            reminder.setBrowserSubscription(subscription);
+        }
         return view(repository.save(reminder));
     }
 
@@ -93,15 +100,17 @@ public class FarmReminderService {
             repository.saveAndFlush(reminder);
             List<String> deliveryNotes = new ArrayList<>();
             boolean failed = false;
-            try {
-                sender.send(reminder);
-                deliveryNotes.add("WhatsApp: पाठवण्याची विनंती स्वीकारली.");
-            } catch (WhatsAppReminderSender.DeliveryException exception) {
-                failed = true;
-                deliveryNotes.add("WhatsApp: " + exception.getMessage());
-            } catch (RuntimeException exception) {
-                failed = true;
-                deliveryNotes.add("WhatsApp: संदेश पाठवताना तांत्रिक अडचण आली.");
+            if (reminder.isWhatsappConsent()) {
+                try {
+                    sender.send(reminder);
+                    deliveryNotes.add("WhatsApp: पाठवण्याची विनंती स्वीकारली.");
+                } catch (WhatsAppReminderSender.DeliveryException exception) {
+                    failed = true;
+                    deliveryNotes.add("WhatsApp: " + exception.getMessage());
+                } catch (RuntimeException exception) {
+                    failed = true;
+                    deliveryNotes.add("WhatsApp: संदेश पाठवताना तांत्रिक अडचण आली.");
+                }
             }
             if (reminder.isSmsConsent()) {
                 try {
@@ -125,6 +134,19 @@ public class FarmReminderService {
                 } catch (RuntimeException exception) {
                     failed = true;
                     deliveryNotes.add("कॉल: सुरू करताना तांत्रिक अडचण आली.");
+                }
+            }
+            if (reminder.getBrowserSubscription() != null) {
+                try {
+                    if (browserPushService.send(reminder)) {
+                        deliveryNotes.add("वेब सूचना: पाठवण्याची विनंती स्वीकारली.");
+                    } else {
+                        failed = true;
+                        deliveryNotes.add("वेब सूचना: सदस्यता कालबाह्य आहे.");
+                    }
+                } catch (RuntimeException exception) {
+                    failed = true;
+                    deliveryNotes.add("वेब सूचना: पाठवताना तांत्रिक अडचण आली.");
                 }
             }
             if (!failed) {
@@ -184,7 +206,7 @@ public class FarmReminderService {
 
     private ReminderView view(FarmReminder reminder) {
         String number = reminder.getMobileNumber();
-        String masked = number.length() == 12 && number.startsWith("91")
+        String masked = number == null || number.isBlank() ? "" : number.length() == 12 && number.startsWith("91")
                 ? "+91 ••••••" + number.substring(number.length() - 4)
                 : "+" + "•".repeat(Math.max(4, number.length() - 4)) + number.substring(number.length() - 4);
         return new ReminderView(reminder.getId(), reminder.getScheduledAt(), reminder.getReason(), masked,
@@ -196,7 +218,7 @@ public class FarmReminderService {
     }
 
     public record ReminderRequest(LocalDateTime scheduledAt, String reason, String mobileNumber, boolean consent,
-            boolean smsConsent, boolean callConsent) {}
+            boolean smsConsent, boolean callConsent, Long browserSubscriptionId) {}
     public record ReminderView(Long id, LocalDateTime scheduledAt, String reason, String mobileNumber,
             String status, String deliveryNote, LocalDateTime sentAt) {}
 }

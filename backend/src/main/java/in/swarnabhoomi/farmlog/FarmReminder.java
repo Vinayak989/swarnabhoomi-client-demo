@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.ManyToOne;
 import java.time.LocalDateTime;
 
 @Entity
@@ -36,6 +37,11 @@ public class FarmReminder {
 
     private LocalDateTime sentAt;
 
+    @ManyToOne
+    private BrowserPushSubscription browserSubscription;
+
+    private Boolean whatsappConsent = true;
+
     public Long getId() { return id; }
     public void setId(Long value) { id = value; }
     public String getReason() { return reason; }
@@ -54,4 +60,8 @@ public class FarmReminder {
     public void setDeliveryNote(String value) { deliveryNote = value; }
     public LocalDateTime getSentAt() { return sentAt; }
     public void setSentAt(LocalDateTime value) { sentAt = value; }
+    public BrowserPushSubscription getBrowserSubscription() { return browserSubscription; }
+    public void setBrowserSubscription(BrowserPushSubscription value) { browserSubscription = value; }
+    public boolean isWhatsappConsent() { return whatsappConsent == null || whatsappConsent; }
+    public void setWhatsappConsent(boolean value) { whatsappConsent = value; }
 }
