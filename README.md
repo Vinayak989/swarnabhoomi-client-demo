@@ -85,3 +85,7 @@ The **स्मरणपत्रे** tab stores reminders in a list without re
 VAPID keys (`WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY`, and `WEB_PUSH_SUBJECT`) are only needed for legacy reminders already associated with a browser subscription. They are not required to add or track new reminders.
 
 The backend checks due subscribed reminders every 15 seconds. New reminders without a device subscription stay pending after their scheduled time until the user marks them complete.
+
+## Farm information guide
+
+The **माहिती** tab is a Marathi-first, static reference for beneficial-insect observation and selective weed management around Sangli crops. Its reference photos are stored locally in the frontend; image credits and their Commons/license links are shown with each photo. The guide is informational—confirm plant and pest identification with a local agricultural expert before taking action.
