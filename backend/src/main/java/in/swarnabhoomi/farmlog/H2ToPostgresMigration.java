@@ -25,7 +25,8 @@ import org.springframework.stereotype.Component;
 @Profile("migration")
 public class H2ToPostgresMigration implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(H2ToPostgresMigration.class);
-    private static final List<String> TABLES = List.of("farm_entry", "farm_reminder", "farm_photo");
+    private static final List<String> TABLES = List.of("farm_entry", "farm_reminder", "farm_photo",
+            "farm_product_listing");
 
     private final JdbcTemplate target;
     private final FarmPhotoRepository photoRepository;
@@ -55,6 +56,10 @@ public class H2ToPostgresMigration implements ApplicationRunner {
         String sourceUrl = "jdbc:h2:file:" + h2FilePath + ";DB_CLOSE_DELAY=-1";
         try (Connection source = DriverManager.getConnection(sourceUrl, h2Username, h2Password)) {
             for (String table : TABLES) {
+                if ("farm_product_listing".equals(table) && !tableExists(source.getMetaData(), table)) {
+                    log.info("Skipping marketplace listings; the source H2 database predates the marketplace.");
+                    continue;
+                }
                 int copied = copyTable(source, table);
                 log.info("Migrated {} rows from H2 table {}", copied, table);
             }
@@ -69,6 +74,7 @@ public class H2ToPostgresMigration implements ApplicationRunner {
             }
         }
         resetEntrySequence();
+        resetListingSequence();
         log.info("H2 migration completed; moved {} photo objects to S3. Keep the original H2 volume as a backup.",
                 migratedPhotos);
     }
@@ -132,6 +138,15 @@ public class H2ToPostgresMigration implements ApplicationRunner {
         return result;
     }
 
+    private boolean tableExists(DatabaseMetaData metadata, String table) throws SQLException {
+        for (String candidate : List.of(table.toUpperCase(Locale.ROOT), table)) {
+            try (ResultSet tables = metadata.getTables(null, null, candidate, new String[]{"TABLE"})) {
+                if (tables.next()) return true;
+            }
+        }
+        return false;
+    }
+
     private Set<String> targetColumns(String table) {
         return new HashSet<>(target.query(
                 "SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = ?",
@@ -148,5 +163,10 @@ public class H2ToPostgresMigration implements ApplicationRunner {
     private void resetEntrySequence() {
         target.execute("SELECT setval(pg_get_serial_sequence('farm_entry', 'id'), "
                 + "COALESCE((SELECT MAX(id) FROM farm_entry), 0) + 1, false)");
+    }
+
+    private void resetListingSequence() {
+        target.execute("SELECT setval(pg_get_serial_sequence('farm_product_listing', 'id'), "
+                + "COALESCE((SELECT MAX(id) FROM farm_product_listing), 0) + 1, false)");
     }
 }

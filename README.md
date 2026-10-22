@@ -89,3 +89,11 @@ The backend checks due subscribed reminders every 15 seconds. New reminders with
 ## Farm information guide
 
 The **माहिती** tab is a Marathi-first, static reference for beneficial-insect observation and selective weed management around Sangli crops. Its reference photos are stored locally in the frontend; image credits and their Commons/license links are shown with each photo. The guide is informational—confirm plant and pest identification with a local agricultural expert before taking action.
+
+## Farmer marketplace
+
+The **शेतकरी बाजार** tab lets farmers add a crop/food listing with a product photo, available quantity, seller phone, address, and exact map coordinates. Buyers can search listings by crop, product, seller, or address; see seller pins on an OpenStreetMap; and sort/filter by distance after choosing to share the buyer's browser location. Location is only requested after the buyer presses **जवळचे विक्रेते**. The map uses OpenStreetMap tiles and attribution; no Google Maps API key or external geocoding service is used.
+
+Seller listings are stored in the application database and limited to the latest 200 entries. Product photos use the existing photo storage (database or configured S3). Seller phone numbers are omitted from listing search responses and are returned only by the authenticated contact endpoint. The map pin and address are exact, as selected for this marketplace; sellers should provide a farm address and coordinates they are comfortable sharing.
+
+The marketplace reuses the existing shared application credentials—there are no separate buyer or seller accounts. Configure `APP_ACCESS_USERNAME` and a strong `APP_ACCESS_PASSWORD` in the server environment for sellers to publish listings and buyers to retrieve seller contact details. Those marketplace actions require these credentials even if `APP_ACCESS_ENABLED` is false for the rest of the app. When `APP_ACCESS_ENABLED=true`, the usual app login protects the application and marketplace API. The H2-to-PostgreSQL migration profile also copies marketplace listings.

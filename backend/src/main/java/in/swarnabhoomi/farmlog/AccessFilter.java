@@ -24,8 +24,22 @@ public class AccessFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String path = request.getRequestURI();
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())
-                || !enabled || !path.startsWith("/api/") || path.equals("/api/health")) {
+                || !path.startsWith("/api/") || path.equals("/api/health")) {
             chain.doFilter(request, response);
+            return;
+        }
+        boolean privateMarketplaceRequest = path.startsWith("/api/marketplace/")
+                && !("GET".equalsIgnoreCase(request.getMethod())
+                        && path.equals("/api/marketplace/listings"));
+        if (!enabled && !privateMarketplaceRequest) {
+            chain.doFilter(request, response);
+            return;
+        }
+        if (privateMarketplaceRequest && expectedPassword.isBlank()) {
+            response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+            response.getWriter().write("{\"message\":\"विक्रेता नोंदणी व संपर्कासाठी अॅप प्रवेश तपशील सर्व्हरवर कॉन्फिगर करणे आवश्यक आहे.\"}");
             return;
         }
         if (authorized(request.getHeader("Authorization"))) {

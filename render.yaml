@@ -18,6 +18,10 @@ services:
         value: /var/data/uploads
       - key: APP_ACCESS_ENABLED
         value: "false"
+      - key: APP_ACCESS_USERNAME
+        sync: false
+      - key: APP_ACCESS_PASSWORD
+        sync: false
       - key: REMINDER_POLL_INTERVAL_MS
         value: "15000"
       - key: WEB_PUSH_PUBLIC_KEY
