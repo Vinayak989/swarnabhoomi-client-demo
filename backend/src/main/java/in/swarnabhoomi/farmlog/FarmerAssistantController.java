@@ -38,70 +38,93 @@ public class FarmerAssistantController {
             """;
 
     private final RestClient restClient;
+    private final String apiKey;
     private final String model;
 
     public FarmerAssistantController(RestClient.Builder restClientBuilder,
-            @Value("${app.ollama.base-url:http://localhost:11434}") String ollamaBaseUrl,
-            @Value("${app.ollama.model:qwen2.5vl:3b}") String model) {
-        this.restClient = restClientBuilder.baseUrl(ollamaBaseUrl).build();
+            @Value("${app.gemini.api-key:}") String apiKey,
+            @Value("${app.gemini.model:gemini-2.5-flash}") String model) {
+        this.restClient = restClientBuilder.baseUrl("https://generativelanguage.googleapis.com").build();
+        this.apiKey = apiKey;
         this.model = model;
     }
 
     @PostMapping("/chat")
     public ChatResponse chat(@RequestBody ChatRequest request) {
         validate(request);
+        if (apiKey.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Google Gemini API सुरू करण्यासाठी GEMINI_API_KEY कॉन्फिगर करा.");
+        }
 
-        List<Map<String, Object>> messages = new ArrayList<>();
-        messages.add(Map.of("role", "system", "content", SYSTEM_PROMPT));
+        List<Map<String, Object>> contents = new ArrayList<>();
         for (int index = 0; index < request.messages().size(); index++) {
             ChatMessage message = request.messages().get(index);
             String imageDataUrl = message.imageDataUrl();
-            Object content = message.content().trim();
+            List<Map<String, Object>> parts = new ArrayList<>();
+            parts.add(Map.of("text", message.content().trim()));
             if (imageDataUrl != null && !imageDataUrl.isBlank()) {
                 if (index != request.messages().size() - 1) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "फोटो फक्त नवीनतम प्रश्नासोबत पाठवा.");
                 }
                 validateImage(imageDataUrl);
-                content = message.content().trim();
+                String mediaType = imageDataUrl.substring(5, imageDataUrl.indexOf(';'));
                 String base64Image = imageDataUrl.substring(imageDataUrl.indexOf(',') + 1);
-                messages.add(Map.of(
-                        "role", message.role(),
-                        "content", content,
-                        "images", List.of(base64Image)));
-                continue;
+                parts.add(Map.of("inlineData", Map.of("mimeType", mediaType, "data", base64Image)));
             }
-            messages.add(Map.of("role", message.role(), "content", content));
+            contents.add(Map.of("role", "assistant".equals(message.role()) ? "model" : "user", "parts", parts));
         }
 
         JsonNode response;
         try {
             response = restClient.post()
-                    .uri("/api/chat")
+                    .uri("/v1beta/models/{model}:generateContent", model)
+                    .header("x-goog-api-key", apiKey)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of("model", model, "messages", messages, "stream", false))
+                    .body(Map.of(
+                            "systemInstruction", Map.of("parts", List.of(Map.of("text", SYSTEM_PROMPT))),
+                            "contents", contents))
                     .retrieve()
                     .body(JsonNode.class);
         } catch (RestClientResponseException exception) {
-            if (exception.getStatusCode().value() == 404) {
-                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                        "Ollama मध्ये " + model + " मॉडेल सापडले नाही. `ollama pull " + model + "` चालवा.");
+            int status = exception.getStatusCode().value();
+            if (status == 400) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Google Gemini ने विनंती नाकारली. प्रश्न किंवा फोटो तपासून पुन्हा प्रयत्न करा.");
             }
-            if (exception.getStatusCode().value() == 400) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                        "Ollama ने विनंती नाकारली. फोटोसाठी vision समर्थित मॉडेल वापरा.");
+            if (status == 401 || status == 403) {
+                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                        "Google Gemini API key अमान्य आहे किंवा API ला प्रवेश नाही. GEMINI_API_KEY तपासा.");
+            }
+            if (status == 404) {
+                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                        "Google Gemini मॉडेल उपलब्ध नाही. GEMINI_MODEL तपासा.");
+            }
+            if (status == 429) {
+                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                        "Google Gemini ची विनंती मर्यादा पूर्ण झाली. थोड्या वेळाने पुन्हा प्रयत्न करा.");
             }
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                    "Ollama HTTP " + exception.getStatusCode().value() + " प्रतिसाद देत आहे.");
+                    "Google Gemini HTTP " + status + " प्रतिसाद देत आहे.");
         } catch (ResourceAccessException exception) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "Ollama शी संपर्क होऊ शकला नाही. Ollama सुरू आहे का ते तपासा (`ollama serve`).", exception);
+                    "Google Gemini शी संपर्क होऊ शकला नाही. इंटरनेट कनेक्शन तपासून पुन्हा प्रयत्न करा.", exception);
         }
 
-        String answer = response == null
-                ? ""
-                : response.path("message").path("content").asText("").trim();
+        StringBuilder answerText = new StringBuilder();
+        JsonNode parts = response == null ? null : response.path("candidates").path(0).path("content").path("parts");
+        if (parts != null && parts.isArray()) {
+            for (JsonNode part : parts) {
+                String text = part.path("text").asText("").trim();
+                if (!text.isEmpty()) {
+                    if (!answerText.isEmpty()) answerText.append('\n');
+                    answerText.append(text);
+                }
+            }
+        }
+        String answer = answerText.toString().trim();
         if (answer.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Ollama कडून वाचता येणारे उत्तर मिळाले नाही.");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Google Gemini कडून वाचता येणारे उत्तर मिळाले नाही.");
         }
         return new ChatResponse(answer);
     }

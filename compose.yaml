@@ -14,12 +14,12 @@ services:
       WEB_PUSH_PUBLIC_KEY: ${WEB_PUSH_PUBLIC_KEY:-}
       WEB_PUSH_PRIVATE_KEY: ${WEB_PUSH_PRIVATE_KEY:-}
       WEB_PUSH_SUBJECT: ${WEB_PUSH_SUBJECT:-https://swarnabhoomi-demo.onrender.com}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:h2:file:/var/data/swarnabhoomi;DB_CLOSE_DELAY=-1}
       SPRING_DATASOURCE_DRIVER: ${SPRING_DATASOURCE_DRIVER:-org.h2.Driver}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-${H2_USER:-sa}}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-${H2_PASSWORD:-}}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5vl:3b}
       S3_BUCKET: ${S3_BUCKET:-}
       AWS_REGION: ${AWS_REGION:-ap-southeast-2}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
@@ -33,15 +33,5 @@ services:
     volumes:
       - swarnabhoomi-h2-data:/var/data
 
-  ollama:
-    profiles:
-      - ai
-    image: ollama/ollama:latest
-    container_name: swarnabhoomi-ollama
-    restart: unless-stopped
-    volumes:
-      - ollama-data:/root/.ollama
-
 volumes:
   swarnabhoomi-h2-data:
-  ollama-data:

@@ -113,7 +113,7 @@ export default function AssistantPanel({ apiFetch, apiBase, messages, setMessage
         const message = result?.detail || result?.message || (response.status === 502
           ? 'Java सर्व्हर सुरू नाही. आधी backend सर्व्हर सुरू करा.'
           : response.status === 503
-            ? 'Ollama उपलब्ध नाही. Ollama सुरू करा आणि आवश्यक मॉडेल डाउनलोड करा.'
+            ? 'Google Gemini उपलब्ध नाही. सर्व्हरवरील Gemini API key तपासा.'
             : 'AI कडून उत्तर मिळाले नाही.');
         throw Error(message);
       }
@@ -233,7 +233,7 @@ export default function AssistantPanel({ apiFetch, apiBase, messages, setMessage
           disabled={sending}
         />
         <div className="assistant-composer-actions">
-          <span>प्रश्न व फोटो तुमच्या स्थानिक Ollama सर्व्हरकडे पाठवला जातो. महत्त्वाच्या निर्णयांपूर्वी स्थानिक कृषी तज्ज्ञांचा सल्ला घ्या.</span>
+          <span>प्रश्न व फोटो Google Gemini API कडे पाठवले जातात. महत्त्वाच्या निर्णयांपूर्वी स्थानिक कृषी तज्ज्ञांचा सल्ला घ्या.</span>
           <div>
             <input ref={cameraInputRef} className="assistant-file-input" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={event => { void selectPhoto(event.target.files?.[0]); event.target.value = ''; }}/>
             <input ref={libraryInputRef} className="assistant-file-input" type="file" accept="image/jpeg,image/png,image/webp" onChange={event => { void selectPhoto(event.target.files?.[0]); event.target.value = ''; }}/>
