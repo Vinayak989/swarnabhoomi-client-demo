@@ -1,12 +1,20 @@
 package in.swarnabhoomi.farmlog;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,14 +30,69 @@ public class FarmMarketplaceController {
     private static final Pattern PHOTO_URL = Pattern.compile("^/api/photos/[a-fA-F0-9-]{36}$");
     private static final Set<String> UNITS = Set.of("kg", "quintal", "ton", "dozen", "crate", "piece");
     private final FarmProductListingRepository repository;
+    private final FarmPhotoRepository photoRepository;
+    private final PhotoObjectStorage photoStorage;
+    @Value("${spring.servlet.multipart.max-file-size:10MB}")
+    private org.springframework.util.unit.DataSize maxPhotoSize;
 
-    public FarmMarketplaceController(FarmProductListingRepository repository) {
+    public FarmMarketplaceController(FarmProductListingRepository repository, FarmPhotoRepository photoRepository,
+            PhotoObjectStorage photoStorage) {
         this.repository = repository;
+        this.photoRepository = photoRepository;
+        this.photoStorage = photoStorage;
     }
 
     @GetMapping("/listings")
     public List<ListingResponse> listings() {
         return repository.findTop200ByOrderByCreatedAtDesc().stream().map(ListingResponse::from).toList();
+    }
+
+    @PostMapping("/photos")
+    public Map<String, String> photo(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty() || file.getSize() > maxPhotoSize.toBytes()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "फोटोचा आकार १० MB पेक्षा कमी असावा.");
+        }
+        String type = file.getContentType() == null ? "" : file.getContentType();
+        if (!Set.of("image/jpeg", "image/png", "image/webp", "image/gif").contains(type.toLowerCase(Locale.ROOT))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "JPEG, PNG, WebP किंवा GIF फोटो निवडा.");
+        }
+        String filename = Optional.ofNullable(file.getOriginalFilename())
+                .filter(name -> !name.isBlank())
+                .orElse("marketplace-photo");
+        filename = filename.replace('\\', '/');
+        filename = filename.substring(filename.lastIndexOf('/') + 1).replaceAll("[\\r\\n]", "_");
+        if (filename.length() > 255) filename = filename.substring(filename.length() - 255);
+
+        try {
+            FarmPhoto photo = new FarmPhoto();
+            photo.setId(photoStorage.newPhotoId());
+            photo.setData(file.getBytes());
+            photo.setContentType(type);
+            photo.setOriginalFilename(filename);
+            photoStorage.store(photo);
+            photoRepository.save(photo);
+            return Map.of("url", "/api/marketplace/photos/" + photo.getId());
+        } catch (java.io.IOException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "फोटो वाचता आला नाही.", exception);
+        }
+    }
+
+    @GetMapping("/photos/{id}")
+    public ResponseEntity<byte[]> getPhoto(@PathVariable String id) {
+        FarmPhoto photo = photoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        MediaType contentType;
+        try {
+            contentType = MediaType.parseMediaType(photo.getContentType());
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "फोटोचा प्रकार वाचता आला नाही.", exception);
+        }
+        return ResponseEntity.ok()
+                .contentType(contentType)
+                .header("X-Content-Type-Options", "nosniff")
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline()
+                        .filename(photo.getOriginalFilename(), StandardCharsets.UTF_8).build().toString())
+                .body(photoStorage.load(photo));
     }
 
     @PostMapping("/listings")

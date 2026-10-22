@@ -60,7 +60,12 @@ function SellerMap({ listings, buyerLocation, onSelect }) {
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return undefined;
-    const map = L.map(containerRef.current, { scrollWheelZoom: false }).setView(DEFAULT_CENTER, 9);
+    const map = L.map(containerRef.current, {
+      scrollWheelZoom: false,
+      zoomAnimation: false,
+      fadeAnimation: false,
+      markerZoomAnimation: false
+    }).setView(DEFAULT_CENTER, 9);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
@@ -71,6 +76,7 @@ function SellerMap({ listings, buyerLocation, onSelect }) {
     const resize = window.setTimeout(() => map.invalidateSize(), 120);
     return () => {
       window.clearTimeout(resize);
+      map.stop();
       map.remove();
       mapRef.current = null;
       markerLayerRef.current = null;
@@ -141,7 +147,8 @@ function ProductPhoto({ apiBase, photoUrl, authorization, productName }) {
       return undefined;
     }
     const headers = authorization ? { Authorization: `Basic ${authorization}` } : {};
-    fetch(`${apiBase}${photoUrl}`, { headers })
+    const imagePath = photoUrl.startsWith('/api/') ? photoUrl : `${apiBase}${photoUrl}`;
+    fetch(imagePath, { headers })
       .then(response => {
         if (!response.ok) throw new Error('फोटो उपलब्ध नाही.');
         return response.blob();
@@ -307,11 +314,7 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
       if (currentPhoto) {
         const photoData = new FormData();
         photoData.append('file', currentPhoto);
-        const photoResponse = await request('/photos', { method: 'POST', body: photoData }, token);
-        if (photoResponse.status === 401) {
-          beginLogin({ type: 'save' });
-          return;
-        }
+        const photoResponse = await request('/marketplace/photos', { method: 'POST', body: photoData }, token);
         if (!photoResponse.ok) throw new Error('फोटो अपलोड झाला नाही. १० MB पेक्षा कमी आकाराचा फोटो निवडा.');
         photoUrl = (await photoResponse.json()).url;
       }
@@ -327,14 +330,6 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       }, token);
-      if (response.status === 401) {
-        beginLogin({ type: 'save' });
-        return;
-      }
-      if (response.status === 503) {
-        const body = await response.json();
-        throw new Error(body.message || 'विक्रेता नोंदणीसाठी अॅप प्रवेश तपशील आवश्यक आहेत.');
-      }
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         throw new Error(body.message || 'विक्रीची नोंद जतन करता आली नाही. भरलेली माहिती तपासा.');
@@ -355,10 +350,6 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
 
   async function submitListing(event) {
     event.preventDefault();
-    if (!authorization) {
-      beginLogin({ type: 'save' });
-      return;
-    }
     await saveListing();
   }
 
@@ -383,7 +374,6 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
       setPendingAction(null);
       setLoginOpen(false);
       setCredentials(current => ({ ...current, password: '' }));
-      if (action?.type === 'save') await saveListing(token);
       if (action?.type === 'contact') await fetchContact(action.id, token);
     } catch (signInError) {
       setLoginError(signInError.message || 'प्रवेश करता आला नाही.');
@@ -467,13 +457,13 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
         </section>
       </div>
     </> : <section className="market-form-card">
-      <div className="market-card-heading"><div><span>विक्रेता नोंदणी</span><h2>तुमचा उपलब्ध शेतमाल जोडा</h2></div><div className="market-private-badge"><ShieldCheck size={14}/> संपर्क फक्त प्रवेशानंतर</div></div>
+      <div className="market-card-heading"><div><span>विक्रेत्याची माहिती</span><h2>तुमचा उपलब्ध शेतमाल जोडा</h2></div><div className="market-private-badge"><ShieldCheck size={14}/> संपर्क फक्त प्रवेशानंतर</div></div>
       <p className="market-form-intro">तुमची विक्रीची माहिती आणि अचूक पत्ता नोंदवा. नकाशावरील स्थान तुमच्या ब्राउझरमधून घ्या किंवा निर्देशांक भरा.</p>
       <form className="market-form" onSubmit={submitListing}>
         <div className="market-form-section-title"><UserRound size={16}/> विक्रेता आणि संपर्क</div>
         <div className="market-form-grid">
           <label className="market-field"><span>शेतकरी / विक्रेत्याचे नाव *</span><input name="sellerName" value={form.sellerName} onChange={updateField} maxLength={100} required placeholder="पूर्ण नाव"/></label>
-          <label className="market-field"><span>मोबाइल नंबर * <small>भारतीय नंबर</small></span><input name="phone" value={form.phone} onChange={updateField} maxLength={18} inputMode="tel" autoComplete="tel" pattern="(?:\+91[\s-]?)?[6-9][0-9\s-]{9,14}" required placeholder="+91 98765 43210"/></label>
+          <label className="market-field"><span>मोबाइल नंबर * <small>भारतीय नंबर</small></span><input name="phone" value={form.phone} onChange={updateField} maxLength={18} inputMode="tel" autoComplete="tel" required placeholder="+919876543210"/></label>
           <label className="market-field market-field-wide"><span>संपूर्ण पत्ता *</span><textarea name="address" value={form.address} onChange={updateField} maxLength={500} required placeholder="गाव, तालुका, जिल्हा आणि शेताचा पत्ता"/></label>
         </div>
         <div className="market-location-fields">
@@ -501,7 +491,7 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
           {previewUrl ? <div className="market-photo-preview"><img src={previewUrl} alt="शेतमालाचा निवडलेला फोटो"/><button type="button" onClick={() => setPhoto(null)} aria-label="फोटो काढा"><X size={16}/></button></div>
             : <button type="button" className="market-upload-button" onClick={() => fileInputRef.current?.click()}><Upload size={17}/> शेतमालाचा फोटो जोडा <small>१० MB पर्यंत · ऐच्छिक</small></button>}
         </div>
-        <div className="market-auth-note"><ShieldCheck size={15}/> नोंदणी आणि विक्रेत्याचा संपर्क सुरक्षित ठेवण्यासाठी विद्यमान अॅप प्रवेश तपशील विचारले जाऊ शकतात. वेगळे खाते तयार करण्याची गरज नाही.</div>
+        <div className="market-auth-note"><ShieldCheck size={15}/> शेतमालाची नोंद थेट जतन होईल. तुमचा फोन नंबर फक्त अॅप प्रवेश केलेल्या खरेदीदारालाच दिसेल.</div>
         <button className="market-submit-button" type="submit" disabled={saving}>{saving?'नोंद जतन होत आहे…':<><PackagePlus size={17}/> विक्रीची नोंद जतन करा</>}</button>
       </form>
     </section>}
@@ -510,8 +500,8 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
       <form className="market-login-modal" onSubmit={signIn}>
         <button type="button" className="market-modal-close" onClick={() => setLoginOpen(false)} aria-label="बंद करा"><X size={18}/></button>
         <div className="market-login-icon"><ShieldCheck size={22}/></div>
-        <span>स्वर्णभूमी सुरक्षित प्रवेश</span><h2>अॅपचे विद्यमान लॉगिन वापरा</h2>
-        <p>विक्रेत्याची नोंद जतन करण्यासाठी किंवा संपर्क पाहण्यासाठी तुमचे शेअर्ड अॅप प्रवेश तपशील भरा. नवीन खाते लागत नाही.</p>
+        <span>खरेदीदार प्रवेश</span><h2>विक्रेत्याशी संपर्क साधा</h2>
+        <p>विक्रेत्याशी संपर्क साधण्यासाठी तुमचे शेअर्ड अॅप प्रवेश तपशील भरा. नवीन खाते लागत नाही.</p>
         <label className="market-field"><span>वापरकर्तानाव</span><input autoComplete="username" value={credentials.username} onChange={event => setCredentials(current => ({ ...current, username: event.target.value }))} required/></label>
         <label className="market-field"><span>पासवर्ड</span><input type="password" autoComplete="current-password" value={credentials.password} onChange={event => setCredentials(current => ({ ...current, password: event.target.value }))} required/></label>
         {loginError&&<div className="market-message market-error" role="alert">{loginError}</div>}

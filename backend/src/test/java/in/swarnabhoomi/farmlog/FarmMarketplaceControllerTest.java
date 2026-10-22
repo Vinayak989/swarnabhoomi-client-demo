@@ -3,6 +3,7 @@ package in.swarnabhoomi.farmlog;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -14,10 +15,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest(properties = {
-    "app.access.enabled=false",
+    "app.access.enabled=true",
     "app.access.username=market-test",
     "app.access.password=market-password",
     "spring.datasource.url=jdbc:h2:mem:marketplace-test;DB_CLOSE_DELAY=-1",
@@ -52,7 +54,6 @@ class FarmMarketplaceControllerTest {
     @Test
     void listingCanBePublishedButPhoneIsOnlyReturnedByAuthenticatedContactEndpoint() throws Exception {
         mvc.perform(post("/api/marketplace/listings")
-                .header("Authorization", authorization())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(VALID_LISTING))
             .andExpect(status().isCreated())
@@ -76,18 +77,36 @@ class FarmMarketplaceControllerTest {
     }
 
     @Test
-    void listingCreationRequiresTheSharedApplicationCredentials() throws Exception {
+    void listingCreationDoesNotRequireTheSharedApplicationCredentialsEvenWhenAppLoginIsEnabled() throws Exception {
         mvc.perform(post("/api/marketplace/listings")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(VALID_LISTING))
-            .andExpect(status().isUnauthorized());
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.productName").value("हळद"));
+    }
+
+    @Test
+    void sellerCanUploadAndRetrieveAProductPhotoWithoutSigningIn() throws Exception {
+        MockMultipartFile image = new MockMultipartFile(
+                "file", "crop.jpg", "image/jpeg", new byte[]{1, 2, 3});
+        String photoPath = mvc.perform(multipart("/api/marketplace/photos").file(image))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String photoUrl = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(photoPath).get("url").asText();
+
+        mvc.perform(get(photoUrl))
+            .andExpect(status().isOk())
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                    .contentType(MediaType.IMAGE_JPEG))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                    .bytes(new byte[]{1, 2, 3}));
     }
 
     @Test
     void invalidPhoneAndCoordinatesAreRejected() throws Exception {
         String invalid = VALID_LISTING.replace("+919876543210", "1234").replace("16.8524", "100");
         mvc.perform(post("/api/marketplace/listings")
-                .header("Authorization", authorization())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(invalid))
             .andExpect(status().isBadRequest());

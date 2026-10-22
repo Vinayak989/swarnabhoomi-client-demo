@@ -12,9 +12,11 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Base64;
+import java.util.regex.Pattern;
 
 @Component
 public class AccessFilter extends OncePerRequestFilter {
+    private static final Pattern MARKETPLACE_PHOTO = Pattern.compile("^/api/marketplace/photos/[a-fA-F0-9-]{36}$");
     @Value("${app.access.enabled:false}") private boolean enabled;
     @Value("${app.access.username:demo}") private String expectedUsername;
     @Value("${app.access.password:}") private String expectedPassword;
@@ -28,9 +30,11 @@ public class AccessFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
             return;
         }
-        boolean privateMarketplaceRequest = path.startsWith("/api/marketplace/")
-                && !("GET".equalsIgnoreCase(request.getMethod())
-                        && path.equals("/api/marketplace/listings"));
+        if (isPublicMarketplaceRequest(request, path)) {
+            chain.doFilter(request, response);
+            return;
+        }
+        boolean privateMarketplaceRequest = path.startsWith("/api/marketplace/");
         if (!enabled && !privateMarketplaceRequest) {
             chain.doFilter(request, response);
             return;
@@ -51,6 +55,15 @@ public class AccessFilter extends OncePerRequestFilter {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
         response.getWriter().write("{\"message\":\"प्रवेशासाठी लॉगिन करा\"}");
+    }
+
+    private boolean isPublicMarketplaceRequest(HttpServletRequest request, String path) {
+        String method = request.getMethod();
+        return path.startsWith("/api/marketplace/")
+                && ("GET".equalsIgnoreCase(method) && path.equals("/api/marketplace/listings")
+                    || "POST".equalsIgnoreCase(method) && path.equals("/api/marketplace/listings")
+                    || "POST".equalsIgnoreCase(method) && path.equals("/api/marketplace/photos")
+                    || "GET".equalsIgnoreCase(method) && MARKETPLACE_PHOTO.matcher(path).matches());
     }
 
     private boolean authorized(String header) {
