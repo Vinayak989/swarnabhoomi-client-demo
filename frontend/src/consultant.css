@@ -1,0 +1,54 @@
+.consultant-page{padding:27px 0 24px}
+.consultant-hero{min-height:160px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:26px 30px;border:1px solid #e1eadd;border-radius:17px;background:linear-gradient(112deg,#e8f2e5,#f0f6eb 56%,#e4efdc)}
+.consultant-eyebrow{display:inline-flex;align-items:center;gap:7px;color:#638268;font-size:10px;font-weight:700}
+.consultant-hero h1{margin:9px 0 5px;color:#294732;font-size:24px;letter-spacing:-.5px}
+.consultant-hero p{max-width:610px;margin:0;color:#718477;font-size:11px;line-height:1.8}
+.consultant-primary{min-height:38px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 13px;border:0;border-radius:8px;background:#39784a;color:#fff;font:700 10px inherit;white-space:nowrap;cursor:pointer}
+.consultant-primary:hover{background:#2f663e}
+.consultant-primary:disabled{opacity:.7;cursor:wait}
+.consultant-message{display:flex;align-items:center;gap:8px;margin-top:12px;padding:11px 13px;border-radius:8px;font-size:10px;line-height:1.6}
+.consultant-error{border:1px solid #efd7d2;background:#fff4f1;color:#914b42}
+.consultant-success{border:1px solid #d7e8d4;background:#eff8ed;color:#47744b}
+.consultant-form{margin-top:14px;padding:20px;border:1px solid #e5ebe2;border-radius:12px;background:#fff}
+.consultant-section-heading,.consultant-directory-head{display:flex;align-items:center;justify-content:space-between;gap:15px}
+.consultant-section-heading{margin-bottom:16px;color:#719271}
+.consultant-section-heading>div>span,.consultant-directory-head>div>span{color:#879486;font-size:9px;font-weight:700}
+.consultant-section-heading h2,.consultant-directory-head h2{margin:3px 0 0;color:#304736;font-size:15px}
+.consultant-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.consultant-field{min-width:0;display:flex;flex-direction:column;gap:6px;color:#66776a;font-size:9px;font-weight:700}
+.consultant-field>span{display:flex;gap:4px}
+.consultant-field i{color:#b86b4d;font-style:normal}
+.consultant-field small{color:#8b968b;font-size:8px;font-weight:400;line-height:1.5}
+.consultant-field input,.consultant-field textarea{width:100%;min-height:37px;padding:9px 10px;border:1px solid #e2e9df;border-radius:7px;background:#fff;color:#384d3d;font:10px 'DM Sans','Noto Sans Devanagari',sans-serif;outline:0}
+.consultant-field textarea{min-height:72px;resize:vertical;line-height:1.6}
+.consultant-field input:focus,.consultant-field textarea:focus{border-color:#87b18c;box-shadow:0 0 0 3px #eaf3e8}
+.consultant-field-wide{grid-column:1/-1}
+.consultant-form-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px}
+.consultant-form-footer>span{color:#929d93;font-size:8px}
+.consultant-directory-head{margin:25px 0 12px}
+.consultant-search{width:min(360px,55%);min-height:38px;display:flex;align-items:center;gap:8px;padding:0 11px;border:1px solid #e4eae2;border-radius:8px;background:#fff;color:#98a399}
+.consultant-search input{width:100%;border:0;outline:0;background:transparent;color:#405443;font:10px 'DM Sans','Noto Sans Devanagari',sans-serif}
+.consultant-search input::placeholder{color:#a2aca3}
+.consultant-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.consultant-card{min-width:0;padding:15px;border:1px solid #e5ebe2;border-radius:12px;background:#fff;box-shadow:0 5px 18px rgba(37,74,40,.035)}
+.consultant-card-top{display:flex;align-items:center;justify-content:space-between;gap:9px}
+.consultant-avatar{width:39px;height:39px;display:grid;place-items:center;border-radius:12px;background:#edf5e9;color:#4b8051}
+.consultant-experience{padding:6px 8px;border:1px solid #e2ebde;border-radius:7px;background:#f5f9f2;color:#68806b;font-size:8px;font-weight:700}
+.consultant-card h3{margin:11px 0 4px;color:#304736;font-size:14px}
+.consultant-expertise{margin:0;color:#4d7652;font-size:10px;font-weight:700;line-height:1.65}
+.consultant-area{display:flex;align-items:flex-start;gap:6px;margin-top:9px;color:#77857a;font-size:9px;line-height:1.6}
+.consultant-area svg{flex:none;color:#7c9a78}
+.consultant-introduction{margin:9px 0 0;color:#839084;font-size:9px;line-height:1.7;white-space:pre-wrap}
+.consultant-contact-actions{display:flex;gap:7px;margin-top:13px;padding-top:11px;border-top:1px solid #edf0eb}
+.consultant-contact-actions a{min-height:31px;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:0 9px;border:1px solid #dce8d9;border-radius:7px;background:#f5f9f2;color:#47764b;font-size:9px;font-weight:700;text-decoration:none}
+.consultant-contact-actions a:hover{border-color:#b8d0b4;background:#eaf4e7}
+.consultant-contact-actions a:last-child{border-color:#cfe5d3;background:#eef8ef;color:#39834b}
+.consultant-empty{min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:22px;border:1px dashed #d8e1d6;border-radius:12px;background:#fbfcf8;color:#869386;font-size:9px;text-align:center}
+.consultant-empty b{color:#526a55;font-size:11px}
+.consultant-empty span{max-width:370px;line-height:1.7}
+.consultant-empty-icon{color:#8dac88}
+.consultant-privacy-note{margin:12px 2px;color:#929e93;font-size:8px;line-height:1.6}
+.consultant-spin{animation:consultant-spin 1s linear infinite}
+@keyframes consultant-spin{to{transform:rotate(360deg)}}
+@media(max-width:720px){.consultant-hero{align-items:flex-start;flex-direction:column;padding:21px}.consultant-hero h1{font-size:21px}.consultant-grid{grid-template-columns:1fr}.consultant-directory-head{align-items:flex-start;flex-direction:column}.consultant-search{width:100%}}
+@media(max-width:480px){.consultant-form{padding:15px}.consultant-form-grid{grid-template-columns:1fr}.consultant-field-wide{grid-column:auto}.consultant-contact-actions a{flex:1;padding:0 6px;font-size:8px}.consultant-form-footer{align-items:flex-start;flex-direction:column}}

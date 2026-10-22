@@ -26,7 +26,7 @@ import org.springframework.stereotype.Component;
 public class H2ToPostgresMigration implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(H2ToPostgresMigration.class);
     private static final List<String> TABLES = List.of("farm_entry", "farm_reminder", "farm_photo",
-            "farm_product_listing");
+            "farm_product_listing", "organic_consultant");
 
     private final JdbcTemplate target;
     private final FarmPhotoRepository photoRepository;
@@ -56,8 +56,9 @@ public class H2ToPostgresMigration implements ApplicationRunner {
         String sourceUrl = "jdbc:h2:file:" + h2FilePath + ";DB_CLOSE_DELAY=-1";
         try (Connection source = DriverManager.getConnection(sourceUrl, h2Username, h2Password)) {
             for (String table : TABLES) {
-                if ("farm_product_listing".equals(table) && !tableExists(source.getMetaData(), table)) {
-                    log.info("Skipping marketplace listings; the source H2 database predates the marketplace.");
+                if (("farm_product_listing".equals(table) || "organic_consultant".equals(table))
+                        && !tableExists(source.getMetaData(), table)) {
+                    log.info("Skipping optional table {}; it does not exist in the source H2 database.", table);
                     continue;
                 }
                 int copied = copyTable(source, table);
@@ -75,6 +76,7 @@ public class H2ToPostgresMigration implements ApplicationRunner {
         }
         resetEntrySequence();
         resetListingSequence();
+        resetConsultantSequence();
         log.info("H2 migration completed; moved {} photo objects to S3. Keep the original H2 volume as a backup.",
                 migratedPhotos);
     }
@@ -168,5 +170,10 @@ public class H2ToPostgresMigration implements ApplicationRunner {
     private void resetListingSequence() {
         target.execute("SELECT setval(pg_get_serial_sequence('farm_product_listing', 'id'), "
                 + "COALESCE((SELECT MAX(id) FROM farm_product_listing), 0) + 1, false)");
+    }
+
+    private void resetConsultantSequence() {
+        target.execute("SELECT setval(pg_get_serial_sequence('organic_consultant', 'id'), "
+                + "COALESCE((SELECT MAX(id) FROM organic_consultant), 0) + 1, false)");
     }
 }
