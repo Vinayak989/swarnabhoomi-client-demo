@@ -7,6 +7,6 @@ import java.util.List;
 public interface FarmReminderRepository extends JpaRepository<FarmReminder, Long> {
     List<FarmReminder> findAllByOrderByScheduledAtAsc();
     List<FarmReminder> findAllByStatus(String status);
-    List<FarmReminder> findTop50ByStatusAndScheduledAtLessThanEqualOrderByScheduledAtAsc(
+    List<FarmReminder> findTop50ByStatusAndScheduledAtLessThanEqualAndBrowserSubscriptionIsNotNullOrderByScheduledAtAsc(
             String status, LocalDateTime scheduledAt);
 }

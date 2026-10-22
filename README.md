@@ -87,8 +87,8 @@ Render persistent disks require a paid web service; storage is billed separately
 
 ## Web push reminders
 
-The **स्मरणपत्रे** tab has one delivery method: a browser/device notification at the scheduled time, including when the website is closed. Users must enable notifications on each device and allow browser permission before creating reminders. Reminder times use India Standard Time (`Asia/Kolkata`). Browser and operating-system settings control notification sound and vibration; vibration is best-effort where supported. On iPhone/iPad, install the site to the Home Screen first (iOS 16.4 or later), then allow notifications.
+The **स्मरणपत्रे** tab stores reminders in a list without requesting browser notification permission. Reminder times use India Standard Time (`Asia/Kolkata`). Past-due reminders remain pending, are highlighted in red, and can be marked complete from the list. New reminders are list-only and do not send device notifications.
 
-Configure VAPID keys as `WEB_PUSH_PUBLIC_KEY` and `WEB_PUSH_PRIVATE_KEY`. Generate a fresh key pair locally with `npx web-push generate-vapid-keys`; keep the private key secret and enter the values directly in the hosting service's environment settings. Do not commit either key. For Docker Compose, put both keys in the ignored root `.env` file. `WEB_PUSH_SUBJECT` should be a contact `mailto:` address or the service's HTTPS URL; for Render, use `https://swarnabhoomi-demo.onrender.com`. Redeploy after adding the variables. Without these values, the browser push control reports that push is not configured.
+VAPID keys (`WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY`, and `WEB_PUSH_SUBJECT`) are only needed for legacy reminders already associated with a browser subscription. They are not required to add or track new reminders.
 
-The backend checks due reminders every 15 seconds. A reminder is marked sent when the browser push service accepts the notification; handset presentation and sound depend on browser and device settings. Past-due pending reminders are highlighted in red and can be marked complete from the reminder list. Failed sends are marked for review and are not retried automatically.
+The backend checks due subscribed reminders every 15 seconds. New reminders without a device subscription stay pending after their scheduled time until the user marks them complete.

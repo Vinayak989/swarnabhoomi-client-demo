@@ -5,11 +5,6 @@ import AssistantPanel from './AssistantPanel.jsx';
 import './brand.css';
 
 const API = `${(import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')}/api`;
-function decodeVapidKey(value){
-  const padding='='.repeat((4-value.length%4)%4);
-  const base64=(value+padding).replace(/-/g,'+').replace(/_/g,'/');
-  return Uint8Array.from(atob(base64),character=>character.charCodeAt(0));
-}
 const CROP_GROUPS = {
   'धान्य व तृणधान्ये':['भात / तांदूळ','गहू','ज्वारी','बाजरी','मका','नाचणी / रागी','बार्ली / जव','वरई / भगर','राळा','कोद्रा','कुटकी','सामा','राजगिरा'],
   'कडधान्ये':['तूर','हरभरा','मूग','उडीद','मसूर','मटकी','चवळी','वाटाणा','कुळीथ','वाल','पावटा','राजमा'],
@@ -83,7 +78,7 @@ function reminderDateTime(value){
 function ReminderPanel({apiFetch,onUnauthorized}){
   const [reminders,setReminders]=useState([]);
   const [form,setForm]=useState(()=>({scheduledAt:indiaDateTimeInput(new Date(Date.now()+30*60*1000)),reason:''}));
-  const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[completingId,setCompletingId]=useState(null),[browserSubscriptionId,setBrowserSubscriptionId]=useState(()=>localStorage.getItem('swarnabhoomi-push-subscription')||''),[error,setError]=useState(''),[notice,setNotice]=useState('');
+  const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[completingId,setCompletingId]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState('');
 
   async function load(silent=false){
     if(!silent)setLoading(true);
@@ -103,38 +98,15 @@ function ReminderPanel({apiFetch,onUnauthorized}){
   },[reminders,apiFetch]);
   const set=(key,value)=>setForm(current=>({...current,[key]:value}));
 
-  async function getBrowserSubscriptionId(){
-    if(!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window))throw Error('या ब्राउझरमध्ये वेब सूचना उपलब्ध नाहीत.');
-    const permission=Notification.permission==='granted'?'granted':await Notification.requestPermission();
-    if(permission!=='granted')throw Error('वेब सूचना परवानगी मिळाली नाही. ब्राउझरच्या site settings मध्ये परवानगी द्या.');
-    if(browserSubscriptionId)return Number(browserSubscriptionId);
-    const keyResponse=await apiFetch(`${API}/push/subscriptions/public-key`);
-    if(keyResponse.status===401){onUnauthorized();return null}
-    const keyResult=await keyResponse.json().catch(()=>null);
-    if(!keyResponse.ok)throw Error(keyResult?.message||'सर्व्हरवर वेब सूचना कॉन्फिगर केलेल्या नाहीत.');
-    const registration=await navigator.serviceWorker.register('/sw.js');
-    const subscription=await registration.pushManager.getSubscription()||await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:decodeVapidKey(keyResult.publicKey)});
-    const response=await apiFetch(`${API}/push/subscriptions`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(subscription.toJSON())});
-    const result=await response.json().catch(()=>null);
-    if(response.status===401){onUnauthorized();return null}
-    if(!response.ok)throw Error(result?.message||'वेब सूचना सुरू करता आल्या नाहीत.');
-    const subscriptionId=String(result.id);
-    localStorage.setItem('swarnabhoomi-push-subscription',subscriptionId);
-    setBrowserSubscriptionId(subscriptionId);
-    return Number(subscriptionId);
-  }
-
   async function save(event){
     event.preventDefault();setSaving(true);setError('');setNotice('');
     try{
-      const subscriptionId=await getBrowserSubscriptionId();
-      if(!subscriptionId)return;
-      const response=await apiFetch(`${API}/reminders`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...form,browserSubscriptionId:subscriptionId})});
+      const response=await apiFetch(`${API}/reminders`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
       if(response.status===401){onUnauthorized();return}
       const result=await response.json().catch(()=>null);
       if(!response.ok)throw Error(result?.message||'स्मरणपत्र जतन करता आले नाही.');
       setForm({scheduledAt:indiaDateTimeInput(new Date(Date.now()+30*60*1000)),reason:''});
-      setNotice('स्मरणपत्र जतन झाले. ठरलेल्या वेळी या डिव्हाइसवर सूचना येईल.');
+      setNotice('स्मरणपत्र यादीत जतन झाले. वेळ झाल्यावर यादीत तपासा.');
       await load();
     }catch(exception){setError(exception.message||'स्मरणपत्र जतन करता आले नाही.')}finally{setSaving(false)}
   }
@@ -165,14 +137,14 @@ function ReminderPanel({apiFetch,onUnauthorized}){
 
   const statusLabel={PENDING:'प्रलंबित',SENDING:'सूचना पाठवत आहे',SENT:'सूचना पाठवल्या',COMPLETED:'पूर्ण',FAILED:'पाठवता आले नाही'};
   return <section className="reminder-page" lang="mr">
-    <div className="reminder-hero"><div className="reminder-hero-icon"><Bell size={22}/></div><div><span className="eyebrow">शेतीकामासाठी वेळेवर आठवण</span><h1>स्मरणपत्रे</h1><p>ठरलेल्या वेळी या डिव्हाइसवर सूचना मिळवा, वेबसाइट बंद असली तरीही.</p></div></div>
+    <div className="reminder-hero"><div className="reminder-hero-icon"><Bell size={22}/></div><div><span className="eyebrow">शेतीकामासाठी वेळेवर आठवण</span><h1>स्मरणपत्रे</h1><p>स्मरणपत्र यादीत जतन करा आणि ठरलेल्या वेळी तपासा.</p></div></div>
     {error&&<div className="reminder-error" role="alert">{error}</div>}{notice&&<div className="reminder-success" role="status"><CheckCircle2 size={16}/>{notice}</div>}
     <div className="reminder-layout">
       <form className="reminder-form" onSubmit={save}>
         <div className="reminder-section-title"><div><span>नवीन आठवण</span><h2>स्मरणपत्र तयार करा</h2></div><span className="reminder-step">१ / १</span></div>
         <label className="reminder-field"><span>तारीख आणि वेळ</span><input type="datetime-local" value={form.scheduledAt} min={indiaDateTimeInput(new Date(Date.now()+60*1000))} onChange={event=>set('scheduledAt',event.target.value)} required/><small>वेळ भारताच्या स्थानिक वेळेनुसार (IST) घेतली जाईल.</small></label>
         <label className="reminder-field"><span>कारण <small>मराठीत लिहा</small></span><textarea lang="mr" rows="4" maxLength={300} value={form.reason} onChange={event=>set('reason',event.target.value)} placeholder="उदा. उद्या सकाळी कांद्याला पाणी द्यायचे आहे..." required/><small className="reminder-counter">{form.reason.length}/३००</small></label>
-        <small className="reminder-notification-note"><Bell size={13}/> स्मरणपत्र जतन करताना ब्राउझर सूचना परवानगी मागेल. आवाज आणि कंपन डिव्हाइसच्या सूचना सेटिंग्जवर अवलंबून आहेत.</small>
+        <small className="reminder-notification-note"><Bell size={13}/> वेळ निघून गेलेली प्रलंबित स्मरणपत्रे यादीत लाल रंगात दिसतील.</small>
         <button className="primary reminder-submit" disabled={saving}>{saving?<LoaderCircle className="spin" size={17}/>:<Plus size={17}/>} स्मरणपत्र जतन करा</button>
       </form>
       <div className="reminder-list-section"><div className="reminder-section-title"><div><span>तुमची यादी</span><h2>जतन केलेली स्मरणपत्रे</h2></div><span className="reminder-count">{reminders.length.toLocaleString('mr-IN')}</span></div>

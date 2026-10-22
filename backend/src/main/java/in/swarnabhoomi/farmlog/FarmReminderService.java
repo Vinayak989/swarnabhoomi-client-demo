@@ -38,9 +38,6 @@ public class FarmReminderService {
         if (reason.isBlank() || reason.length() > 300) {
             throw badRequest("कारण लिहा (जास्तीत जास्त ३०० अक्षरे).");
         }
-        if (request.browserSubscriptionId() == null) {
-            throw badRequest("स्मरणपत्रे मिळवण्यासाठी या डिव्हाइसवर सूचना सुरू करा.");
-        }
         LocalDateTime now = LocalDateTime.now(FARM_TIME_ZONE);
         if (!request.scheduledAt().isAfter(now)) {
             throw badRequest("कृपया भविष्यातील तारीख आणि वेळ निवडा.");
@@ -52,10 +49,12 @@ public class FarmReminderService {
         reminder.setMobileNumber("");
         reminder.setStatus("PENDING");
         reminder.setDeliveryNote("पाठवण्याच्या प्रतीक्षेत");
-        BrowserPushSubscription subscription = pushSubscriptionRepository.findById(request.browserSubscriptionId())
-                .filter(BrowserPushSubscription::isActive)
-                .orElseThrow(() -> badRequest("वेब सूचना सदस्यता कालबाह्य आहे. कृपया सूचना पुन्हा सुरू करा."));
-        reminder.setBrowserSubscription(subscription);
+        if (request.browserSubscriptionId() != null) {
+            BrowserPushSubscription subscription = pushSubscriptionRepository.findById(request.browserSubscriptionId())
+                    .filter(BrowserPushSubscription::isActive)
+                    .orElseThrow(() -> badRequest("वेब सूचना सदस्यता कालबाह्य आहे. कृपया पुन्हा प्रयत्न करा."));
+            reminder.setBrowserSubscription(subscription);
+        }
         return view(repository.save(reminder));
     }
 
@@ -81,7 +80,8 @@ public class FarmReminderService {
     public synchronized void sendDueReminders() {
         LocalDateTime now = LocalDateTime.now(FARM_TIME_ZONE);
         List<FarmReminder> due = repository
-                .findTop50ByStatusAndScheduledAtLessThanEqualOrderByScheduledAtAsc("PENDING", now);
+                .findTop50ByStatusAndScheduledAtLessThanEqualAndBrowserSubscriptionIsNotNullOrderByScheduledAtAsc(
+                        "PENDING", now);
         for (FarmReminder reminder : due) {
             reminder.setStatus("SENDING");
             reminder.setDeliveryNote("सूचना पाठवत आहे");
