@@ -88,7 +88,7 @@ The backend checks due subscribed reminders every 15 seconds. New reminders with
 
 ## Farm information guide
 
-The **माहिती** tab is a Marathi-first, static reference for beneficial-insect observation and selective weed management around Sangli crops. Its reference photos are stored locally in the frontend; image credits and their Commons/license links are shown with each photo. The guide is informational—confirm plant and pest identification with a local agricultural expert before taking action.
+The **माहिती** tab is a Marathi-first, static field guide with a regular crop-inspection checklist, soil and water conservation notes, crop-rotation planning, and suggestions for using daily farm records. It also covers beneficial insects and selective weed management around Sangli crops. Its reference photos are stored locally in the frontend; image credits and their Commons/license links are shown with each photo. The guide links to ICAR and TNAU references and is informational—confirm crop-specific recommendations and pest identification with a local agricultural expert before taking action.
 
 ## Farmer marketplace
 

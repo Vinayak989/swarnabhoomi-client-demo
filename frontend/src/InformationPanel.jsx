@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowUpRight, Bug, Flower2, Leaf, Sprout } from 'lucide-react';
+import { AlertTriangle, ArrowUpRight, Bug, ClipboardCheck, Droplets, Flower2, Leaf, RefreshCw, Search, Sprout } from 'lucide-react';
 
 const weeds = [
   {
@@ -62,10 +62,81 @@ function InformationPanel() {
     <section className="info-hero">
       <div>
         <span className="info-eyebrow"><Sprout size={15}/> सेंद्रिय शेती · मैदानी मार्गदर्शक</span>
-        <h1>शेतातील उपयुक्त जैवविविधता</h1>
-        <p>सांगली परिसरातील हळद, लसूण, तूर, मूग, उडीद आणि शेवगा पिकांसाठी मित्र कीटकांचे निरीक्षण व तणांचे समतोल व्यवस्थापन.</p>
+        <h1>शाश्वत शेतीसाठी उपयोगी माहिती</h1>
+        <p>मित्र कीटक आणि तण ओळखण्यासोबत कीड निरीक्षण, माती-पाणी जपणे, पीक फेरपालट आणि रोजच्या शेती नोंदींसाठी सोपे मार्गदर्शन.</p>
       </div>
       <div className="info-hero-mark"><Leaf size={32}/><span>निरीक्षण<br/>·<br/>समतोल</span></div>
+    </section>
+
+    <nav className="info-jump-links" aria-label="माहितीतील विभाग">
+      <a href="#info-field-check">शेत निरीक्षण</a>
+      <a href="#info-soil-water">माती आणि पाणी</a>
+      <a href="#info-rotation">पीक फेरपालट</a>
+      <a href="#info-records">दैनिक नोंदी</a>
+      <a href="#info-insects-title">मित्र कीटक</a>
+      <a href="#info-weeds-title">तण व्यवस्थापन</a>
+    </nav>
+
+    <section className="info-section" id="info-field-check" aria-labelledby="info-field-title">
+      <div className="info-section-heading">
+        <span className="info-section-icon"><Search size={18}/></span>
+        <div><span>नियमित पाहणी · विचारपूर्वक निर्णय</span><h2 id="info-field-title">शेत निरीक्षणाची चार पावले</h2></div>
+      </div>
+      <div className="info-steps-grid">
+        <article className="info-step-card"><span>१</span><h3>ठिकाण ठरवा</h3><p>शेताच्या कडा, मधला भाग आणि कमी-जास्त वाढ असलेला पट्टा पाहा. प्रत्येक वेळी साधारण त्याच भागांची पाहणी केल्यास बदल लक्षात येतात.</p></article>
+        <article className="info-step-card"><span>२</span><h3>लक्षणे नीट पाहा</h3><p>पानांच्या वर-खाली, खोड आणि जमिनीवरील भागात अंडी, किडी, डाग, वाळलेली पाने आणि उपयुक्त कीटक शोधा.</p></article>
+        <article className="info-step-card"><span>३</span><h3>ओळख खात्री करा</h3><p>फक्त एक कीड दिसली म्हणून फवारणी ठरवू नका. पीक अवस्था, नुकसान किती पसरले आहे आणि नैसर्गिक शत्रू दिसतात का हेही पाहा.</p></article>
+        <article className="info-step-card"><span>४</span><h3>उपाय आणि परिणाम नोंदवा</h3><p>आधी प्रतिबंधक, यांत्रिक किंवा जैविक पर्यायांचा विचार करा. केलेला उपाय आणि पुढील पाहणीतील बदल नोंदवा.</p></article>
+      </div>
+      <p className="info-source-note">ही एक सामान्य पाहणी पद्धत आहे; प्रत्येक पिकासाठी कीड ओळख आणि आर्थिक नुकसान मर्यादा वेगळी असते. गरज असल्यास कृषी अधिकारी किंवा KVK कडून खात्री करा.</p>
+    </section>
+
+    <section className="info-section" id="info-soil-water" aria-labelledby="info-soil-title">
+      <div className="info-section-heading">
+        <span className="info-section-icon"><Droplets size={18}/></span>
+        <div><span>जमिनीची ओल आणि सुपीकता</span><h2 id="info-soil-title">माती आणि पाणी जपण्यासाठी छोटे उपाय</h2></div>
+      </div>
+      <div className="info-guide-grid">
+        <article className="info-guide-card">
+          <h3><Droplets size={16}/> ओलावा जपून सिंचन करा</h3>
+          <ul>
+            <li>सिंचन ठरवताना पिकाची अवस्था, मातीतील ओलावा आणि पुढील हवामानाचा अंदाज पाहा.</li>
+            <li>उघडी जमीन कमी ठेवण्यासाठी स्वच्छ पिकांचे अवशेष किंवा योग्य सेंद्रिय आच्छादन वापरण्याचा विचार करा.</li>
+            <li>आच्छादन खोडाला चिकटवू नका आणि निचरा कमी असलेल्या जमिनीत जाड थर टाळा; जास्त ओलाव्यामुळे रोग किंवा मुळांना त्रास होऊ शकतो.</li>
+          </ul>
+        </article>
+        <article className="info-guide-card">
+          <h3><Leaf size={16}/> तपासणीवर आधारित पोषण</h3>
+          <ul>
+            <li>खत किंवा माती सुधारक वापरण्यापूर्वी माती परीक्षणाचा अहवाल आणि स्थानिक शिफारस पाहा.</li>
+            <li>कुजलेले सेंद्रिय पदार्थ आणि पीक अवशेषांचा योग्य वापर करा; रोगट किंवा बियांनी भरलेले अवशेष शेतात पसरवू नका.</li>
+            <li>सेंद्रिय प्रमाणपत्र घेतले असल्यास वापरायच्या निविष्ठा लागू मानकांनुसार मान्य आहेत का ते आधी तपासा.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section className="info-section" id="info-rotation" aria-labelledby="info-rotation-title">
+      <div className="info-section-heading">
+        <span className="info-section-icon"><RefreshCw size={18}/></span>
+        <div><span>हंगामांमधील नियोजन</span><h2 id="info-rotation-title">पीक फेरपालट कसे ठरवावे?</h2></div>
+      </div>
+      <div className="info-rotation-card">
+        <div><h3>एकाच पिकाची पुनरावृत्ती कमी करा</h3><p>शक्य असेल तेथे वेगवेगळ्या पीक-कुळांतील पिके आलटून घ्या. फेरपालटीत मूग, उडीद, तूर किंवा इतर कडधान्यांचा समावेश करणे हा एक पर्याय आहे; पिकाची निवड माती, पाण्याची उपलब्धता, पेरणीचा काळ आणि बाजार पाहून करा.</p></div>
+        <div className="info-rotation-checks"><b>हंगाम ठरवण्यापूर्वी तपासा</b><span>मागील पीक आणि त्याचे रोग-किडी</span><span>जमिनीचा ओलावा आणि पाण्याचा स्रोत</span><span>बियाणे, मजूर आणि अपेक्षित बाजार</span></div>
+      </div>
+    </section>
+
+    <section className="info-section" id="info-records" aria-labelledby="info-records-title">
+      <div className="info-section-heading">
+        <span className="info-section-icon"><ClipboardCheck size={18}/></span>
+        <div><span>स्वर्णभूमी दैनिक नोंद</span><h2 id="info-records-title">नोंदींमधून पुढच्या हंगामाचे नियोजन करा</h2></div>
+      </div>
+      <div className="info-record-card">
+        <p>काम झाल्यावर थोडक्यात नोंद करा. खर्च, उत्पादन आणि शेतातील बदल एकत्र पाहिल्यास कोणत्या कामाचा उपयोग झाला आणि कुठे खर्च वाढला हे समजण्यास मदत होते.</p>
+        <div className="info-record-tags"><span>पीक आणि शेताचा भाग</span><span>हवामान आणि पाऊस</span><span>सिंचन व शेतकाम</span><span>खते आणि इतर निविष्ठा</span><span>मजुरी व खर्च</span><span>कीड व पीकस्थिती</span><span>काढणी, उत्पादन व विक्री</span></div>
+        <p className="info-record-tip">नोंदीत तारीख, प्रमाण आणि कोणत्या भागात काम केले हे लिहा. दोन हंगामांची तुलना करण्यासाठी समान एकके वापरा.</p>
+      </div>
     </section>
 
     <section className="info-section" aria-labelledby="info-insects-title">
@@ -138,10 +209,13 @@ function InformationPanel() {
     </section>
 
     <section className="info-resources">
-      <div><span>पुढील वाचन</span><h2>ICAR–NBAIR व TNAU कृषी संदर्भ</h2></div>
+      <div><span>पुढील वाचन · अधिकृत कृषी संदर्भ</span><h2>शिफारशी आणि पद्धती तपासा</h2></div>
+      <a href="https://www.icar.gov.in/en/integrated-pest-management-sustainable-approach-responsible-pest-management" target="_blank" rel="noreferrer">ICAR · एकात्मिक कीड व्यवस्थापन <ArrowUpRight size={15}/></a>
+      <a href="https://agritech.tnau.ac.in/org_farm/orgfarm_crop_rotation.html" target="_blank" rel="noreferrer">TNAU · पीक फेरपालट <ArrowUpRight size={15}/></a>
+      <a href="https://agritech.tnau.ac.in/agriculture/agri_majorareas_dryland_agromeasures_mulching.html" target="_blank" rel="noreferrer">TNAU · आच्छादन <ArrowUpRight size={15}/></a>
       <a href="https://agritech.tnau.ac.in/agriculture/agri_index.html" target="_blank" rel="noreferrer">TNAU AgriTech <ArrowUpRight size={15}/></a>
     </section>
-    <footer className="info-footer">🌿 शेतात निर्णय घेण्यापूर्वी तणांची आणि कीटकांची अचूक ओळख स्थानिक कृषी तज्ज्ञांकडून करून घ्या.</footer>
+    <footer className="info-footer">🌿 पीक आणि शेतानुसार शिफारशी बदलतात. कीड, रोग किंवा निविष्ठेबद्दल कृती करण्यापूर्वी स्थानिक कृषी तज्ज्ञांकडून खात्री करा.</footer>
   </div>;
 }
 
