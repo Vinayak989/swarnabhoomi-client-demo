@@ -839,3 +839,102 @@ select:focus-visible {
     transition-duration: .01ms !important;
   }
 }
+
+/* Improve reading comfort in the Marathi information page. */
+.info-page {
+  max-width: 1120px;
+}
+
+.info-hero p,
+.info-insect-copy p,
+.info-weed-copy p,
+.info-guide-card ul,
+.info-rotation-card p,
+.info-record-card > p,
+.info-management ul,
+.info-species-note,
+.info-tip,
+.info-care,
+.info-step-card p,
+.info-source-note,
+.info-photo figcaption,
+.info-plan-table td {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #536458;
+}
+
+.info-hero p { max-width: 760px; }
+.info-eyebrow,
+.info-section-heading > div > span { font-size: 12px; }
+.info-section-heading h2 { font-size: 21px; line-height: 1.45; }
+.info-insect-copy h3,
+.info-weed-copy h3 { font-size: 17px; }
+.info-step-card h3,
+.info-guide-card h3,
+.info-rotation-card h3 { font-size: 15px; line-height: 1.55; }
+.info-plan-table th { font-size: 12px; }
+.info-plan-table td { padding: 13px 14px; }
+.info-rotation-checks { font-size: 12px; line-height: 1.7; }
+.info-rotation-checks b,
+.info-species-note strong { font-size: 14px; }
+.info-record-tags span { font-size: 11px; }
+.info-record-card .info-record-tip { font-size: 12px; line-height: 1.75; }
+.info-management > div:last-child > span { font-size: 11px; }
+.info-management h2 { font-size: 16px; }
+.info-resources h2 { font-size: 14px; }
+.info-resources > div > span,
+.info-resources > a,
+.info-footer,
+.info-photo-credit { font-size: 11px; }
+.info-jump-links a { min-height: 36px; font-size: 11px; }
+.info-insect-photo img { min-height: 270px; }
+.info-weed-card .info-photo img { height: 230px; }
+
+@media (max-width: 900px) {
+  .info-insect-photo img { min-height: 250px; }
+}
+
+@media (max-width: 700px) {
+  .info-hero p,
+  .info-insect-copy p,
+  .info-weed-copy p,
+  .info-guide-card ul,
+  .info-rotation-card p,
+  .info-record-card > p,
+  .info-management ul,
+  .info-species-note,
+  .info-tip,
+  .info-care,
+  .info-step-card p,
+  .info-source-note,
+  .info-photo figcaption,
+  .info-plan-table td { font-size: 12px; }
+
+  .info-section-heading h2 { font-size: 19px; }
+  .info-insect-photo img { height: 245px; min-height: 0; }
+  .info-weed-card .info-photo img { height: 190px; }
+}
+
+@media (max-width: 460px) {
+  .info-section-heading h2 { font-size: 18px; }
+  .info-hero p,
+  .info-insect-copy p,
+  .info-weed-copy p,
+  .info-guide-card ul,
+  .info-rotation-card p,
+  .info-record-card > p,
+  .info-management ul,
+  .info-species-note,
+  .info-tip,
+  .info-care,
+  .info-step-card p,
+  .info-source-note,
+  .info-photo figcaption,
+  .info-plan-table td { font-size: 12px; }
+
+  .info-step-card p { font-size: 11px; }
+  .info-jump-links a { min-height: 34px; font-size: 10px; }
+  .info-resources > a { font-size: 12px; }
+  .info-weed-card .info-photo img { height: 235px; }
+}
