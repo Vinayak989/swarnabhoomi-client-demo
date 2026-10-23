@@ -21,6 +21,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
@@ -175,6 +176,10 @@ public class FarmerAssistantWorkflow {
                     exception.getMostSpecificCause().getClass().getSimpleName());
             return failure(HttpStatus.SERVICE_UNAVAILABLE,
                     "Google Gemini शी संपर्क होऊ शकला नाही. इंटरनेट कनेक्शन तपासून पुन्हा प्रयत्न करा.");
+        } catch (RestClientException exception) {
+            log.warn("Gemini API response could not be read: {}", exception.getClass().getSimpleName());
+            return failure(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Google Gemini सध्या उपलब्ध नाही. कृपया थोड्या वेळाने पुन्हा प्रयत्न करा.");
         } catch (JsonProcessingException exception) {
             return failure(HttpStatus.BAD_REQUEST, "संभाषण वाचता आले नाही.");
         }
@@ -195,6 +200,13 @@ public class FarmerAssistantWorkflow {
             }
             log.warn("Gemini model {} did not respond; trying fallback model {}", model, fallbackModel);
             return requestGemini(fallbackModel, requestBody);
+        } catch (RestClientException primaryException) {
+            if (model.equals(fallbackModel)) {
+                throw primaryException;
+            }
+            log.warn("Gemini model {} returned an unreadable response; trying fallback model {}",
+                    model, fallbackModel);
+            return requestGemini(fallbackModel, requestBody);
         }
     }
 
@@ -202,6 +214,7 @@ public class FarmerAssistantWorkflow {
         return restClient.post()
                 .uri("/v1beta/models/{model}:generateContent", modelName)
                 .header("x-goog-api-key", apiKey)
+                .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(requestBody)
                 .retrieve()
