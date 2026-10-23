@@ -37,15 +37,15 @@ const NAV_ITEMS = {
   admin: { label: 'व्यवस्थापन', icon: Activity }
 };
 const ACCOUNT_TYPES = [
-  { id: 'farmer', label: 'शेतकरी', initials: 'शे', homeTab: 'entries', tabs: ['entries', 'reminders', 'assistant', 'information', 'marketplace', 'consultants'], description: 'दैनिक नोंद, स्मरणपत्रे, AI मदत, बाजार आणि सल्लागार' },
+  { id: 'farmer', label: 'शेतकरी / विक्रेता', initials: 'शे', homeTab: 'entries', tabs: ['entries', 'reminders', 'assistant', 'information', 'marketplace', 'consultants'], description: 'दैनिक नोंद, बाजारात शेतमाल विक्री व खरेदी, स्मरणपत्रे आणि सल्लागार' },
   { id: 'buyer', label: 'खरेदीदार', initials: 'ख्रे', homeTab: 'marketplace', tabs: ['marketplace', 'consultants', 'information'], description: 'शेतमाल शोधा, विक्रेत्यांशी संपर्क करा आणि सल्लागार पाहा' },
-  { id: 'seller', label: 'विक्रेता', initials: 'वि', homeTab: 'marketplace', tabs: ['marketplace', 'consultants'], description: 'शेतमाल नोंदवा, व्यवहार सांभाळा आणि शेतीची नोंद ठेवा' },
   { id: 'consultant', label: 'सेंद्रिय सल्लागार', initials: 'स', homeTab: 'consultants', tabs: ['consultants', 'information'], description: 'सल्लागार प्रोफाइल प्रकाशित करा आणि शेती माहिती पहा' },
   { id: 'admin', label: 'प्रशासक', initials: 'प्र', homeTab: 'admin', tabs: ['admin', 'marketplace', 'consultants', 'information'], description: 'सार्वजनिक बाजार व सल्लागार निर्देशिकेचे निरीक्षण' }
 ];
 function readAccountType() {
   try {
     const saved = localStorage.getItem('swarnabhoomi-account-role');
+    if (saved === 'seller') { localStorage.setItem('swarnabhoomi-account-role', 'farmer'); return 'farmer'; }
     return ACCOUNT_TYPES.some(account => account.id === saved) ? saved : null;
   } catch { return null; }
 }

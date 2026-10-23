@@ -173,7 +173,7 @@ function ProductPhoto({ apiBase, photoUrl, authorization, productName }) {
 }
 
 function MarketplacePanel({ accountType = 'farmer', apiBase, auth, onAuthenticated, onUnauthorized }) {
-  const [view, setView] = useState(accountType === 'seller' ? 'seller' : 'browse');
+  const [view, setView] = useState('browse');
   const [listings, setListings] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [photo, setPhoto] = useState(null);
@@ -233,7 +233,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, onAuthenticat
   onUnauthorizedRef.current = onUnauthorized;
 
   useEffect(() => setAuthorization(auth), [auth]);
-  useEffect(() => setView(accountType === 'seller' ? 'seller' : 'browse'), [accountType]);
+  useEffect(() => setView('browse'), [accountType]);
   useEffect(() => {
     try {
       window.localStorage.setItem('swarnabhoomi-market-favorites', JSON.stringify([...favoriteIds]));
