@@ -262,6 +262,7 @@ body {
 
 .entry-card {
   animation: rise-in .45s cubic-bezier(.2, .7, .2, 1) both;
+  animation-fill-mode: backwards;
 }
 
 .entry-card:nth-child(2) { animation-delay: 45ms; }
@@ -333,6 +334,7 @@ body {
 
 .account-role-card {
   animation: role-enter .48s cubic-bezier(.2, .75, .25, 1) both;
+  animation-fill-mode: backwards;
 }
 
 .account-role-card:nth-child(2) { animation-delay: 55ms; }
@@ -400,6 +402,282 @@ select:focus-visible {
 @keyframes leaf-sway {
   0%, 100% { rotate: -3deg; }
   50% { rotate: 4deg; }
+}
+
+/* Login screen: a calm, animated sunrise behind the sign-in card. */
+.login-screen {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 76% 20%, rgba(255, 228, 157, .7), transparent 23rem),
+    linear-gradient(145deg, #e5f1df 0%, #f6f4e7 46%, #e0edda 100%);
+}
+
+.login-screen::before,
+.login-screen::after {
+  position: absolute;
+  z-index: -1;
+  border: 1px solid rgba(62, 119, 66, .13);
+  border-radius: 50%;
+  content: '';
+  pointer-events: none;
+}
+
+.login-screen::before {
+  top: -22vmin;
+  left: -12vmin;
+  width: min(68vmin, 680px);
+  aspect-ratio: 1;
+  background: radial-gradient(circle at 67% 42%, rgba(255, 255, 255, .38), transparent 43%);
+  box-shadow: 0 0 0 25px rgba(255, 255, 255, .1), 0 0 0 58px rgba(255, 255, 255, .065);
+  animation: ambient-bloom 19s ease-in-out infinite alternate;
+}
+
+.login-screen::after {
+  right: -11vmin;
+  bottom: -32vmin;
+  width: min(75vmin, 760px);
+  aspect-ratio: 1;
+  border-color: rgba(223, 193, 119, .22);
+  background: radial-gradient(circle at 40% 35%, rgba(244, 226, 166, .38), transparent 58%);
+  box-shadow: 0 0 0 30px rgba(255, 255, 255, .1), 0 0 0 66px rgba(255, 255, 255, .065);
+  animation: ambient-bloom 23s ease-in-out infinite alternate-reverse;
+}
+
+.login-card {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  border-color: rgba(255, 255, 255, .92);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, .9);
+  box-shadow: 0 30px 90px rgba(35, 72, 39, .17), 0 4px 12px rgba(39, 82, 45, .07);
+  backdrop-filter: blur(16px);
+  animation: login-arrive .72s cubic-bezier(.18, .78, .22, 1) both;
+}
+
+.login-card::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, #d8aa55, #65a45f 48%, #d8c16e);
+  content: '';
+}
+
+.login-mark {
+  animation: logo-bob 4.5s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.login-card h1 {
+  animation: login-copy-in .5s .14s both;
+}
+
+.login-card > p {
+  animation: login-copy-in .5s .21s both;
+}
+
+.login-account-options button {
+  animation: role-enter .42s cubic-bezier(.2, .75, .25, 1) both;
+  animation-fill-mode: backwards;
+}
+
+.login-account-options button:nth-child(2) { animation-delay: 55ms; }
+.login-account-options button:nth-child(3) { animation-delay: 110ms; }
+
+.login-account-options button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(45, 93, 50, .1);
+}
+
+.login-account-options button span {
+  transition: transform .22s ease, background .22s ease;
+}
+
+.login-account-options button:hover span {
+  transform: rotate(-8deg) scale(1.08);
+  background: #dcefd7;
+}
+
+.login-card > .field {
+  animation: login-copy-in .48s ease both;
+}
+
+.login-card > .field:nth-of-type(1) { animation-delay: .25s; }
+.login-card > .field:nth-of-type(2) { animation-delay: .32s; }
+
+.login-card .field input {
+  border-radius: 9px;
+  background: rgba(250, 252, 249, .86);
+}
+
+.login-card .field input:focus {
+  transform: translateY(-1px);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(115, 167, 105, .17), 0 5px 14px rgba(35, 72, 39, .07);
+}
+
+.login-card .primary {
+  position: relative;
+  overflow: hidden;
+  min-height: 46px;
+  border-radius: 10px;
+  background: linear-gradient(105deg, #347848, #438c4e 54%, #2f7041);
+  box-shadow: 0 8px 18px rgba(44, 112, 57, .2);
+  animation: login-copy-in .48s .39s both;
+  animation-fill-mode: backwards;
+}
+
+.login-card .primary::after {
+  position: absolute;
+  top: -50%;
+  left: -65%;
+  width: 38%;
+  height: 200%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .35), transparent);
+  content: '';
+  pointer-events: none;
+  transform: skewX(-24deg);
+  transition: left .65s ease;
+}
+
+.login-card .primary:hover::after {
+  left: 130%;
+}
+
+/* Small, repeatable feedback when content changes on the feature pages. */
+.market-listing-card,
+.reminder-card,
+.consultant-card,
+.info-step-card,
+.info-weed-card,
+.assistant-message,
+.assistant-farm-metrics > div {
+  animation: card-rise .46s cubic-bezier(.2, .7, .2, 1) both;
+}
+
+.market-listing-card,
+.reminder-card,
+.consultant-card,
+.info-step-card,
+.info-weed-card {
+  animation-fill-mode: backwards;
+}
+
+.main > div:not([hidden]) > .assistant-page {
+  animation: rise-in .55s cubic-bezier(.2, .7, .2, 1) both;
+}
+
+.market-listing-card:nth-child(2),
+.reminder-card:nth-child(2),
+.consultant-card:nth-child(2),
+.info-step-card:nth-child(2) { animation-delay: 45ms; }
+
+.market-listing-card:nth-child(3),
+.reminder-card:nth-child(3),
+.consultant-card:nth-child(3),
+.info-step-card:nth-child(3) { animation-delay: 90ms; }
+
+.market-listing-card:nth-child(4),
+.reminder-card:nth-child(4),
+.consultant-card:nth-child(4),
+.info-step-card:nth-child(4) { animation-delay: 135ms; }
+
+.market-listing-card:hover,
+.reminder-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px rgba(34, 67, 40, .09);
+}
+
+.assistant-message {
+  transform-origin: bottom left;
+}
+
+.assistant-message.user {
+  transform-origin: bottom right;
+}
+
+.assistant-suggestions button {
+  transition: transform .2s ease, border-color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+
+.assistant-suggestions button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(40, 88, 46, .1);
+}
+
+.market-map-pin span {
+  animation: marker-breathe 2.8s ease-in-out infinite;
+}
+
+.analytics-point-group .analytics-point-halo {
+  transition: r .2s ease, opacity .2s ease;
+}
+
+.analytics-point-group:hover .analytics-point-halo {
+  transform: scale(1.18);
+  opacity: 1;
+}
+
+.overlay,
+.analytics-overlay,
+.account-picker-backdrop {
+  animation: veil-in .2s ease both;
+}
+
+.dialog,
+.account-picker {
+  animation: dialog-arrive .32s cubic-bezier(.18, .78, .22, 1) both;
+}
+
+.info-jump-links a {
+  transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.info-jump-links a:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 13px rgba(43, 83, 46, .09);
+}
+
+@keyframes login-arrive {
+  from { opacity: 0; transform: translateY(22px) scale(.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes login-copy-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes logo-bob {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-4px) rotate(-2deg); }
+}
+
+@keyframes ambient-bloom {
+  from { transform: translate3d(-8px, 4px, 0) scale(.96) rotate(-4deg); }
+  to { transform: translate3d(18px, -10px, 0) scale(1.05) rotate(5deg); }
+}
+
+@keyframes card-rise {
+  from { opacity: 0; transform: translateY(9px) scale(.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes marker-breathe {
+  0%, 100% { box-shadow: 0 3px 10px #243a2d55, 0 0 0 0 rgba(77, 136, 83, .23); }
+  50% { box-shadow: 0 4px 12px #243a2d55, 0 0 0 6px rgba(77, 136, 83, 0); }
+}
+
+@keyframes veil-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialog-arrive {
+  from { opacity: 0; transform: translateY(12px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @media (max-width: 1050px) {
