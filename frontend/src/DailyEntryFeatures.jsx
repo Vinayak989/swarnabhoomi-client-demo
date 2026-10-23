@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Activity, Bug, Droplets, ImagePlus, Leaf, Sprout, Trash2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Bug, Droplets, ImagePlus, Sprout, Trash2 } from 'lucide-react';
 import { Bell, LoaderCircle } from 'lucide-react';
 import './dailyEntryFeatures.css';
 
@@ -114,29 +114,6 @@ export async function uploadEntryPhoto(apiFetch, file) {
   const response = await apiFetch(`${(import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')}/api/photos`, { method: 'POST', body: data });
   if (!response.ok) throw new Error('Photo upload failed.');
   return (await response.json()).url;
-}
-
-export function PlotSeasonComparison({ entries }) {
-  const [mode, setMode] = useState('plot');
-  const groups = useMemo(() => {
-    const result = new Map();
-    for (const entry of entries) {
-      const year = String(entry.entryDate || '').slice(0, 4) || '—';
-      const key = mode === 'plot' ? (entry.farmSection || 'शेताचा विभाग नोंदलेला नाही') : `${year} · ${entry.seasonName || 'हंगाम नोंदलेला नाही'}`;
-      if (!result.has(key)) result.set(key, { key, entries: [], cost: 0, sales: 0, production: 0, area: 0 });
-      const group = result.get(key);
-      group.entries.push(entry);
-      group.cost += Number(entry.laborCost || 0) + Number(entry.materialsCost || 0) + Number(entry.otherCost || 0);
-      group.sales += Number(entry.saleIncome || 0);
-      group.production += Number(entry.productionKg || 0);
-      if (!group.area && Number(entry.plotAreaAcres) > 0) group.area = Number(entry.plotAreaAcres);
-    }
-    return [...result.values()].sort((a, b) => (b.sales - b.cost) - (a.sales - a.cost));
-  }, [entries, mode]);
-  const money = value => `₹${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
-  return <section className="daily-feature-card comparison-card"><header><div className="daily-feature-title"><Activity size={17}/><div><b>प्लॉट व हंगाम तुलना</b><small>नोंदींवरून खर्च, उत्पादन आणि विक्रीची तुलना</small></div></div><div className="comparison-toggle"><button type="button" className={mode === 'plot' ? 'selected' : ''} onClick={() => setMode('plot')}>प्लॉट</button><button type="button" className={mode === 'season' ? 'selected' : ''} onClick={() => setMode('season')}>हंगाम</button></div></header>
-    {groups.length ? <div className="comparison-table-wrap"><table className="comparison-table"><thead><tr><th>{mode === 'plot' ? 'पीक / प्लॉट' : 'वर्ष / हंगाम'}</th><th>खर्च</th><th>विक्री</th><th>उत्पादन</th><th>निव्वळ</th><th>एकरी उत्पादन</th></tr></thead><tbody>{groups.map(group => <tr key={group.key}><th>{group.key}</th><td>{money(group.cost)}</td><td>{money(group.sales)}</td><td>{group.production.toLocaleString('mr-IN', { maximumFractionDigits: 1 })} कि.</td><td className={group.sales - group.cost >= 0 ? 'positive' : 'negative'}>{money(group.sales - group.cost)}</td><td>{group.area ? `${(group.production / group.area).toLocaleString('mr-IN', { maximumFractionDigits: 1 })} कि./एकर` : 'क्षेत्र नोंदवा'}</td></tr>)}</tbody></table></div> : <p className="comparison-empty"><Leaf size={15}/> तुलना सुरू करण्यासाठी दैनिक नोंदी जोडा.</p>}
-  </section>;
 }
 
 export function OfflineQueueStatus() {
