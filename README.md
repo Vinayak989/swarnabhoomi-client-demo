@@ -92,7 +92,7 @@ The **माहिती** tab is a Marathi-first, static reference for benefici
 
 ## Farmer marketplace
 
-The **शेतकरी बाजार** tab lets farmers add a crop/food listing with a product photo, available quantity, seller phone, address, and exact map coordinates. Buyers can search listings by crop, product, seller, or address; see seller pins on an OpenStreetMap; and sort/filter by distance after choosing to share the buyer's browser location. Location is only requested after the buyer presses **जवळचे विक्रेते**. The map uses OpenStreetMap tiles and attribution; no Google Maps API key or external geocoding service is used.
+The **शेतकरी बाजार** tab lets farmers add a crop/food listing with a product photo, available quantity, seller phone, address, and exact map coordinates. Buyers can search listings by crop, product, seller, or address; filter by category; sort by distance, newest, or product name; and save favorite listings in their browser. Favorites persist across visits on the same browser. Buyers can also see seller pins on a Leaflet map using OpenStreetMap tiles and filter listings by distance after choosing to share the buyer's browser location. Location is only requested after the buyer presses **जवळचे विक्रेते**; no Google Maps API key or external geocoding service is used.
 
 Seller listings are stored in the application database and limited to the latest 200 entries. Product photos use the existing photo storage (database or configured S3). Seller phone numbers are omitted from listing search responses and are returned only by the authenticated contact endpoint. The map pin and address are exact, as selected for this marketplace; sellers should provide a farm address and coordinates they are comfortable sharing.
 

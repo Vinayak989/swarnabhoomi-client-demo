@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
-import { ArrowDownWideNarrow, LocateFixed, MapPin, PackagePlus, Phone, Search, ShieldCheck, Upload, UserRound, Wheat, X } from 'lucide-react';
+import { ArrowDownWideNarrow, Heart, LocateFixed, MapPin, PackagePlus, Phone, Search, ShieldCheck, Upload, UserRound, Wheat, X } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import './marketplace.css';
 
@@ -179,6 +179,17 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
   const [previewUrl, setPreviewUrl] = useState('');
   const [authorization, setAuthorization] = useState(auth);
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('recommended');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [favoriteIds, setFavoriteIds] = useState(() => {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem('swarnabhoomi-market-favorites') || '[]');
+      return new Set(Array.isArray(stored) ? stored.map(String) : []);
+    } catch {
+      return new Set();
+    }
+  });
   const [buyerLocation, setBuyerLocation] = useState(null);
   const [radius, setRadius] = useState(25);
   const [nearbyOnly, setNearbyOnly] = useState(false);
@@ -203,6 +214,13 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
   onUnauthorizedRef.current = onUnauthorized;
 
   useEffect(() => setAuthorization(auth), [auth]);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('swarnabhoomi-market-favorites', JSON.stringify([...favoriteIds]));
+    } catch {
+      // Favorites remain usable for this session if browser storage is disabled.
+    }
+  }, [favoriteIds]);
   useEffect(() => {
     if (!photo) {
       setPreviewUrl('');
@@ -242,6 +260,13 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
     loadListings();
   }, [loadListings]);
 
+  const availableCategories = useMemo(() => Array.from(new Set(
+    listings.map(listing => listing.category).filter(Boolean)
+  )).sort((a, b) => a.localeCompare(b, 'mr-IN')), [listings]);
+
+  const favoriteCount = useMemo(() => listings.filter(listing => favoriteIds.has(String(listing.id))).length,
+    [listings, favoriteIds]);
+
   const filteredListings = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('mr-IN');
     return listings
@@ -252,11 +277,28 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
       .filter(listing => !query || [
         listing.sellerName, listing.productName, listing.cropType, listing.category, listing.address
       ].join(' ').toLocaleLowerCase('mr-IN').includes(query))
+      .filter(listing => categoryFilter === 'all' || listing.category === categoryFilter)
+      .filter(listing => !favoritesOnly || favoriteIds.has(String(listing.id)))
       .filter(listing => !nearbyOnly || buyerLocation && listing.distance <= radius)
-      .sort((a, b) => buyerLocation
-        ? a.distance - b.distance
-        : b.id - a.id);
-  }, [listings, search, buyerLocation, nearbyOnly, radius]);
+      .sort((a, b) => {
+        if (sortBy === 'name') return a.productName.localeCompare(b.productName, 'mr-IN');
+        if (sortBy === 'nearest' || sortBy === 'recommended' && buyerLocation) {
+          return a.distance - b.distance || b.id - a.id;
+        }
+        return b.id - a.id;
+      });
+  }, [listings, search, categoryFilter, favoritesOnly, favoriteIds, buyerLocation, nearbyOnly, radius, sortBy]);
+
+  function toggleFavorite(id, event) {
+    event.stopPropagation();
+    setFavoriteIds(current => {
+      const next = new Set(current);
+      const key = String(id);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   function updateField(event) {
     const { name, value } = event.target;
@@ -432,6 +474,25 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
         </label>
         <button className={`market-nearby-toggle ${nearbyOnly ? 'selected' : ''}`} type="button" onClick={() => buyerLocation ? setNearbyOnly(value => !value) : askForLocation(false)}><ArrowDownWideNarrow size={15}/>{nearbyOnly ? 'सर्व विक्रेते दाखवा' : 'फक्त जवळचे दाखवा'}</button>
       </section>
+      <section className="market-filter-row" aria-label="शेतमाल शोध फिल्टर">
+        <label className="market-filter-field"><span>प्रकार</span>
+          <select value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)}>
+            <option value="all">सर्व प्रकार</option>
+            {availableCategories.map(category => <option key={category} value={category}>{category}</option>)}
+          </select>
+        </label>
+        <label className="market-filter-field"><span>क्रम</span>
+          <select value={sortBy} onChange={event => setSortBy(event.target.value)}>
+            <option value="recommended">जवळचे / नवीन</option>
+            <option value="nearest" disabled={!buyerLocation}>जवळचे आधी</option>
+            <option value="recent">नवीन नोंदी आधी</option>
+            <option value="name">नावानुसार</option>
+          </select>
+        </label>
+        <button type="button" className={`market-favorites-toggle ${favoritesOnly ? 'selected' : ''}`} aria-pressed={favoritesOnly} onClick={() => setFavoritesOnly(value => !value)}>
+          <Heart size={14} fill={favoritesOnly ? 'currentColor' : 'none'}/>{favoritesOnly ? 'सर्व दाखवा' : 'आवडती'} <span>{favoriteCount.toLocaleString('mr-IN')}</span>
+        </button>
+      </section>
       {locationMessage && <p className="market-location-note" role="status">{locationMessage}</p>}
       <div className="market-map-layout">
         <section className="market-map-card">
@@ -442,11 +503,11 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
         <section className="market-listings">
           <div className="market-card-heading"><div><span>उपलब्ध शेतमाल</span><h2>विक्रेते</h2></div>{buyerLocation&&<span className="market-result-count"><LocateFixed size={12}/> जवळचे आधी</span>}</div>
           {loading ? <div className="market-empty">विक्रीची माहिती लोड होत आहे…</div>
-            : !filteredListings.length ? <div className="market-empty"><Wheat size={28}/><b>शेतमाल सापडला नाही</b><span>शोध बदलून पाहा किंवा नवी विक्रीची नोंद जोडा.</span></div>
+            : !filteredListings.length ? <div className="market-empty"><Wheat size={28}/><b>{favoritesOnly ? 'आवडत्या नोंदी सापडल्या नाहीत' : 'शेतमाल सापडला नाही'}</b><span>{favoritesOnly ? 'यादीत हृदयाचे चिन्ह दाबून आवडते शेतमाल जतन करा.' : 'शोध किंवा फिल्टर बदलून पाहा किंवा नवी विक्रीची नोंद जोडा.'}</span></div>
               : <div className="market-listing-scroll">{filteredListings.map(listing=><article className={`market-listing-card ${activeListing === listing.id ? 'focused' : ''}`} key={listing.id} onClick={() => setActiveListing(listing.id)}>
                 <ProductPhoto apiBase={apiBase} photoUrl={listing.photoUrl} authorization={authorization} productName={listing.productName}/>
                 <div className="market-listing-content">
-                  <div className="market-listing-heading"><span>{listing.category}</span>{listing.distance !== null&&<small>{listing.distance < 1 ? `${Math.round(listing.distance*1000).toLocaleString('mr-IN')} मी` : `${listing.distance.toLocaleString('mr-IN',{maximumFractionDigits:1})} किमी`}</small>}</div>
+                  <div className="market-listing-heading"><span>{listing.category}</span>{listing.distance !== null&&<small>{listing.distance < 1 ? `${Math.round(listing.distance*1000).toLocaleString('mr-IN')} मी` : `${listing.distance.toLocaleString('mr-IN',{maximumFractionDigits:1})} किमी`}</small>}<button type="button" className={`market-favorite-button ${favoriteIds.has(String(listing.id)) ? 'saved' : ''}`} aria-label={favoriteIds.has(String(listing.id)) ? 'आवडत्यामधून काढा' : 'आवडत्यात जतन करा'} aria-pressed={favoriteIds.has(String(listing.id))} onClick={event => toggleFavorite(listing.id, event)}><Heart size={14} fill={favoriteIds.has(String(listing.id)) ? 'currentColor' : 'none'}/></button></div>
                   <h3>{listing.productName}</h3><p className="market-crop-type">{listing.cropType}</p>
                   <p className="market-stock">{formatQuantity(listing)} उपलब्ध</p>
                   <div className="market-seller"><UserRound size={13}/><b>{listing.sellerName}</b></div>
