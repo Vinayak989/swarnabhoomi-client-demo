@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "in.swarnabhoomi.farmlog",
+      "sha256_cert_fingerprints": [
+        "49:F8:3F:20:DA:9F:DA:D3:FF:DD:99:E2:D1:1B:40:DC:F3:45:F5:23:7E:6B:95:5E:52:19:BA:3D:46:E3:F5:B6"
+      ]
+    }
+  }
+]

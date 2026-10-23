@@ -9,3 +9,10 @@ backend/uploads/
 .env
 .idea/
 .vscode/
+android/*.keystore
+android/signing.local.env
+android/app-release-unsigned-aligned.apk
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties

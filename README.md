@@ -101,3 +101,9 @@ The marketplace has no separate buyer or seller registration. Anyone can publish
 ## Organic farming consultants
 
 The **सेंद्रिय सल्लागार** tab lets organic-farming consultants publish their name, Indian mobile number, service area, expertise, experience, and a short introduction. Farmers can search the directory and contact a consultant through a phone call, SMS, or WhatsApp. Registration and directory access work without app credentials; a consultant's phone number is public for these contact options, so only register a number intended for public contact. Directory results are limited to the latest 200 registrations, and the H2-to-PostgreSQL migration profile copies consultant records.
+
+## Android app
+
+The `android/` project is a Trusted Web Activity wrapper for the deployed Swarnabhoomi PWA. It opens the same Marathi web app and backend, so the diary, reminders, AI assistant, farm guide, marketplace, and consultant directory stay in sync with the web version. The app shell is cached after first load; farm data and server features require an internet connection.
+
+After deployment, Android users can download the signed APK from [swarnabhoomi-demo.onrender.com/downloads/swarnabhoomi.apk](https://swarnabhoomi-demo.onrender.com/downloads/swarnabhoomi.apk). The website serves the Digital Asset Links association needed for a full-screen Trusted Web Activity. The release signing key and its local password file are intentionally ignored by Git; keep them backed up securely to produce compatible app updates. Google Play publication still requires an owner-controlled Play Console account and its store submission steps.

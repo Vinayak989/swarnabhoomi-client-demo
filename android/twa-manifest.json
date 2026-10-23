@@ -1,0 +1,55 @@
+{
+  "packageId": "in.swarnabhoomi.farmlog",
+  "host": "swarnabhoomi-demo.onrender.com",
+  "name": "स्वर्णभूमी | दैनिक शेती नोंद",
+  "launcherName": "स्वर्णभूमी",
+  "display": "standalone",
+  "themeColor": "#F6F7F0",
+  "themeColorDark": "#000000",
+  "navigationColor": "#000000",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#000000",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#F6F7F0",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://swarnabhoomi-demo.onrender.com/images/app-icon-512.png",
+  "maskableIconUrl": "https://swarnabhoomi-demo.onrender.com/images/app-icon-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "android-release-v2.keystore",
+    "alias": "swarnabhoomi-release"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 3,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://swarnabhoomi-demo.onrender.com/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": {
+      "enabled": true
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://swarnabhoomi-demo.onrender.com/",
+  "minSdkVersion": 24,
+  "orientation": "default",
+  "fingerprints": [
+    {
+      "value": "49:F8:3F:20:DA:9F:DA:D3:FF:DD:99:E2:D1:1B:40:DC:F3:45:F5:23:7E:6B:95:5E:52:19:BA:3D:46:E3:F5:B6"
+    }
+  ],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "protocolHandlers": [],
+  "fileHandlers": [],
+  "launchHandlerClientMode": "",
+  "displayOverride": [],
+  "appVersion": "1.0.0"
+}
