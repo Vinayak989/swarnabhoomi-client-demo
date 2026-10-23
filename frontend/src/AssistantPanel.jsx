@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { BellPlus, Bot, Camera, CheckCircle2, ImagePlus, LoaderCircle, Mic, MicOff, Send, Sprout, Volume2, X } from 'lucide-react';
+import { getBrowserPushSubscriptionId } from './reminderNotifications.js';
 import './assistant.css';
 
 const MAX_ORIGINAL_PHOTO_SIZE = 10_000_000;
@@ -231,7 +232,7 @@ export default function AssistantPanel({ apiFetch, apiBase, messages, setMessage
       const response = await apiFetch(`${apiBase}/reminders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scheduledAt: reminderDraft.scheduledAt, reason: reminderDraft.reason })
+        body: JSON.stringify({ scheduledAt: reminderDraft.scheduledAt, reason: reminderDraft.reason, browserSubscriptionId: getBrowserPushSubscriptionId() })
       });
       if (response.status === 401) {
         onUnauthorized();

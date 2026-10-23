@@ -37,6 +37,17 @@ public class FarmReminderController {
         return service.complete(id);
     }
 
+    @PatchMapping("/{id}/reschedule")
+    public FarmReminderService.ReminderView reschedule(@PathVariable Long id,
+            @RequestBody(required = false) FarmReminderService.RescheduleRequest request) {
+        return service.reschedule(id, request);
+    }
+
+    @PatchMapping("/{id}/stop-repeat")
+    public FarmReminderService.ReminderView stopRepeat(@PathVariable Long id) {
+        return service.stopRepeat(id);
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {

@@ -101,7 +101,7 @@ public class BrowserPushService {
             payload = objectMapper.writeValueAsString(Map.of(
                     "title", "स्वर्णभूमी स्मरणपत्र",
                     "body", reminder.getReason(),
-                    "url", "/"));
+                    "url", "/?tab=reminders"));
             PushService pushService = new PushService(publicKey, privateKey, subject);
             HttpResponse response = pushService.send(new Notification(subscription.getEndpoint(),
                     subscription.getP256dhKey(), subscription.getAuthKey(),

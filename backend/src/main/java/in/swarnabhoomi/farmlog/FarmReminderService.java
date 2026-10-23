@@ -1,8 +1,10 @@
 package in.swarnabhoomi.farmlog;
 
 import jakarta.annotation.PostConstruct;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +40,15 @@ public class FarmReminderService {
         if (reason.isBlank() || reason.length() > 300) {
             throw badRequest("कारण लिहा (जास्तीत जास्त ३०० अक्षरे).");
         }
+        String cropOrPlot = request.cropOrPlot() == null ? "" : request.cropOrPlot().trim();
+        if (cropOrPlot.length() > 120) {
+            throw badRequest("पीक किंवा शेत विभागाचे नाव १२० अक्षरांपेक्षा मोठे असू शकत नाही.");
+        }
+        String repeatFrequency = normalizeFrequency(request.repeatFrequency());
+        if (request.repeatUntil() != null
+                && ("NONE".equals(repeatFrequency) || request.repeatUntil().isBefore(request.scheduledAt().toLocalDate()))) {
+            throw badRequest("पुनरावृत्तीची शेवटची तारीख योग्य निवडा.");
+        }
         LocalDateTime now = LocalDateTime.now(FARM_TIME_ZONE);
         if (!request.scheduledAt().isAfter(now)) {
             throw badRequest("कृपया भविष्यातील तारीख आणि वेळ निवडा.");
@@ -49,6 +60,9 @@ public class FarmReminderService {
         reminder.setMobileNumber("");
         reminder.setStatus("PENDING");
         reminder.setDeliveryNote("पाठवण्याच्या प्रतीक्षेत");
+        reminder.setCropOrPlot(cropOrPlot);
+        reminder.setRepeatFrequency(repeatFrequency);
+        reminder.setRepeatUntil(request.repeatUntil());
         if (request.browserSubscriptionId() != null) {
             BrowserPushSubscription subscription = pushSubscriptionRepository.findById(request.browserSubscriptionId())
                     .filter(BrowserPushSubscription::isActive)
@@ -73,6 +87,35 @@ public class FarmReminderService {
         }
         reminder.setStatus("COMPLETED");
         reminder.setDeliveryNote("वापरकर्त्याने पूर्ण केले.");
+        FarmReminder completed = repository.save(reminder);
+        createNextOccurrence(completed);
+        return view(completed);
+    }
+
+    public synchronized ReminderView reschedule(Long id, RescheduleRequest request) {
+        FarmReminder reminder = repository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (!"PENDING".equals(reminder.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "फक्त प्रलंबित स्मरणपत्राची वेळ बदलता येते.");
+        }
+        if (request == null || request.scheduledAt() == null
+                || !request.scheduledAt().isAfter(LocalDateTime.now(FARM_TIME_ZONE))) {
+            throw badRequest("कृपया भविष्यातील तारीख आणि वेळ निवडा.");
+        }
+        reminder.setScheduledAt(request.scheduledAt());
+        reminder.setDeliveryNote("वेळ बदलली; सूचनेसाठी प्रतीक्षेत.");
+        return view(repository.save(reminder));
+    }
+
+    public synchronized ReminderView stopRepeat(Long id) {
+        FarmReminder reminder = repository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (!"PENDING".equals(reminder.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "फक्त प्रलंबित स्मरणपत्राची पुनरावृत्ती थांबवता येते.");
+        }
+        reminder.setRepeatFrequency("NONE");
+        reminder.setRepeatUntil(null);
+        reminder.setDeliveryNote("पुनरावृत्ती थांबवली.");
         return view(repository.save(reminder));
     }
 
@@ -106,6 +149,7 @@ public class FarmReminderService {
                 reminder.setDeliveryNote(deliveryNote);
             }
             repository.save(reminder);
+            createNextOccurrence(reminder);
         }
     }
 
@@ -120,14 +164,57 @@ public class FarmReminderService {
 
     private ReminderView view(FarmReminder reminder) {
         return new ReminderView(reminder.getId(), reminder.getScheduledAt(), reminder.getReason(),
-                reminder.getStatus(), reminder.getDeliveryNote(), reminder.getSentAt());
+                reminder.getStatus(), reminder.getDeliveryNote(), reminder.getSentAt(),
+                reminder.getCropOrPlot(), normalizeFrequency(reminder.getRepeatFrequency()), reminder.getRepeatUntil());
+    }
+
+    private void createNextOccurrence(FarmReminder reminder) {
+        String frequency = normalizeFrequency(reminder.getRepeatFrequency());
+        if ("NONE".equals(frequency)) return;
+
+        LocalDateTime next = "DAILY".equals(frequency)
+                ? reminder.getScheduledAt().plusDays(1)
+                : reminder.getScheduledAt().plusWeeks(1);
+        LocalDateTime now = LocalDateTime.now(FARM_TIME_ZONE);
+        if (!next.isAfter(now)) {
+            long missedIntervals = "DAILY".equals(frequency)
+                    ? ChronoUnit.DAYS.between(next, now) + 1
+                    : ChronoUnit.WEEKS.between(next, now) + 1;
+            next = "DAILY".equals(frequency)
+                    ? next.plusDays(missedIntervals)
+                    : next.plusWeeks(missedIntervals);
+        }
+        LocalDate repeatUntil = reminder.getRepeatUntil();
+        if (repeatUntil != null && next.toLocalDate().isAfter(repeatUntil)) return;
+
+        FarmReminder occurrence = new FarmReminder();
+        occurrence.setScheduledAt(next);
+        occurrence.setReason(reminder.getReason());
+        occurrence.setMobileNumber("");
+        occurrence.setStatus("PENDING");
+        occurrence.setDeliveryNote("पुनरावृत्तीचे पुढील स्मरणपत्र.");
+        occurrence.setBrowserSubscription(reminder.getBrowserSubscription());
+        occurrence.setCropOrPlot(reminder.getCropOrPlot());
+        occurrence.setRepeatFrequency(frequency);
+        occurrence.setRepeatUntil(repeatUntil);
+        repository.save(occurrence);
+    }
+
+    private String normalizeFrequency(String value) {
+        String frequency = value == null || value.isBlank() ? "NONE" : value.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!List.of("NONE", "DAILY", "WEEKLY").contains(frequency)) {
+            throw badRequest("पुनरावृत्ती दररोज, दर आठवड्याला किंवा नाही यापैकी निवडा.");
+        }
+        return frequency;
     }
 
     private ResponseStatusException badRequest(String message) {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
     }
 
-    public record ReminderRequest(LocalDateTime scheduledAt, String reason, Long browserSubscriptionId) {}
+    public record ReminderRequest(LocalDateTime scheduledAt, String reason, Long browserSubscriptionId,
+            String cropOrPlot, String repeatFrequency, LocalDate repeatUntil) {}
+    public record RescheduleRequest(LocalDateTime scheduledAt) {}
     public record ReminderView(Long id, LocalDateTime scheduledAt, String reason, String status,
-            String deliveryNote, LocalDateTime sentAt) {}
+            String deliveryNote, LocalDateTime sentAt, String cropOrPlot, String repeatFrequency, LocalDate repeatUntil) {}
 }

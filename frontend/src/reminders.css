@@ -1,0 +1,58 @@
+.reminder-hero{gap:15px}
+.reminder-hero-copy{flex:1;min-width:0}
+.reminder-push-toggle{min-height:38px;flex:none;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 12px;border:1px solid #d8e6d4;border-radius:8px;background:#fff;color:#47794e;font:inherit;font-size:10px;font-weight:700;cursor:pointer}
+.reminder-push-toggle.enabled{border-color:#cfe2cc;background:#f0f8ed;color:#39784a}
+.reminder-push-toggle:disabled{opacity:.65;cursor:wait}
+.reminder-weather-card{display:grid;grid-template-columns:1fr;gap:11px;margin-top:14px;padding:15px 17px;border:1px solid #e4ebe0;border-radius:12px;background:#fbfdf9}
+.reminder-weather-heading{display:flex;align-items:center;gap:10px}
+.reminder-weather-icon{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:10px;background:#edf5e9;color:#5b8a5e}
+.reminder-weather-heading>div:last-child{min-width:0}
+.reminder-weather-heading span{color:#839286;font-size:9px;font-weight:700}
+.reminder-weather-heading h2{margin:3px 0 0;color:#3e5742;font-size:11px}
+.reminder-weather-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.reminder-weather-controls select{min-height:34px;min-width:120px;padding:0 9px;border:1px solid #e1e8de;border-radius:7px;background:#fff;color:#495d4d;font:inherit;font-size:10px}
+.reminder-weather-controls>.outline{min-height:34px}
+.reminder-weather-controls>span{color:#849286;font-size:9px}
+.reminder-weather-filter,.reminder-week-heading button,.reminder-filter-note button{display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;color:#4b8051;font:inherit;font-size:9px;font-weight:700;cursor:pointer}
+.reminder-weather-result{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:10px 12px;border:1px solid #e5ecdf;border-radius:8px;background:#fff}
+.reminder-weather-result>b{color:#49634b;font-size:10px}
+.reminder-weather-result>p{grid-column:1/-1;margin:0;color:#4e6651;font-size:10px;line-height:1.65}
+.reminder-weather-result>span{color:#89958a;font-size:8px;line-height:1.6}
+.reminder-weather-result>a{align-self:end;color:#4b8051;font-size:9px;font-weight:700}
+.reminder-weather-error{color:#a34d45;font-size:9px}
+.reminder-voice-row{display:flex;align-items:center;gap:8px;margin:-8px 0 13px}
+.reminder-voice-button{min-height:31px;display:inline-flex;align-items:center;gap:6px;padding:0 9px;border:1px solid #dce8d8;border-radius:7px;background:#f8fbf6;color:#527b56;font:inherit;font-size:9px;font-weight:700;cursor:pointer}
+.reminder-voice-button.listening{border-color:#e6bcb3;background:#fff3ef;color:#ac574a}
+.reminder-voice-row>span{color:#987c65;font-size:8px}
+.reminder-field select{min-height:38px;padding:8px 10px;border:1px solid #e1e8de;border-radius:8px;background:#fff;color:#384d3d;font:inherit;font-size:11px}
+.reminder-field select:focus{border-color:#87b18c;outline:0;box-shadow:0 0 0 3px #eaf3e8}
+.reminder-week-block{margin:-4px 0 13px;padding:10px;border:1px solid #ebefe8;border-radius:9px;background:#fbfcf9}
+.reminder-week-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.reminder-week-heading>b{color:#526956;font-size:9px}
+.reminder-week-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.reminder-week-days>button{min-width:0;min-height:65px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:5px 2px;border:1px solid #e8eee5;border-radius:7px;background:#fff;color:#7f8d80;cursor:pointer}
+.reminder-week-days>button.selected{border-color:#82ab7e;background:#eef6eb;color:#3d7345;box-shadow:0 0 0 1px #d9e9d5}
+.reminder-week-days>button>span{font-size:8px}
+.reminder-week-days>button>b{font-size:13px}
+.reminder-week-days>button>small{max-width:100%;overflow:hidden;color:#95a094;font-size:7px;text-overflow:ellipsis;white-space:nowrap}
+.reminder-list-tools{display:grid;gap:8px;margin-bottom:11px}
+.reminder-search{height:34px;display:flex;align-items:center;gap:7px;padding:0 9px;border:1px solid #e5ebe2;border-radius:7px;background:#fff;color:#91a094}
+.reminder-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:#3c5140;font:inherit;font-size:10px}
+.reminder-filters{display:flex;flex-wrap:wrap;gap:5px}
+.reminder-filters>button{min-height:27px;padding:0 8px;border:1px solid #e6ece3;border-radius:16px;background:#fff;color:#79887c;font:inherit;font-size:8px;font-weight:700;cursor:pointer}
+.reminder-filters>button.selected{border-color:#cfe1ca;background:#eff6ec;color:#46794b}
+.reminder-filter-note{display:flex;align-items:center;justify-content:space-between;margin:-4px 0 9px;padding:6px 8px;border-radius:6px;background:#f3f7f0;color:#647b66;font-size:8px}
+.reminder-card-tags{display:flex;flex-wrap:wrap;gap:5px;margin:-2px 0 9px}
+.reminder-card-tags>span{display:inline-flex;align-items:center;gap:4px;padding:4px 7px;border:1px solid #e3ecdf;border-radius:20px;background:#f5f9f2;color:#5e795f;font-size:8px}
+.reminder-card-actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:9px}
+.reminder-card-actions>button{min-height:28px;display:inline-flex;align-items:center;gap:5px;padding:0 8px;border:1px solid #e3eae0;border-radius:6px;background:#fff;color:#647b66;font:inherit;font-size:8px;font-weight:700;cursor:pointer}
+.reminder-card-actions>button:hover{border-color:#bad3b7;background:#f4f8f1}
+.reminder-card-actions>.reminder-complete{margin-top:0;border-color:#c9ddc4;background:#f2f8ef;color:#39784a}
+.reminder-modal-backdrop{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:18px;background:#17251bcc;backdrop-filter:blur(3px)}
+.reminder-reschedule-modal{position:relative;width:min(420px,100%);display:flex;flex-direction:column;gap:11px;padding:22px;border:1px solid #e5ebe2;border-radius:14px;background:#fff;box-shadow:0 20px 70px #111b154d}
+.reminder-modal-close{position:absolute;top:11px;right:11px;width:28px;height:28px;display:grid;place-items:center;border:1px solid #e6ece3;border-radius:50%;background:#fff;color:#617264;cursor:pointer}
+.reminder-reschedule-modal>span{color:#7e907f;font-size:9px;font-weight:700}
+.reminder-reschedule-modal h2{margin:-7px 0 0;color:#304736;font-size:15px}
+.reminder-reschedule-modal .reminder-field{margin:0}
+@media(max-width:900px){.reminder-hero{flex-wrap:wrap}.reminder-push-toggle{margin-left:49px}.reminder-week-days{gap:3px}}
+@media(max-width:520px){.reminder-hero{align-items:flex-start}.reminder-push-toggle{width:100%;margin-left:0}.reminder-weather-card{padding:12px}.reminder-weather-heading h2{font-size:10px}.reminder-weather-result{grid-template-columns:1fr}.reminder-weather-result>*{grid-column:1/-1}.reminder-week-block{padding:7px}.reminder-week-days>button{min-height:58px}.reminder-week-days>button>span{font-size:7px}.reminder-week-days>button>b{font-size:11px}.reminder-card-actions{gap:5px}.reminder-card-actions>button{padding:0 6px;font-size:7px}.reminder-reschedule-modal{padding:18px}}

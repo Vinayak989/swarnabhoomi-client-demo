@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.ManyToOne;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -36,6 +37,14 @@ public class FarmReminder {
     @ManyToOne
     private BrowserPushSubscription browserSubscription;
 
+    @Column(length = 120)
+    private String cropOrPlot;
+
+    @Column(length = 10)
+    private String repeatFrequency = "NONE";
+
+    private LocalDate repeatUntil;
+
     public Long getId() { return id; }
     public void setId(Long value) { id = value; }
     public String getReason() { return reason; }
@@ -52,4 +61,10 @@ public class FarmReminder {
     public void setSentAt(LocalDateTime value) { sentAt = value; }
     public BrowserPushSubscription getBrowserSubscription() { return browserSubscription; }
     public void setBrowserSubscription(BrowserPushSubscription value) { browserSubscription = value; }
+    public String getCropOrPlot() { return cropOrPlot; }
+    public void setCropOrPlot(String value) { cropOrPlot = value; }
+    public String getRepeatFrequency() { return repeatFrequency; }
+    public void setRepeatFrequency(String value) { repeatFrequency = value; }
+    public LocalDate getRepeatUntil() { return repeatUntil; }
+    public void setRepeatUntil(LocalDate value) { repeatUntil = value; }
 }

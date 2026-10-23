@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Sprout, Plus, Search, CloudSun, Sun, Cloud, CloudRain, ImagePlus, Leaf, Wallet, Boxes, TrendingUp, CalendarDays, ChevronRight, X, Save, Trash2, MapPin, LoaderCircle, Mic, MicOff, FileDown, Activity, Bell, CheckCircle2, BookOpen, ShoppingBasket, HandHelping } from 'lucide-react';
 import farmLogo from './image/WhatsApp Image 2026-10-20 at 2.00.01 PM.jpeg';
 import AssistantPanel from './AssistantPanel.jsx';
+import ReminderPanel from './ReminderPanel.jsx';
 import InformationPanel from './InformationPanel.jsx';
 import MarketplacePanel from './MarketplacePanel.jsx';
 import ConsultantPanel from './ConsultantPanel.jsx';
@@ -25,7 +26,7 @@ const weatherDetailText = raw => {if(!raw)return '';try{const d=typeof raw==='st
 const ANALYTICS={cost:{label:'एकूण खर्च',value:entryCost,format:money},income:{label:'एकूण उत्पन्न',value:e=>Number(e.saleIncome||0),format:money},production:{label:'एकूण उत्पादन',value:e=>Number(e.productionKg||0),format:v=>`${Number(v).toLocaleString('mr-IN',{maximumFractionDigits:1})} किलो`}};
 
 function App(){
-  const [activeTab,setActiveTab]=useState('entries');
+  const [activeTab,setActiveTab]=useState(()=>new URLSearchParams(window.location.search).get('tab')==='reminders'?'reminders':'entries');
   const [entries,setEntries]=useState([]),[form,setForm]=useState(fresh),[open,setOpen]=useState(false),[search,setSearch]=useState(''),[loading,setLoading]=useState(false),[weatherBusy,setWeatherBusy]=useState(false),[weatherError,setWeatherError]=useState(''),[preview,setPreview]=useState(''),[auth,setAuth]=useState(()=>sessionStorage.getItem('swarnabhoomi-auth')||''),[authRequired,setAuthRequired]=useState(false),[loginError,setLoginError]=useState(''),[printing,setPrinting]=useState(false),[pdfBusy,setPdfBusy]=useState(false),[printEntries,setPrintEntries]=useState([]),[printPhotos,setPrintPhotos]=useState({}),[activeRecord,setActiveRecord]=useState(null),[analyticsMetric,setAnalyticsMetric]=useState(null),[assistantMessages,setAssistantMessages]=useState([]);
   const apiFetch=useCallback((url,options={})=>fetch(url,{...options,headers:{...(options.headers||{}),...(auth?{Authorization:`Basic ${auth}`}:{})}}),[auth]);
   const authenticateMarketplace=useCallback(token=>{sessionStorage.setItem('swarnabhoomi-auth',token);setAuth(token)},[]);
@@ -79,7 +80,7 @@ function App(){
       <section className="entries-head"><div><h2>शेतातील नोंदी</h2><p>तुमच्या रोजच्या कामांचा लेखाजोखा</p></div><div className="tools"><div className="search"><Search size={17}/><input placeholder="नोंदी शोधा..." value={search} onChange={e=>setSearch(e.target.value)}/><VoiceButton value={search} onChange={setSearch}/></div><button className="outline pdf-export" onClick={downloadPdf} disabled={!filtered.length||pdfBusy} title="दिसणाऱ्या नोंदींची PDF तयार करा">{pdfBusy?<LoaderCircle className="spin" size={15}/>:<FileDown size={15}/>} PDF डाउनलोड</button><button className="filter">सर्व नोंदी⌄</button></div></section>
       {!filtered.length?<div className="empty"><div className="empty-icon">🌾</div><h3>{entries.length?'नोंद सापडली नाही':'तुमची पहिली नोंद लिहा'}</h3><p>शेतातल्या छोट्या-मोठ्या गोष्टी नोंदवा. त्या पुढच्या हंगामात उपयोगी पडतील.</p><button className="primary" onClick={()=>{setForm(fresh());setOpen(true)}}><Plus size={18}/> नवी नोंद</button></div>:<div className="entry-list">{filtered.map(e=><article className={`entry-card ${activeRecord===e.id?'details-open':''}`} key={e.id} tabIndex={0} aria-describedby={`record-details-${e.id}`} onClick={()=>{if(window.matchMedia?.('(hover: none)').matches)setActiveRecord(current=>current===e.id?null:e.id)}} onKeyDown={event=>{if(event.key==='Escape')setActiveRecord(null)}}><div className="entry-date"><div className="date-icon"><CalendarDays size={18}/></div><div><b>{day(e.entryDate)}</b><small>{e.weather||'हवामान नोंदले नाही'}</small></div></div><div className="entry-crop"><small>पीक / विभाग</small><b>{e.farmSection||'—'}</b></div><div className="entry-work"><small>आजची कामे</small><b>{e.workDone||'—'}</b></div><div className="entry-money"><small>खर्च　·　उत्पन्न</small><b>{money(entryCost(e))} <span>·</span> {money(e.saleIncome)}</b></div><div className="entry-actions">{e.photoUrl&&<ProtectedPhoto src={e.photoUrl} auth={auth} alt="शेत फोटो"/>}<button className="delete" title="नोंद हटवा" onClick={event=>{event.stopPropagation();remove(e.id)}}><Trash2 size={16}/></button></div><div className="record-details-popup" id={`record-details-${e.id}`} role="tooltip" onClick={event=>event.stopPropagation()}><RecordDetails entry={e}/></div></article>)}</div>}
       {printing&&<section id="print-report" lang="mr"><header className="print-header"><div className="print-brand"><Sprout size={24}/> स्वर्णभूमी</div><h1>दैनिक शेती नोंदवही</h1><p>तयार केल्याची वेळ: {new Date().toLocaleString('mr-IN',{dateStyle:'medium',timeStyle:'short'})}{search&&<>　·　शोध: “{search}”</>}</p></header><div className="print-summary"><div><span>एकूण नोंदी</span><b>{printEntries.length.toLocaleString('mr-IN')}</b></div><div><span>एकूण खर्च</span><b>{money(printEntries.reduce((sum,e)=>sum+entryCost(e),0))}</b></div><div><span>एकूण उत्पन्न</span><b>{money(printEntries.reduce((sum,e)=>sum+Number(e.saleIncome||0),0))}</b></div><div><span>निव्वळ उत्पन्न</span><b>{money(printEntries.reduce((sum,e)=>sum+Number(e.saleIncome||0)-entryCost(e),0))}</b></div></div>{printEntries.map((e,index)=>{const cost=entryCost(e);return <article className="print-entry" key={e.id}><div className="print-entry-heading"><h2>नोंद {String(index+1).toLocaleString('mr-IN')}</h2><b>{day(e.entryDate)}</b></div><div className="print-grid"><PrintField label="पीक / शेताचा विभाग" value={e.farmSection}/><PrintField label="हवामान" value={e.weather}/>{e.pincode&&<PrintField label="पिनकोड" value={e.pincode}/ >}{weatherDetailText(e.weatherDetails)&&<PrintField label="हवामान माहिती" value={weatherDetailText(e.weatherDetails)}/>}<PrintField label="आज केलेली कामे" value={e.workDone}/><PrintField label="वापरलेले साहित्य / खते" value={e.materials}/><PrintField label="मजूर संख्या" value={e.workerCount}/><PrintField label="मजुरी खर्च" value={money(e.laborCost)}/><PrintField label="खते / साहित्य खर्च" value={money(e.materialsCost)}/><PrintField label="इतर खर्च" value={money(e.otherCost)}/><PrintField label="एकूण खर्च" value={money(cost)}/><PrintField label="उत्पादन" value={e.productionKg?`${Number(e.productionKg).toLocaleString('mr-IN')} किलो`:''}/><PrintField label="विक्री" value={e.soldKg?`${Number(e.soldKg).toLocaleString('mr-IN')} किलो`:''}/><PrintField label="विक्रीतून मिळालेले पैसे" value={money(e.saleIncome)}/><PrintField label="निव्वळ उत्पन्न" value={money(Number(e.saleIncome||0)-cost)}/><PrintField label="पिकाची सद्यस्थिती" value={e.cropCondition}/><PrintField label="माती व सेंद्रिय शेती निरीक्षण" value={e.soilNotes}/><PrintField label="उद्याची नियोजित कामे" value={e.tomorrowPlan}/><PrintField label="विशेष नोंद" value={e.specialNote}/></div>{e.photoUrl&&(printPhotos[e.id]?<figure className="print-photo"><img src={printPhotos[e.id]} alt="शेताचा फोटो"/><figcaption>शेताचा फोटो</figcaption></figure>:<p className="print-photo-missing">शेताचा फोटो जोडला होता; तो PDF मध्ये उपलब्ध झाला नाही.</p>)}</article>})}<footer className="print-footer">स्वर्णभूमी · तुमच्या कष्टांची नोंद</footer></section>}
-      <footer>🌿　तुमच्या कष्टांना योग्य नोंद — स्वर्णभूमी</footer></>:activeTab==='reminders'?<ReminderPanel apiFetch={apiFetch} onUnauthorized={()=>setAuthRequired(true)}/>:null}
+      <footer>🌿　तुमच्या कष्टांना योग्य नोंद — स्वर्णभूमी</footer></>:activeTab==='reminders'?<ReminderPanel apiFetch={apiFetch} apiBase={API} entries={entries} onUnauthorized={()=>setAuthRequired(true)}/>:null}
       <div hidden={activeTab!=='assistant'}><AssistantPanel apiFetch={apiFetch} apiBase={API} messages={assistantMessages} setMessages={setAssistantMessages} farmData={assistantFarmData} onUnauthorized={()=>setAuthRequired(true)}/></div>
       {activeTab==='information'&&<InformationPanel/>}
       {activeTab==='marketplace'&&<MarketplacePanel apiBase={API} auth={auth} onAuthenticated={authenticateMarketplace} onUnauthorized={()=>setAuthRequired(true)}/>}
@@ -100,94 +101,6 @@ function App(){
     </div><div className="dialog-footer"><span><Leaf size={16}/> तुमची नोंद सुरक्षित जतन केली जाईल</span><button className="primary" disabled={loading}>{loading?<LoaderCircle className="spin" size={17}/>:<Save size={17}/>} नोंद जतन करा</button></div></form></div>}
   </div>
 }
-function indiaDateTimeInput(date){
-  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date).map(part=>[part.type,part.value]));
-  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
-}
-
-function reminderDateTime(value){
-  return new Date(`${value}+05:30`).toLocaleString('mr-IN',{timeZone:'Asia/Kolkata',weekday:'short',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
-}
-
-function ReminderPanel({apiFetch,onUnauthorized}){
-  const [reminders,setReminders]=useState([]);
-  const [form,setForm]=useState(()=>({scheduledAt:indiaDateTimeInput(new Date(Date.now()+30*60*1000)),reason:''}));
-  const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[completingId,setCompletingId]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState('');
-
-  async function load(silent=false){
-    if(!silent)setLoading(true);
-    try{
-      const listResponse=await apiFetch(`${API}/reminders`);
-      if(listResponse.status===401){onUnauthorized();return}
-      if(!listResponse.ok)throw Error('स्मरणपत्रे लोड करता आली नाहीत.');
-      setReminders(await listResponse.json());
-    }catch(exception){if(!silent)setError(exception.message||'स्मरणपत्रे लोड करता आली नाहीत.')}finally{if(!silent)setLoading(false)}
-  }
-
-  useEffect(()=>{load()},[apiFetch]);
-  useEffect(()=>{
-    if(!reminders.some(item=>item.status==='PENDING'||item.status==='SENDING'))return;
-    const timer=window.setTimeout(()=>load(true),15000);
-    return()=>window.clearTimeout(timer);
-  },[reminders,apiFetch]);
-  const set=(key,value)=>setForm(current=>({...current,[key]:value}));
-
-  async function save(event){
-    event.preventDefault();setSaving(true);setError('');setNotice('');
-    try{
-      const response=await apiFetch(`${API}/reminders`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
-      if(response.status===401){onUnauthorized();return}
-      const result=await response.json().catch(()=>null);
-      if(!response.ok)throw Error(result?.message||'स्मरणपत्र जतन करता आले नाही.');
-      setForm({scheduledAt:indiaDateTimeInput(new Date(Date.now()+30*60*1000)),reason:''});
-      setNotice('स्मरणपत्र यादीत जतन झाले. वेळ झाल्यावर यादीत तपासा.');
-      await load();
-    }catch(exception){setError(exception.message||'स्मरणपत्र जतन करता आले नाही.')}finally{setSaving(false)}
-  }
-
-  async function remove(id){
-    if(!window.confirm('हे स्मरणपत्र हटवायचे आहे का?'))return;
-    setError('');
-    try{
-      const response=await apiFetch(`${API}/reminders/${id}`,{method:'DELETE'});
-      if(response.status===401){onUnauthorized();return}
-      if(!response.ok)throw Error('स्मरणपत्र हटवता आले नाही.');
-      setReminders(current=>current.filter(item=>item.id!==id));
-      setNotice('स्मरणपत्र हटवले.');
-    }catch(exception){setError(exception.message||'स्मरणपत्र हटवता आले नाही.');}
-  }
-
-  async function complete(id){
-    setCompletingId(id);setError('');setNotice('');
-    try{
-      const response=await apiFetch(`${API}/reminders/${id}/complete`,{method:'PATCH'});
-      if(response.status===401){onUnauthorized();return}
-      const result=await response.json().catch(()=>null);
-      if(!response.ok)throw Error(result?.message||'स्मरणपत्र पूर्ण करता आले नाही.');
-      setReminders(current=>current.map(item=>item.id===id?result:item));
-      setNotice('स्मरणपत्र पूर्ण झाले.');
-    }catch(exception){setError(exception.message||'स्मरणपत्र पूर्ण करता आले नाही.')}finally{setCompletingId(null)}
-  }
-
-  const statusLabel={PENDING:'प्रलंबित',SENDING:'सूचना पाठवत आहे',SENT:'सूचना पाठवल्या',COMPLETED:'पूर्ण',FAILED:'पाठवता आले नाही'};
-  return <section className="reminder-page" lang="mr">
-    <div className="reminder-hero"><div className="reminder-hero-icon"><Bell size={22}/></div><div><span className="eyebrow">शेतीकामासाठी वेळेवर आठवण</span><h1>स्मरणपत्रे</h1><p>स्मरणपत्र यादीत जतन करा आणि ठरलेल्या वेळी तपासा.</p></div></div>
-    {error&&<div className="reminder-error" role="alert">{error}</div>}{notice&&<div className="reminder-success" role="status"><CheckCircle2 size={16}/>{notice}</div>}
-    <div className="reminder-layout">
-      <form className="reminder-form" onSubmit={save}>
-        <div className="reminder-section-title"><div><span>नवीन आठवण</span><h2>स्मरणपत्र तयार करा</h2></div><span className="reminder-step">१ / १</span></div>
-        <label className="reminder-field"><span>तारीख आणि वेळ</span><input type="datetime-local" value={form.scheduledAt} min={indiaDateTimeInput(new Date(Date.now()+60*1000))} onChange={event=>set('scheduledAt',event.target.value)} required/><small>वेळ भारताच्या स्थानिक वेळेनुसार (IST) घेतली जाईल.</small></label>
-        <label className="reminder-field"><span>कारण <small>मराठीत लिहा</small></span><textarea lang="mr" rows="4" maxLength={300} value={form.reason} onChange={event=>set('reason',event.target.value)} placeholder="उदा. उद्या सकाळी कांद्याला पाणी द्यायचे आहे..." required/><small className="reminder-counter">{form.reason.length}/३००</small></label>
-        <small className="reminder-notification-note"><Bell size={13}/> वेळ निघून गेलेली प्रलंबित स्मरणपत्रे यादीत लाल रंगात दिसतील.</small>
-        <button className="primary reminder-submit" disabled={saving}>{saving?<LoaderCircle className="spin" size={17}/>:<Plus size={17}/>} स्मरणपत्र जतन करा</button>
-      </form>
-      <div className="reminder-list-section"><div className="reminder-section-title"><div><span>तुमची यादी</span><h2>जतन केलेली स्मरणपत्रे</h2></div><span className="reminder-count">{reminders.length.toLocaleString('mr-IN')}</span></div>
-        {loading?<div className="reminder-empty"><LoaderCircle className="spin" size={22}/> स्मरणपत्रे लोड होत आहेत...</div>:reminders.length?<div className="reminder-list">{reminders.map(item=>{const overdue=item.status==='PENDING'&&new Date(`${item.scheduledAt}+05:30`).getTime()<=Date.now();return <article className={`reminder-card${overdue?' reminder-card-overdue':''}`} key={item.id}><div className="reminder-card-top"><span className={`reminder-status status-${item.status.toLowerCase()}`}><span/>{overdue?'वेळ निघून गेली':statusLabel[item.status]||item.status}</span><button type="button" className="reminder-delete" onClick={()=>remove(item.id)} aria-label="स्मरणपत्र हटवा" title="हटवा"><Trash2 size={15}/></button></div><div className="reminder-card-date"><CalendarDays size={16}/><b>{reminderDateTime(item.scheduledAt)}</b></div><p>{item.reason}</p><div className="reminder-card-bottom"><span><Bell size={14}/>या डिव्हाइसवर सूचना</span>{item.status!=='FAILED'&&item.deliveryNote&&<small>{item.deliveryNote}</small>}</div>{item.status==='PENDING'&&<button type="button" className="reminder-complete" disabled={completingId===item.id} onClick={()=>complete(item.id)}>{completingId===item.id?<LoaderCircle className="spin" size={14}/>:<CheckCircle2 size={14}/>} पूर्ण करा</button>}{item.status==='FAILED'&&<div className="reminder-failure-note" role="status"><b>सूचना पाठवता आली नाही</b><span>{item.deliveryNote||'पाठवताना कारण उपलब्ध झाले नाही. सर्व्हर लॉग तपासा.'}</span></div>}</article>})}</div>:<div className="reminder-empty"><div className="reminder-empty-icon"><Bell size={20}/></div><b>अजून स्मरणपत्र नाही</b><span>पहिली आठवण तयार केल्यावर ती इथे दिसेल.</span></div>}
-      </div>
-    </div>
-  </section>;
-}
-
 function AnalyticsDialog({metric,entries,onClose}){
   const config=ANALYTICS[metric]||ANALYTICS.cost;
   const ordered=[...entries].sort((a,b)=>(a.entryDate||'').localeCompare(b.entryDate||''));

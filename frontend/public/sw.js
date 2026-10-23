@@ -21,6 +21,8 @@ self.addEventListener('notificationclick', event => {
 
   event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
     const existing = clients.find(client => new URL(client.url).origin === self.location.origin);
-    return existing ? existing.focus() : self.clients.openWindow(target.href);
+    return existing
+      ? existing.navigate(target.href).then(client => client?.focus())
+      : self.clients.openWindow(target.href);
   }));
 });
