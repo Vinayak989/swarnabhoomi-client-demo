@@ -1,37 +1,3 @@
-self.addEventListener('install', event => {
-  event.waitUntil(caches.open('swarnabhoomi-shell-v1').then(cache => cache.add('/')));
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(
-      keys.filter(key => key.startsWith('swarnabhoomi-shell-') && key !== 'swarnabhoomi-shell-v1')
-        .map(key => caches.delete(key))
-    )).then(() => self.clients.claim())
-  );
-});
-
-self.addEventListener('fetch', event => {
-  const request = event.request;
-  const url = new URL(request.url);
-  if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
-
-  event.respondWith((async () => {
-    try {
-      const response = await fetch(request);
-      if (response.ok && response.type === 'basic') {
-        await caches.open('swarnabhoomi-shell-v1').then(cache => cache.put(request, response.clone()));
-      }
-      return response;
-    } catch {
-      const cache = await caches.open('swarnabhoomi-shell-v1');
-      return await cache.match(request) || (request.mode === 'navigate' ? cache.match('/') : undefined)
-        || new Response('Offline', { status: 503, statusText: 'Offline' });
-    }
-  })());
-});
-
 self.addEventListener('push', event => {
   let payload = {};
   try {
