@@ -29,7 +29,7 @@ function phoneLinks(phone) {
   };
 }
 
-function ConsultantPanel({ apiBase }) {
+function ConsultantPanel({ apiBase, accountType = 'farmer' }) {
   const [consultants, setConsultants] = useState([]);
   const [search, setSearch] = useState('');
   const [areaFilter, setAreaFilter] = useState('');
@@ -146,18 +146,18 @@ function ConsultantPanel({ apiBase }) {
       <div>
         <span className="consultant-eyebrow"><Sprout size={14}/> सेंद्रिय शेतीसाठी शेतकरी ते शेतकरी मार्गदर्शन</span>
         <h1>सेंद्रिय शेती सल्लागार</h1>
-        <p>अनुभवी सल्लागार शोधा किंवा तुमचे ज्ञान इतर शेतकऱ्यांपर्यंत पोहोचवण्यासाठी नोंदणी करा.</p>
+        <p>{accountType === 'consultant' ? 'तुमचे सेंद्रिय शेतीचे मार्गदर्शन शेतकऱ्यांपर्यंत पोहोचवा.' : 'तुमच्या भागातील सल्लागारांचे कौशल्य, अनुभव आणि संपर्क तपशील पाहा.'}</p>
       </div>
-      <button type="button" className="consultant-primary" onClick={() => { setShowForm(value => !value); setNotice(''); }}>
+      {accountType === 'consultant' && <button type="button" className="consultant-primary" onClick={() => { setShowForm(value => !value); setNotice(''); }}>
         {showForm ? <X size={16}/> : <Plus size={16}/>}
-        {showForm ? 'फॉर्म बंद करा' : 'सल्लागार म्हणून नोंदणी'}
-      </button>
+        {showForm ? 'फॉर्म बंद करा' : 'सल्लागार प्रोफाइल प्रकाशित करा'}
+      </button>}
     </div>
 
     {error && <div className="consultant-message consultant-error" role="alert">{error}</div>}
     {notice && <div className="consultant-message consultant-success" role="status"><CheckCircle2 size={16}/>{notice}</div>}
 
-    {showForm && <form className="consultant-form" onSubmit={register}>
+    {showForm && accountType === 'consultant' && <form className="consultant-form" onSubmit={register}>
       <div className="consultant-section-heading">
         <div><span>तुमची माहिती</span><h2>सल्लागार नोंदणी</h2></div>
         <UserRound size={20}/>

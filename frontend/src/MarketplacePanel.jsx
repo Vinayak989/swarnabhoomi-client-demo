@@ -172,8 +172,8 @@ function ProductPhoto({ apiBase, photoUrl, authorization, productName }) {
     : <div className="market-product-photo market-photo-placeholder"><Wheat size={30}/><span>फोटो नाही</span></div>;
 }
 
-function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
-  const [view, setView] = useState('browse');
+function MarketplacePanel({ accountType = 'farmer', apiBase, auth, onAuthenticated, onUnauthorized }) {
+  const [view, setView] = useState(accountType === 'seller' ? 'seller' : 'browse');
   const [listings, setListings] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [photo, setPhoto] = useState(null);
@@ -233,6 +233,7 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
   onUnauthorizedRef.current = onUnauthorized;
 
   useEffect(() => setAuthorization(auth), [auth]);
+  useEffect(() => setView(accountType === 'seller' ? 'seller' : 'browse'), [accountType]);
   useEffect(() => {
     try {
       window.localStorage.setItem('swarnabhoomi-market-favorites', JSON.stringify([...favoriteIds]));
@@ -617,8 +618,10 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
 
     <div className="market-actions" role="tablist" aria-label="शेतकरी बाजार विभाग">
       <button type="button" role="tab" aria-selected={view === 'browse'} className={view === 'browse' ? 'active' : ''} onClick={() => setView('browse')}><Search size={16}/> शेतमाल शोधा</button>
-      <button type="button" role="tab" aria-selected={view === 'register'} className={view === 'register' ? 'active' : ''} onClick={() => { setError(''); setView('register'); }}><PackagePlus size={16}/> माझा शेतमाल नोंदवा</button>
-      <button type="button" role="tab" aria-selected={view === 'seller'} className={view === 'seller' ? 'active' : ''} onClick={() => { setError(''); setView('seller'); }}><ClipboardList size={16}/> माझे व्यवहार</button>
+      {accountType !== 'buyer' && accountType !== 'admin' && <>
+        <button type="button" role="tab" aria-selected={view === 'register'} className={view === 'register' ? 'active' : ''} onClick={() => { setError(''); setView('register'); }}><PackagePlus size={16}/> माझा शेतमाल नोंदवा</button>
+        <button type="button" role="tab" aria-selected={view === 'seller'} className={view === 'seller' ? 'active' : ''} onClick={() => { setError(''); setView('seller'); }}><ClipboardList size={16}/> माझे व्यवहार</button>
+      </>}
     </div>
 
     {error && <div className="market-message market-error" role="alert">{error}</div>}

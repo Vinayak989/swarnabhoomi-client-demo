@@ -274,3 +274,48 @@ body{background:#f4f6ec}
 .reminder-empty>b{color:#536b56;font-size:11px}.reminder-empty>span{color:#95a097;font-size:9px}
 @media(max-width:900px){.reminder-layout{grid-template-columns:1fr}.reminder-form,.reminder-list-section{padding:18px}.reminder-list-section{order:2}}
 @media(max-width:700px){.sidebar .nav:not(.active){display:flex}.sidebar .nav{width:100%;justify-content:center;gap:0;margin-top:23px;padding:11px 0}.sidebar .nav+.nav{margin-top:8px}.sidebar .nav svg{width:19px;height:19px}.reminder-page{padding-top:23px}.reminder-hero{align-items:flex-start;padding:18px 15px;gap:11px}.reminder-hero-icon{width:39px;height:39px;border-radius:12px}.reminder-hero h1{font-size:18px}.reminder-hero p{font-size:9px}.reminder-layout{gap:12px;margin-top:12px}.reminder-form,.reminder-list-section{padding:15px}.reminder-section-title h2{font-size:13px}.reminder-card{padding:11px}.reminder-card-date{font-size:9px}}
+
+
+/* Account role selector and role-focused home tabs */
+.account-profile{width:100%;border:0;background:transparent;text-align:left;font:inherit;cursor:pointer;border-radius:10px;transition:background .16s}
+.account-profile:hover{background:rgba(65,130,74,.09)}
+.account-picker-backdrop{position:fixed;inset:0;z-index:5000;display:grid;place-items:center;padding:18px;background:rgba(18,35,24,.58);backdrop-filter:blur(4px)}
+.account-picker{width:min(760px,100%);max-height:min(90vh,850px);overflow:auto;padding:22px;border:1px solid #e0e9dd;border-radius:18px;background:#fbfdf9;box-shadow:0 24px 90px rgba(17,31,21,.3)}
+.account-picker>header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.account-picker-eyebrow{color:#66866b;font-size:10px;font-weight:700}
+.account-picker h2{margin:4px 0 0;color:#2d4b35;font-size:21px}
+.account-picker-intro{margin:10px 0 16px;color:#758579;font-size:12px;line-height:1.7}
+.account-role-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.account-role-card{min-width:0;display:flex;align-items:flex-start;gap:12px;padding:14px;border:1px solid #e3ebe0;border-radius:13px;background:#fff;color:#3b5140;text-align:left;cursor:pointer;transition:border-color .16s,background .16s,transform .16s}
+.account-role-card:hover{border-color:#aec8a8;background:#f7fbf4;transform:translateY(-1px)}
+.account-role-card.selected{border-color:#72a374;background:#eef7eb;box-shadow:0 0 0 2px rgba(91,145,91,.1)}
+.account-role-avatar{width:42px;height:42px;flex:none;display:grid;place-items:center;border-radius:50%;background:#e8f2e5;color:#3d7846;font-size:12px;font-weight:800}
+.account-role-avatar.role-buyer{background:#fff0df;color:#a36b27}.account-role-avatar.role-seller{background:#e8f1f8;color:#4b7896}.account-role-avatar.role-consultant{background:#efe9f8;color:#76599a}.account-role-avatar.role-admin{background:#f8e8e5;color:#9a584f}
+.account-role-copy{min-width:0;display:grid;gap:5px}
+.account-role-copy>b{color:#304a36;font-size:13px}
+.account-role-copy small{color:#7d8b7e;font-size:10px;line-height:1.55}
+.account-role-copy small strong{color:#617861}
+.account-picker-note{margin:15px 2px 0;padding:10px 12px;border-radius:9px;background:#f0f4ed;color:#788579;font-size:10px;line-height:1.7}
+.account-admin-page{padding:30px 0 26px}
+.account-admin-hero{padding:27px 30px;border:1px solid #e0eadc;border-radius:17px;background:linear-gradient(115deg,#eaf2e5,#f5f8ef 60%,#e7f1e2)}
+.account-admin-hero>span{color:#69836c;font-size:10px;font-weight:700}
+.account-admin-hero h1{margin:8px 0 5px;color:#294732;font-size:24px}
+.account-admin-hero p{margin:0;color:#758579;font-size:12px;line-height:1.7}
+.account-admin-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-top:16px}
+.account-admin-stats article{display:grid;gap:6px;padding:18px;border:1px solid #e7ece4;border-radius:13px;background:#fff}
+.account-admin-stats article>span{color:#7e8b7f;font-size:11px}
+.account-admin-stats article>strong{color:#3e7547;font-size:26px}
+.account-admin-stats article>small{color:#9aa49a;font-size:10px}
+.account-admin-notice{display:flex;align-items:flex-start;gap:11px;margin-top:14px;padding:14px;border:1px solid #e9dfc9;border-radius:11px;background:#fffaf0;color:#9a783f}
+.account-admin-notice>svg{flex:none;margin-top:2px}
+.account-admin-notice p{display:grid;gap:4px;margin:0}
+.account-admin-notice b{font-size:11px}
+.account-admin-notice span{color:#8c826c;font-size:10px;line-height:1.65}
+.account-admin-error{padding:10px 12px;border-radius:8px;background:#fff1ef;color:#995b50;font-size:11px}
+@media(max-width:700px){.account-picker{padding:17px;border-radius:15px}.account-picker h2{font-size:18px}.account-role-grid{grid-template-columns:1fr}.account-role-card{padding:12px}.account-admin-page{padding-top:21px}.account-admin-hero{padding:20px}.account-admin-hero h1{font-size:20px}.account-admin-stats{gap:8px}.account-admin-stats article{padding:13px}.account-admin-stats article>strong{font-size:22px}}
+
+.login-account-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:-2px 0 3px}
+.login-account-options button{min-width:0;display:flex;align-items:center;gap:7px;padding:8px;border:1px solid #e4ebe1;border-radius:8px;background:#fbfdf9;color:#506451;font:600 10px inherit;text-align:left;cursor:pointer}
+.login-account-options button:hover{border-color:#afc9a8;background:#f2f8ef}
+.login-account-options button span{width:27px;height:27px;flex:none;display:grid;place-items:center;border-radius:50%;background:#e8f2e5;color:#3d7846;font-size:9px;font-weight:800}
+@media(max-width:420px){.login-card{padding:22px}.login-account-options button{font-size:9px}}
