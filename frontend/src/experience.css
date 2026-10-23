@@ -1,0 +1,444 @@
+:root {
+  --farm-ink: #243b2b;
+  --farm-muted: #738477;
+  --farm-leaf: #347848;
+  --farm-leaf-dark: #245b35;
+  --farm-surface: rgba(255, 255, 255, .88);
+  --farm-border: rgba(91, 123, 89, .14);
+}
+
+body {
+  background:
+    radial-gradient(ellipse at 86% 5%, rgba(214, 231, 194, .42), transparent 32rem),
+    radial-gradient(ellipse at 8% 58%, rgba(247, 231, 192, .27), transparent 29rem),
+    #f6f8f2;
+  color: var(--farm-ink);
+}
+
+::selection {
+  background: #d7edcf;
+  color: #234b2e;
+}
+
+.app-shell {
+  background: radial-gradient(ellipse at 72% 0%, rgba(255, 255, 255, .5), transparent 55rem);
+}
+
+.sidebar {
+  background: linear-gradient(180deg, #173d2a 0%, #1d472f 56%, #163b28 100%);
+  border-right: 0;
+  box-shadow: 8px 0 30px rgba(25, 57, 36, .12);
+  color: #edf5ea;
+}
+
+.sidebar::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, #d7a54e, #94c779 45%, #e4c878);
+  content: '';
+}
+
+.brand {
+  margin: 2px -3px 0;
+  padding: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .65);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .97);
+  box-shadow: 0 10px 28px rgba(4, 25, 13, .16);
+}
+
+.brand-logo {
+  transition: transform .35s cubic-bezier(.2, .75, .25, 1);
+}
+
+.brand:hover .brand-logo {
+  transform: scale(1.035);
+}
+
+.nav-label {
+  color: #a8c3ae;
+  letter-spacing: 1.4px;
+}
+
+.nav {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid transparent;
+  color: #c2d4c5;
+  transition: transform .2s ease, color .2s ease, background .2s ease, border-color .2s ease;
+}
+
+.nav:hover:not(.active) {
+  transform: translateX(3px);
+  border-color: rgba(255, 255, 255, .08);
+  background: rgba(255, 255, 255, .08);
+  color: #fff;
+}
+
+.nav.active {
+  border-color: rgba(223, 241, 214, .12);
+  background: linear-gradient(105deg, #4f9658, #347849);
+  box-shadow: 0 7px 18px rgba(7, 30, 15, .2), inset 0 1px rgba(255, 255, 255, .14);
+  color: #fff;
+}
+
+.nav.active::before {
+  position: absolute;
+  inset: 8px auto 8px 0;
+  width: 3px;
+  border-radius: 0 4px 4px 0;
+  background: #f0d47e;
+  content: '';
+}
+
+.nav svg {
+  flex: none;
+  transition: transform .2s ease;
+}
+
+.nav:hover svg {
+  transform: scale(1.12);
+}
+
+.sidebar-tip {
+  border: 1px solid rgba(255, 255, 255, .1);
+  background: linear-gradient(145deg, rgba(107, 157, 93, .24), rgba(19, 54, 34, .8));
+  box-shadow: inset 0 1px rgba(255, 255, 255, .07);
+  color: #e5f2df;
+}
+
+.sidebar-tip > span {
+  color: #b5cbb6;
+}
+
+.tip-leaves {
+  color: #aad18c;
+  animation: leaf-sway 5s ease-in-out infinite;
+  transform-origin: 80% 50%;
+}
+
+.profile {
+  color: #e1eee2;
+}
+
+.profile small {
+  color: #a9c2ad;
+}
+
+.account-profile:hover {
+  background: rgba(255, 255, 255, .1);
+}
+
+.account-profile .avatar {
+  background: linear-gradient(145deg, #f5dfaa, #eac777);
+  color: #665022;
+  box-shadow: 0 4px 12px rgba(6, 23, 12, .2);
+}
+
+.main {
+  min-height: 100vh;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  border-bottom-color: rgba(90, 116, 91, .14);
+  background: rgba(247, 249, 244, .82);
+  backdrop-filter: blur(14px);
+}
+
+.today {
+  padding: 8px 11px;
+  border: 1px solid rgba(80, 125, 77, .13);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, .66);
+}
+
+.welcome {
+  isolation: isolate;
+  border: 1px solid rgba(76, 128, 70, .1);
+  background:
+    radial-gradient(ellipse at 83% 16%, rgba(255, 246, 203, .96), transparent 24%),
+    linear-gradient(112deg, #dcefd8 0%, #eff4dc 52%, #e4f0dd 100%);
+  box-shadow: 0 16px 38px rgba(46, 89, 48, .09), inset 0 1px rgba(255, 255, 255, .7);
+  animation: rise-in .6s cubic-bezier(.2, .7, .2, 1) both;
+}
+
+.welcome::before {
+  position: absolute;
+  z-index: -1;
+  top: -104px;
+  right: 7%;
+  width: 270px;
+  aspect-ratio: 1;
+  border: 1px solid rgba(86, 139, 75, .1);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, .36) 0 35%, transparent 36%);
+  box-shadow: 0 0 0 22px rgba(255, 255, 255, .08), 0 0 0 48px rgba(255, 255, 255, .055);
+  content: '';
+  animation: sun-drift 18s ease-in-out infinite alternate;
+}
+
+.welcome-art {
+  right: 22%;
+  top: 7px;
+  opacity: .72;
+  animation: art-float 5.5s ease-in-out infinite;
+}
+
+.welcome-art > span {
+  display: inline-block;
+  filter: drop-shadow(0 6px 9px rgba(151, 128, 49, .16));
+  animation: sun-turn 26s linear infinite;
+}
+
+.welcome-art div {
+  animation: field-wave 4s ease-in-out infinite alternate;
+}
+
+.pulse {
+  box-shadow: 0 0 0 0 rgba(91, 151, 84, .42);
+  animation: pulse-ring 2.2s ease-out infinite;
+}
+
+.primary,
+.outline,
+.filter,
+.market-location-button,
+.market-nearby-toggle,
+.market-favorites-toggle,
+.market-submit-button,
+.assistant-analysis-button,
+.reminder-complete,
+.consultant-contact,
+.account-role-card {
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease;
+}
+
+.primary:hover:not(:disabled),
+.outline:hover:not(:disabled),
+.market-location-button:hover:not(:disabled),
+.market-submit-button:hover:not(:disabled),
+.assistant-analysis-button:hover:not(:disabled),
+.reminder-complete:hover:not(:disabled),
+.consultant-contact:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(45, 100, 54, .16);
+}
+
+.primary:active:not(:disabled),
+.outline:active:not(:disabled),
+.market-submit-button:active:not(:disabled) {
+  transform: translateY(0) scale(.98);
+}
+
+.stat-card,
+.entry-card,
+.market-map-card,
+.market-listings,
+.market-form-card,
+.reminder-form,
+.reminder-list-section,
+.consultant-card,
+.info-weed-card,
+.info-guide-card,
+.assistant-card {
+  box-shadow: 0 8px 24px rgba(34, 67, 40, .045);
+  transition: transform .24s cubic-bezier(.2, .75, .25, 1), box-shadow .24s ease, border-color .24s ease;
+}
+
+.stat-card:not(.net):hover,
+.entry-card:hover,
+.consultant-card:hover,
+.info-weed-card:hover,
+.info-guide-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(91, 145, 83, .3);
+  box-shadow: 0 14px 32px rgba(34, 67, 40, .1);
+}
+
+.entry-card {
+  animation: rise-in .45s cubic-bezier(.2, .7, .2, 1) both;
+}
+
+.entry-card:nth-child(2) { animation-delay: 45ms; }
+.entry-card:nth-child(3) { animation-delay: 90ms; }
+.entry-card:nth-child(4) { animation-delay: 135ms; }
+.entry-card:nth-child(5) { animation-delay: 180ms; }
+
+.main > .entries-head,
+.main > .stats,
+.main > .empty,
+.main > .entry-list,
+.main > .info-page,
+.main > .assistant-page,
+.main > .market-page,
+.main > .reminder-page,
+.main > .consultant-page,
+.main > .account-admin-page {
+  animation: rise-in .55s cubic-bezier(.2, .7, .2, 1) both;
+}
+
+.main > .stats { animation-delay: 70ms; }
+.main > .entries-head { animation-delay: 120ms; }
+.main > .entry-list,
+.main > .empty { animation-delay: 170ms; }
+
+.info-hero,
+.market-hero,
+.assistant-hero,
+.reminder-hero,
+.consultant-hero,
+.account-admin-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  box-shadow: 0 13px 30px rgba(40, 79, 42, .075), inset 0 1px rgba(255, 255, 255, .7);
+}
+
+.info-hero::after,
+.market-hero::after,
+.assistant-hero::after,
+.reminder-hero::after,
+.consultant-hero::after,
+.account-admin-hero::after {
+  position: absolute;
+  z-index: -1;
+  top: -74px;
+  right: -24px;
+  width: 205px;
+  aspect-ratio: 1;
+  border: 1px solid rgba(75, 126, 69, .09);
+  border-radius: 50%;
+  box-shadow: 0 0 0 18px rgba(255, 255, 255, .11), 0 0 0 40px rgba(255, 255, 255, .07);
+  content: '';
+  animation: sun-drift 16s ease-in-out infinite alternate;
+}
+
+.info-hero-mark,
+.market-hero-icon,
+.assistant-hero-icon,
+.reminder-hero-icon,
+.consultant-hero-icon {
+  box-shadow: 0 8px 20px rgba(56, 108, 62, .09), inset 0 1px rgba(255, 255, 255, .8);
+  animation: art-float 5s ease-in-out infinite;
+}
+
+.account-select-content {
+  animation: rise-in .65s cubic-bezier(.2, .7, .2, 1) both;
+}
+
+.account-role-card {
+  animation: role-enter .48s cubic-bezier(.2, .75, .25, 1) both;
+}
+
+.account-role-card:nth-child(2) { animation-delay: 55ms; }
+.account-role-card:nth-child(3) { animation-delay: 110ms; }
+.account-role-card:nth-child(4) { animation-delay: 165ms; }
+
+.account-role-card:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 10px 22px rgba(39, 82, 44, .1);
+}
+
+.field input,
+.field textarea,
+.field select,
+.market-field input,
+.market-field textarea,
+.reminder-field input,
+.reminder-field textarea {
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(91, 151, 84, .38);
+  outline-offset: 3px;
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(13px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes role-enter {
+  from { opacity: 0; transform: translateY(10px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes art-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -6px; }
+}
+
+@keyframes sun-drift {
+  from { transform: translate3d(0, 0, 0) scale(.96); }
+  to { transform: translate3d(-12px, 9px, 0) scale(1.04); }
+}
+
+@keyframes sun-turn {
+  to { rotate: 360deg; }
+}
+
+@keyframes field-wave {
+  from { transform: translateX(-3px) skewX(-3deg); }
+  to { transform: translateX(4px) skewX(3deg); }
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(91, 151, 84, .4); }
+  70%, 100% { box-shadow: 0 0 0 7px rgba(91, 151, 84, 0); }
+}
+
+@keyframes leaf-sway {
+  0%, 100% { rotate: -3deg; }
+  50% { rotate: 4deg; }
+}
+
+@media (max-width: 1050px) {
+  .brand { border-radius: 13px; padding: 4px; }
+  .sidebar-tip { border-radius: 12px; }
+}
+
+@media (max-width: 700px) {
+  .sidebar {
+    background: linear-gradient(180deg, #173d2a, #204a31);
+  }
+
+  .sidebar .nav.active {
+    background: linear-gradient(145deg, #4f9658, #347849);
+  }
+
+  .main {
+    background: transparent;
+  }
+
+  .topbar {
+    height: 58px;
+  }
+
+  .welcome {
+    box-shadow: 0 10px 24px rgba(46, 89, 48, .08), inset 0 1px rgba(255, 255, 255, .7);
+  }
+
+  .welcome-art {
+    right: 5%;
+    opacity: .45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
