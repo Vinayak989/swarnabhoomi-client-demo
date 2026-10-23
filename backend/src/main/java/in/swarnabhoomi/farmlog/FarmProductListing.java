@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "farm_product_listing")
@@ -42,6 +43,15 @@ public class FarmProductListing {
 
     @Column(nullable = false)
     private double quantity;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal pricePerUnit;
+
+    @Column
+    private Boolean available = true;
+
+    @Column(length = 64)
+    private String sellerTokenHash;
 
     @Column(nullable = false, length = 16)
     private String unit;
@@ -79,6 +89,12 @@ public class FarmProductListing {
     public void setCategory(String value) { category = value; }
     public double getQuantity() { return quantity; }
     public void setQuantity(double value) { quantity = value; }
+    public BigDecimal getPricePerUnit() { return pricePerUnit; }
+    public void setPricePerUnit(BigDecimal value) { pricePerUnit = value; }
+    public Boolean getAvailable() { return available; }
+    public void setAvailable(Boolean value) { available = value; }
+    public String getSellerTokenHash() { return sellerTokenHash; }
+    public void setSellerTokenHash(String value) { sellerTokenHash = value; }
     public String getUnit() { return unit; }
     public void setUnit(String value) { unit = value; }
     public String getDescription() { return description; }

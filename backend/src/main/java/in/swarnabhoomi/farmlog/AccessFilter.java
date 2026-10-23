@@ -17,6 +17,9 @@ import java.util.regex.Pattern;
 @Component
 public class AccessFilter extends OncePerRequestFilter {
     private static final Pattern MARKETPLACE_PHOTO = Pattern.compile("^/api/marketplace/photos/[a-fA-F0-9-]{36}$");
+    private static final Pattern SELLER_MANAGEMENT = Pattern.compile(
+            "^/api/marketplace/seller/listings/[0-9]+(?:/purchase-requests(?:/[0-9]+)?)?$");
+    private static final Pattern PURCHASE_REQUEST = Pattern.compile("^/api/marketplace/listings/[0-9]+/purchase-requests$");
     @Value("${app.access.enabled:false}") private boolean enabled;
     @Value("${app.access.username:demo}") private String expectedUsername;
     @Value("${app.access.password:}") private String expectedPassword;
@@ -65,7 +68,10 @@ public class AccessFilter extends OncePerRequestFilter {
                     && ("GET".equalsIgnoreCase(method) && path.equals("/api/marketplace/listings")
                         || "POST".equalsIgnoreCase(method) && path.equals("/api/marketplace/listings")
                         || "POST".equalsIgnoreCase(method) && path.equals("/api/marketplace/photos")
-                        || "GET".equalsIgnoreCase(method) && MARKETPLACE_PHOTO.matcher(path).matches()));
+                        || "GET".equalsIgnoreCase(method) && MARKETPLACE_PHOTO.matcher(path).matches()
+                        || "POST".equalsIgnoreCase(method) && PURCHASE_REQUEST.matcher(path).matches()
+                        || ("GET".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method))
+                            && SELLER_MANAGEMENT.matcher(path).matches()));
     }
 
     private boolean authorized(String header) {

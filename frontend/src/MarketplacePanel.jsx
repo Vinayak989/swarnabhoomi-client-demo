@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
-import { ArrowDownWideNarrow, Heart, LocateFixed, MapPin, PackagePlus, Phone, Search, ShieldCheck, Upload, UserRound, Wheat, X } from 'lucide-react';
+import { ArrowDownWideNarrow, Check, ClipboardList, Heart, LocateFixed, MapPin, PackagePlus, Phone, Search, ShieldCheck, ShoppingBag, Upload, UserRound, Wheat, X } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import './marketplace.css';
 
@@ -14,6 +14,7 @@ const EMPTY_FORM = {
   cropType: '',
   category: 'भाजीपाला',
   quantity: '',
+  pricePerUnit: '',
   unit: 'kg',
   description: ''
 };
@@ -203,6 +204,24 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
   const [credentials, setCredentials] = useState({ username: '', password: '' });
   const [contact, setContact] = useState(null);
   const [activeListing, setActiveListing] = useState(null);
+  const [purchaseListing, setPurchaseListing] = useState(null);
+  const [purchaseForm, setPurchaseForm] = useState({ buyerName: '', buyerPhone: '', quantity: '', fulfillment: 'PICKUP', note: '' });
+  const [purchaseSaving, setPurchaseSaving] = useState(false);
+  const [purchaseReceipt, setPurchaseReceipt] = useState('');
+  const [purchaseError, setPurchaseError] = useState('');
+  const [sellerListingTokens, setSellerListingTokens] = useState(() => {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem('swarnabhoomi-market-seller-tokens') || '{}');
+      return stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
+    } catch {
+      return {};
+    }
+  });
+  const [sellerListings, setSellerListings] = useState([]);
+  const [sellerLoading, setSellerLoading] = useState(false);
+  const [sellerSavingId, setSellerSavingId] = useState(null);
+  const [sellerError, setSellerError] = useState('');
+  const [sellerNotice, setSellerNotice] = useState('');
   const fileInputRef = useRef(null);
   const formRef = useRef(form);
   const photoRef = useRef(photo);
@@ -221,6 +240,13 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
       // Favorites remain usable for this session if browser storage is disabled.
     }
   }, [favoriteIds]);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('swarnabhoomi-market-seller-tokens', JSON.stringify(sellerListingTokens));
+    } catch {
+      // Seller listings remain manageable during this session if browser storage is disabled.
+    }
+  }, [sellerListingTokens]);
   useEffect(() => {
     if (!photo) {
       setPreviewUrl('');
@@ -256,9 +282,42 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
     }
   }, [request]);
 
+  const loadSellerListings = useCallback(async () => {
+    const entries = Object.entries(sellerListingTokens);
+    setSellerLoading(true);
+    setSellerError('');
+    setSellerNotice('');
+    try {
+      const rows = await Promise.all(entries.map(async ([id, sellerToken]) => {
+        const headers = { 'X-Seller-Token': sellerToken };
+        const [listingResponse, requestsResponse] = await Promise.all([
+          request(`/marketplace/seller/listings/${id}`, { headers }, null),
+          request(`/marketplace/seller/listings/${id}/purchase-requests`, { headers }, null)
+        ]);
+        if (listingResponse.status === 404 || listingResponse.status === 403) return null;
+        if (!listingResponse.ok) throw new Error('तुमची विक्रीची माहिती मिळाली नाही.');
+        if (!requestsResponse.ok) throw new Error('खरेदीच्या विनंत्या मिळाल्या नाहीत.');
+        return { listing: await listingResponse.json(), requests: await requestsResponse.json(), sellerToken };
+      }));
+      const validRows = rows.filter(Boolean);
+      setSellerListings(validRows);
+      if (!validRows.length && entries.length) {
+        setSellerError('या ब्राउझरमध्ये जतन केलेली विक्रेता प्रवेश माहिती कालबाह्य किंवा अमान्य आहे.');
+      }
+    } catch (loadError) {
+      setSellerError(loadError.message || 'विक्रेता माहिती मिळाली नाही.');
+    } finally {
+      setSellerLoading(false);
+    }
+  }, [request, sellerListingTokens]);
+
   useEffect(() => {
     loadListings();
   }, [loadListings]);
+
+  useEffect(() => {
+    if (view === 'seller') loadSellerListings();
+  }, [view, loadSellerListings]);
 
   const availableCategories = useMemo(() => Array.from(new Set(
     listings.map(listing => listing.category).filter(Boolean)
@@ -365,6 +424,7 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
         latitude: Number(current.latitude),
         longitude: Number(current.longitude),
         quantity: Number(current.quantity),
+        pricePerUnit: Number(current.pricePerUnit),
         photoUrl: photoUrl || null
       };
       const response = await request('/marketplace/listings', {
@@ -376,13 +436,20 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
         const body = await response.json().catch(() => ({}));
         throw new Error(body.message || 'विक्रीची नोंद जतन करता आली नाही. भरलेली माहिती तपासा.');
       }
+      const created = await response.json();
+      const savedListing = created.listing;
+      setSellerListingTokens(currentTokens => ({
+        ...currentTokens,
+        [String(savedListing.id)]: created.sellerManagementToken
+      }));
       setForm(EMPTY_FORM);
       formRef.current = EMPTY_FORM;
       setPhoto(null);
       photoRef.current = null;
-      setView('browse');
+      setView('seller');
       await loadListings(token);
-      setActiveListing((await response.json()).id);
+      setActiveListing(savedListing.id);
+      setSellerNotice('विक्रीची नोंद जतन झाली. या ब्राउझरमधील “माझे व्यवहार” विभागातून साठा आणि खरेदीच्या विनंत्या व्यवस्थापित करा.');
     } catch (saveError) {
       setError(saveError.message || 'विक्रीची नोंद जतन करता आली नाही.');
     } finally {
@@ -393,6 +460,89 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
   async function submitListing(event) {
     event.preventDefault();
     await saveListing();
+  }
+
+  function openPurchaseRequest(listing) {
+    setPurchaseListing(listing);
+    setPurchaseReceipt('');
+    setPurchaseError('');
+    setPurchaseForm({ buyerName: '', buyerPhone: '', quantity: '', fulfillment: 'PICKUP', note: '' });
+  }
+
+  async function submitPurchaseRequest(event) {
+    event.preventDefault();
+    if (!purchaseListing) return;
+    setPurchaseSaving(true);
+    setPurchaseError('');
+    try {
+      const response = await request(`/marketplace/listings/${purchaseListing.id}/purchase-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...purchaseForm, quantity: Number(purchaseForm.quantity) })
+      }, null);
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.message || 'खरेदीची विनंती पाठवता आली नाही. उपलब्ध प्रमाण तपासा.');
+      setPurchaseReceipt(body.message || 'खरेदीची विनंती विक्रेत्याकडे पाठवली आहे.');
+    } catch (purchaseError) {
+      setPurchaseError(purchaseError.message || 'खरेदीची विनंती पाठवता आली नाही.');
+    } finally {
+      setPurchaseSaving(false);
+    }
+  }
+
+  function updateSellerListing(id, field, value) {
+    setSellerListings(current => current.map(row => row.listing.id === id
+      ? { ...row, listing: { ...row.listing, [field]: value } }
+      : row));
+  }
+
+  async function saveSellerListing(row) {
+    const { listing, sellerToken } = row;
+    setSellerSavingId(listing.id);
+    setSellerError('');
+    setSellerNotice('');
+    try {
+      const response = await request(`/marketplace/seller/listings/${listing.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-Seller-Token': sellerToken },
+        body: JSON.stringify({
+          pricePerUnit: Number(listing.pricePerUnit),
+          quantity: Number(listing.quantity),
+          available: Boolean(listing.available)
+        })
+      }, null);
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.message || 'विक्रीची माहिती जतन करता आली नाही.');
+      setSellerListings(current => current.map(item => item.listing.id === listing.id ? { ...item, listing: body } : item));
+      await loadListings();
+      setSellerNotice('किंमत, साठा आणि उपलब्धतेची माहिती जतन झाली.');
+    } catch (saveError) {
+      setSellerError(saveError.message || 'विक्रीची माहिती जतन करता आली नाही.');
+    } finally {
+      setSellerSavingId(null);
+    }
+  }
+
+  async function updatePurchaseStatus(row, purchaseRequest, status) {
+    setSellerError('');
+    setSellerNotice('');
+    try {
+      const response = await request(`/marketplace/seller/listings/${row.listing.id}/purchase-requests/${purchaseRequest.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-Seller-Token': row.sellerToken },
+        body: JSON.stringify({ status })
+      }, null);
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.message || 'विनंतीची स्थिती बदलता आली नाही.');
+      }
+      const updatedRequest = await response.json();
+      setSellerListings(current => current.map(item => item.listing.id === row.listing.id
+        ? { ...item, requests: item.requests.map(requestItem => requestItem.id === updatedRequest.id ? updatedRequest : requestItem) }
+        : item));
+    } catch (statusError) {
+      setSellerError(statusError.message || 'विनंतीची स्थिती बदलता आली नाही.');
+    }
   }
 
   async function signIn(event) {
@@ -444,6 +594,15 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
     return `${Number(listing.quantity).toLocaleString('mr-IN', { maximumFractionDigits: 2 })} ${unit}`;
   }
 
+  function formatPrice(price, unit) {
+    const unitLabel = UNITS.find(([value]) => value === unit)?.[1] || unit;
+    return `₹${Number(price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / ${unitLabel}`;
+  }
+
+  function requestStatusLabel(status) {
+    return ({ PENDING: 'प्रलंबित', ACCEPTED: 'स्वीकारली', DECLINED: 'नाकारली', COMPLETED: 'पूर्ण' })[status] || status;
+  }
+
   const phoneDigits = contact?.phone.replace(/\D/g, '') || '';
 
   return <div className="market-page" lang="mr">
@@ -459,6 +618,7 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
     <div className="market-actions" role="tablist" aria-label="शेतकरी बाजार विभाग">
       <button type="button" role="tab" aria-selected={view === 'browse'} className={view === 'browse' ? 'active' : ''} onClick={() => setView('browse')}><Search size={16}/> शेतमाल शोधा</button>
       <button type="button" role="tab" aria-selected={view === 'register'} className={view === 'register' ? 'active' : ''} onClick={() => { setError(''); setView('register'); }}><PackagePlus size={16}/> माझा शेतमाल नोंदवा</button>
+      <button type="button" role="tab" aria-selected={view === 'seller'} className={view === 'seller' ? 'active' : ''} onClick={() => { setError(''); setView('seller'); }}><ClipboardList size={16}/> माझे व्यवहार</button>
     </div>
 
     {error && <div className="market-message market-error" role="alert">{error}</div>}
@@ -509,15 +669,21 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
                 <div className="market-listing-content">
                   <div className="market-listing-heading"><span>{listing.category}</span>{listing.distance !== null&&<small>{listing.distance < 1 ? `${Math.round(listing.distance*1000).toLocaleString('mr-IN')} मी` : `${listing.distance.toLocaleString('mr-IN',{maximumFractionDigits:1})} किमी`}</small>}<button type="button" className={`market-favorite-button ${favoriteIds.has(String(listing.id)) ? 'saved' : ''}`} aria-label={favoriteIds.has(String(listing.id)) ? 'आवडत्यामधून काढा' : 'आवडत्यात जतन करा'} aria-pressed={favoriteIds.has(String(listing.id))} onClick={event => toggleFavorite(listing.id, event)}><Heart size={14} fill={favoriteIds.has(String(listing.id)) ? 'currentColor' : 'none'}/></button></div>
                   <h3>{listing.productName}</h3><p className="market-crop-type">{listing.cropType}</p>
-                  <p className="market-stock">{formatQuantity(listing)} उपलब्ध</p>
+                  <p className={`market-stock ${listing.available === false ? 'unavailable' : ''}`}>{listing.available === false ? 'सध्या उपलब्ध नाही' : `${formatQuantity(listing)} उपलब्ध`}</p>
+                  <p className="market-price">{listing.pricePerUnit == null ? 'किंमत उपलब्ध नाही' : formatPrice(listing.pricePerUnit, listing.unit)}</p>
                   <div className="market-seller"><UserRound size={13}/><b>{listing.sellerName}</b></div>
                   <p className="market-address"><MapPin size={13}/>{listing.address}</p>
+                  <div className="market-listing-actions">
+                    {listing.pricePerUnit != null && listing.available !== false
+                      ? <button type="button" className="market-buy-button" onClick={event => { event.stopPropagation(); openPurchaseRequest(listing); }}><ShoppingBag size={14}/> खरेदीची विनंती</button>
+                      : <button type="button" className="market-buy-button" disabled><ShoppingBag size={14}/> खरेदी उपलब्ध नाही</button>}
                   <button type="button" className="market-contact-button" onClick={event => { event.stopPropagation(); fetchContact(listing.id); }}><Phone size={14}/> संपर्क मिळवा</button>
+                  </div>
                 </div>
               </article>)}</div>}
         </section>
       </div>
-    </> : <section className="market-form-card">
+    </> : view === 'register' ? <section className="market-form-card">
       <div className="market-card-heading"><div><span>विक्रेत्याची माहिती</span><h2>तुमचा उपलब्ध शेतमाल जोडा</h2></div><div className="market-private-badge"><ShieldCheck size={14}/> संपर्क फक्त प्रवेशानंतर</div></div>
       <p className="market-form-intro">तुमची विक्रीची माहिती आणि अचूक पत्ता नोंदवा. नकाशावरील स्थान तुमच्या ब्राउझरमधून घ्या किंवा निर्देशांक भरा.</p>
       <form className="market-form" onSubmit={submitListing}>
@@ -545,6 +711,7 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
             <label className="market-field"><span>उपलब्ध प्रमाण *</span><input name="quantity" type="number" min="0.01" max="1000000000" step="any" value={form.quantity} onChange={updateField} required placeholder="उदा. ५०"/></label>
             <label className="market-field"><span>एकक</span><select name="unit" value={form.unit} onChange={updateField}>{UNITS.map(([unit,label])=><option value={unit} key={unit}>{label}</option>)}</select></label>
           </div>
+          <label className="market-field"><span>प्रति एकक किंमत (₹) *</span><input name="pricePerUnit" type="number" min="0.01" max="9999999999.99" step="0.01" value={form.pricePerUnit} onChange={updateField} required placeholder="उदा. ८०.००"/><small>खरेदीदारांना ही किंमत दिसेल.</small></label>
           <label className="market-field market-field-wide"><span>शेतमालाची माहिती <small>ऐच्छिक</small></span><textarea name="description" value={form.description} onChange={updateField} maxLength={1000} placeholder="काढणीची तारीख, उपलब्धता किंवा इतर तपशील"/></label>
         </div>
         <div className="market-photo-picker">
@@ -552,10 +719,59 @@ function MarketplacePanel({ apiBase, auth, onAuthenticated, onUnauthorized }) {
           {previewUrl ? <div className="market-photo-preview"><img src={previewUrl} alt="शेतमालाचा निवडलेला फोटो"/><button type="button" onClick={() => setPhoto(null)} aria-label="फोटो काढा"><X size={16}/></button></div>
             : <button type="button" className="market-upload-button" onClick={() => fileInputRef.current?.click()}><Upload size={17}/> शेतमालाचा फोटो जोडा <small>१० MB पर्यंत · ऐच्छिक</small></button>}
         </div>
-        <div className="market-auth-note"><ShieldCheck size={15}/> शेतमालाची नोंद थेट जतन होईल. तुमचा फोन नंबर फक्त अॅप प्रवेश केलेल्या खरेदीदारालाच दिसेल.</div>
+        <div className="market-auth-note"><ShieldCheck size={15}/> तुमचा फोन नंबर फक्त अॅप प्रवेश केलेल्या खरेदीदारालाच दिसेल. विक्रेता नियंत्रणाची सुरक्षित माहिती याच ब्राउझरमध्ये जतन होईल.</div>
         <button className="market-submit-button" type="submit" disabled={saving}>{saving?'नोंद जतन होत आहे…':<><PackagePlus size={17}/> विक्रीची नोंद जतन करा</>}</button>
       </form>
+    </section> : <section className="market-seller-dashboard">
+      <div className="market-form-card market-seller-intro">
+        <div className="market-card-heading"><div><span>विक्रेता विभाग</span><h2>माझे व्यवहार</h2></div><button type="button" className="market-location-button" onClick={loadSellerListings}><ArrowDownWideNarrow size={15}/> ताजे करा</button></div>
+        <p>तुमचा साठा आणि खरेदीदारांच्या विनंत्या येथे व्यवस्थापित करा. विक्रीची नोंद करताना नियंत्रण माहिती या ब्राउझरमध्ये सुरक्षितपणे जतन होते.</p>
+      </div>
+      {sellerError && <div className="market-message market-error" role="alert">{sellerError}</div>}
+      {sellerNotice && <div className="market-message market-success" role="status"><Check size={15}/>{sellerNotice}</div>}
+      {sellerLoading ? <div className="market-empty">विक्रेता माहिती लोड होत आहे…</div>
+        : sellerListings.length === 0 ? <div className="market-empty market-seller-empty"><ClipboardList size={30}/><b>या ब्राउझरमध्ये विक्रीची नोंद नाही</b><span>नोंदणी केल्यानंतर तुमचा शेतमाल आणि खरेदीच्या विनंत्या येथे दिसतील. जुनी नोंद असल्यास तिचे नियंत्रण तपशील या ब्राउझरमध्ये उपलब्ध नसू शकतात.</span><button type="button" className="market-submit-button" onClick={() => setView('register')}><PackagePlus size={16}/> शेतमाल नोंदवा</button></div>
+          : <div className="market-seller-list">{sellerListings.map(row => <article className="market-seller-card" key={row.listing.id}>
+            <div className="market-card-heading"><div><span>{row.listing.category}</span><h2>{row.listing.productName} · {row.listing.cropType}</h2></div><span className={`market-availability ${row.listing.available ? 'available' : ''}`}>{row.listing.available ? 'विक्री सुरू' : 'बंद'}</span></div>
+            <div className="market-seller-controls">
+              <label className="market-field"><span>किंमत (₹ / {UNITS.find(([value]) => value === row.listing.unit)?.[1] || row.listing.unit})</span><input type="number" min="0.01" max="9999999999.99" step="0.01" value={row.listing.pricePerUnit ?? ''} onChange={event => updateSellerListing(row.listing.id, 'pricePerUnit', event.target.value)}/></label>
+              <label className="market-field"><span>उपलब्ध प्रमाण ({UNITS.find(([value]) => value === row.listing.unit)?.[1] || row.listing.unit})</span><input type="number" min="0" max="1000000000" step="any" value={row.listing.quantity} onChange={event => updateSellerListing(row.listing.id, 'quantity', event.target.value)}/></label>
+              <label className="market-availability-toggle"><input type="checkbox" checked={Boolean(row.listing.available)} onChange={event => updateSellerListing(row.listing.id, 'available', event.target.checked)}/> खरेदीसाठी उपलब्ध</label>
+              <button type="button" className="market-submit-button" disabled={sellerSavingId === row.listing.id} onClick={() => saveSellerListing(row)}>{sellerSavingId === row.listing.id ? 'जतन होत आहे…' : 'बदल जतन करा'}</button>
+            </div>
+            <div className="market-request-heading"><div><ClipboardList size={16}/><h3>खरेदीच्या विनंत्या</h3></div><span>{row.requests.length.toLocaleString('mr-IN')}</span></div>
+            {!row.requests.length ? <p className="market-no-requests">अजून खरेदीची विनंती आलेली नाही.</p> : <div className="market-request-list">{row.requests.map(purchaseRequest => <div className="market-request-card" key={purchaseRequest.id}>
+              <div className="market-request-top"><b>{purchaseRequest.buyerName}</b><span className={`market-request-status status-${purchaseRequest.status.toLowerCase()}`}>{requestStatusLabel(purchaseRequest.status)}</span></div>
+              <p>{Number(purchaseRequest.quantity).toLocaleString('mr-IN')} {UNITS.find(([value]) => value === purchaseRequest.unit)?.[1] || purchaseRequest.unit} · {purchaseRequest.fulfillment === 'DELIVERY' ? 'पोहोचवणे हवे' : 'स्वतः घेऊन जाणार'}</p>
+              <a href={`tel:${purchaseRequest.buyerPhone}`} className="market-request-phone"><Phone size={13}/>{purchaseRequest.buyerPhone}</a>
+              {purchaseRequest.note && <p className="market-request-note">“{purchaseRequest.note}”</p>}
+              <div className="market-request-actions">
+                {purchaseRequest.status === 'PENDING' && <><button type="button" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'ACCEPTED')}>स्वीकारा</button><button type="button" className="decline" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'DECLINED')}>नाकारा</button></>}
+                {purchaseRequest.status === 'ACCEPTED' && <button type="button" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'COMPLETED')}>व्यवहार पूर्ण करा</button>}
+              </div>
+            </div>)}</div>}
+          </article>)}</div>}
     </section>}
+
+    {purchaseListing && <div className="market-modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setPurchaseListing(null); }}>
+      <form className="market-purchase-modal" onSubmit={submitPurchaseRequest}>
+        <button type="button" className="market-modal-close" onClick={() => setPurchaseListing(null)} aria-label="बंद करा"><X size={18}/></button>
+        <div className="market-login-icon"><ShoppingBag size={21}/></div><span>खरेदीची विनंती</span><h2>{purchaseListing.productName}</h2>
+        <p className="market-purchase-price">{formatPrice(purchaseListing.pricePerUnit, purchaseListing.unit)} · {formatQuantity(purchaseListing)} साठा</p>
+        {purchaseReceipt ? <><div className="market-message market-success" role="status"><Check size={16}/>{purchaseReceipt}</div><p>विक्रेता तुमच्याशी दिलेल्या फोन नंबरवर संपर्क साधेल.</p><button type="button" className="market-submit-button" onClick={() => setPurchaseListing(null)}>पूर्ण</button></>
+          : <>
+            <label className="market-field"><span>तुमचे नाव *</span><input value={purchaseForm.buyerName} onChange={event => setPurchaseForm(current => ({ ...current, buyerName: event.target.value }))} maxLength={100} required autoComplete="name"/></label>
+            <label className="market-field"><span>मोबाइल नंबर *</span><input value={purchaseForm.buyerPhone} onChange={event => setPurchaseForm(current => ({ ...current, buyerPhone: event.target.value }))} maxLength={18} inputMode="tel" autoComplete="tel" required placeholder="+919876543210"/></label>
+            <label className="market-field"><span>खरेदीचे प्रमाण *</span><input type="number" min="0.001" max={purchaseListing.quantity} step="0.001" value={purchaseForm.quantity} onChange={event => setPurchaseForm(current => ({ ...current, quantity: event.target.value }))} required/><small>कमाल {formatQuantity(purchaseListing)}</small></label>
+            {purchaseForm.quantity && Number(purchaseForm.quantity) > 0 && <p className="market-purchase-total">अंदाजे रक्कम: <b>₹{(Number(purchaseForm.quantity) * Number(purchaseListing.pricePerUnit)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></p>}
+            <label className="market-field"><span>माल कसा हवा? *</span><select value={purchaseForm.fulfillment} onChange={event => setPurchaseForm(current => ({ ...current, fulfillment: event.target.value }))}><option value="PICKUP">मी घेऊन जाईन</option><option value="DELIVERY">पोहोचवून हवा</option></select></label>
+            <label className="market-field"><span>विक्रेत्यासाठी संदेश <small>ऐच्छिक</small></span><textarea maxLength={500} value={purchaseForm.note} onChange={event => setPurchaseForm(current => ({ ...current, note: event.target.value }))} placeholder="सोयीची वेळ, ठिकाण किंवा इतर माहिती"/></label>
+            {purchaseError && <div className="market-message market-error" role="alert">{purchaseError}</div>}
+            <p className="market-purchase-privacy"><ShieldCheck size={14}/> तुमचा नंबर फक्त या विनंतीच्या विक्रेत्याला दिसेल.</p>
+            <button className="market-submit-button" type="submit" disabled={purchaseSaving}>{purchaseSaving ? 'विनंती पाठवत आहे…' : <><ShoppingBag size={16}/> विनंती विक्रेत्याकडे पाठवा</>}</button>
+          </>}
+      </form>
+    </div>}
 
     {loginOpen&&<div className="market-modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setLoginOpen(false)}}>
       <form className="market-login-modal" onSubmit={signIn}>
