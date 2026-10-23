@@ -680,6 +680,125 @@ select:focus-visible {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* Make tab changes feel like navigation while keeping the layout in place. */
+.main.tab-entering > .welcome,
+.main.tab-entering > .stats,
+.main.tab-entering > .entries-head,
+.main.tab-entering > .entry-list,
+.main.tab-entering > .empty,
+.main.tab-entering > .info-page,
+.main.tab-entering > .assistant-page,
+.main.tab-entering > .market-page,
+.main.tab-entering > .reminder-page,
+.main.tab-entering > .consultant-page,
+.main.tab-entering > .account-admin-page,
+.main.tab-entering > div:not([hidden]) > .assistant-page {
+  animation: tab-swoop .46s cubic-bezier(.18, .78, .22, 1) backwards;
+}
+
+.animated-metric {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  animation: metric-glow .7s ease-out both;
+}
+
+.back-to-top {
+  position: fixed;
+  right: 25px;
+  bottom: 24px;
+  z-index: 30;
+  min-height: 43px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, .35);
+  border-radius: 99px;
+  background: linear-gradient(115deg, #347848, #245b35);
+  box-shadow: 0 9px 24px rgba(27, 75, 39, .28);
+  color: #fff;
+  font: 700 10px 'DM Sans', 'Noto Sans Devanagari', sans-serif;
+  cursor: pointer;
+  animation: back-top-enter .28s cubic-bezier(.18, .78, .22, 1) backwards;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.back-to-top:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 30px rgba(27, 75, 39, .34);
+}
+
+.back-to-top:active {
+  transform: translateY(-1px) scale(.96);
+}
+
+.market-favorite-button svg {
+  transition: transform .2s cubic-bezier(.2, .8, .2, 1);
+}
+
+.market-favorite-button:hover svg {
+  transform: scale(1.17);
+}
+
+.market-favorite-button[aria-pressed='true'] svg {
+  animation: heart-pop .34s cubic-bezier(.18, .78, .22, 1);
+}
+
+.reminder-week-days > button,
+.reminder-filters > button,
+.market-actions > button,
+.consultant-clear-filters {
+  transition: transform .17s ease, border-color .17s ease, background .17s ease, box-shadow .17s ease;
+}
+
+.reminder-week-days > button:hover,
+.reminder-filters > button:hover,
+.market-actions > button:hover,
+.consultant-clear-filters:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(42, 84, 45, .09);
+}
+
+.reminder-week-days > button.selected {
+  animation: select-pop .25s cubic-bezier(.18, .78, .22, 1);
+}
+
+@keyframes tab-swoop {
+  from { opacity: 0; transform: translateY(11px) scale(.995); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes metric-glow {
+  0% { color: #79a56e; text-shadow: 0 0 15px rgba(80, 139, 74, .25); }
+  100% { color: inherit; text-shadow: none; }
+}
+
+@keyframes back-top-enter {
+  from { opacity: 0; transform: translateY(12px) scale(.92); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes heart-pop {
+  0% { transform: scale(.75); }
+  65% { transform: scale(1.32); }
+  100% { transform: scale(1); }
+}
+
+@keyframes select-pop {
+  0% { transform: scale(.96); }
+  70% { transform: scale(1.035); }
+  100% { transform: scale(1); }
+}
+
+@media (max-width: 700px) {
+  .back-to-top {
+    right: 15px;
+    bottom: 17px;
+    min-height: 40px;
+    padding: 0 12px;
+  }
+}
+
 @media (max-width: 1050px) {
   .brand { border-radius: 13px; padding: 4px; }
   .sidebar-tip { border-radius: 12px; }
