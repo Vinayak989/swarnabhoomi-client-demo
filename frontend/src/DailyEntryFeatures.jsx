@@ -1,0 +1,191 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { Activity, Bug, Droplets, ImagePlus, Leaf, Sprout, Trash2 } from 'lucide-react';
+import { Bell, LoaderCircle } from 'lucide-react';
+import './dailyEntryFeatures.css';
+
+const templates = [
+  { label: 'पाणी दिले', workDone: 'पाणी दिले', applicationKind: '', waterLitres: '' },
+  { label: 'फवारणी', workDone: 'फवारणी केली', applicationKind: 'कीड/रोग नियंत्रण' },
+  { label: 'सेंद्रिय खत', workDone: 'सेंद्रिय खत दिले', applicationKind: 'सेंद्रिय खत' },
+  { label: 'काढणी', workDone: 'काढणी केली', applicationKind: '' }
+];
+
+export function QuickEntryTemplates({ onApply }) {
+  return <section className="daily-feature-card quick-entry-card"><div className="daily-feature-title"><Sprout size={17}/><div><b>झटपट नोंद नमुने</b><small>सामान्य कामासाठी एक टॅप करा</small></div></div><div className="quick-entry-buttons">{templates.map(template => <button type="button" key={template.label} onClick={() => onApply(template)}>{template.label}</button>)}</div></section>;
+}
+
+export function PlotSeasonFields({ form, set }) {
+  return <div className="form-grid three plot-season-fields">
+    <label className="field"><span className="field-label">हंगाम</span><select value={form.seasonName} onChange={e => set('seasonName', e.target.value)}><option value="">हंगाम निवडा...</option><option>खरीप</option><option>रब्बी</option><option>उन्हाळी</option><option>बारमाही</option><option>इतर</option></select></label>
+    <label className="field"><span className="field-label">प्लॉटचे क्षेत्र (एकर)</span><input type="number" min="0" step="any" value={form.plotAreaAcres} onChange={e => set('plotAreaAcres', e.target.value)} placeholder="उदा. १.५"/></label>
+  </div>;
+}
+
+export function InputLogFields({ form, set }) {
+  return <section className="form-section daily-structured-fields"><h3><Droplets size={18}/> पाणी व वापरलेले निविष्ठा</h3><div className="form-grid three">
+    <label className="field"><span className="field-label">पाण्याचे प्रमाण (लिटर)</span><input type="number" min="0" step="any" value={form.waterLitres} onChange={e => set('waterLitres', e.target.value)} placeholder="उदा. ५००"/></label>
+    <label className="field"><span className="field-label">निविष्ठेचा प्रकार</span><select value={form.applicationKind} onChange={e => set('applicationKind', e.target.value)}><option value="">निवडा...</option><option>सेंद्रिय खत</option><option>रासायनिक खत</option><option>कीड/रोग नियंत्रण</option><option>तण नियंत्रण</option><option>बीजप्रक्रिया</option><option>इतर</option></select></label>
+    <label className="field"><span className="field-label">नाव / उत्पादन</span><input value={form.applicationName} onChange={e => set('applicationName', e.target.value)} placeholder="उदा. जीवामृत"/></label>
+    <label className="field"><span className="field-label">वापरलेले प्रमाण</span><input type="number" min="0" step="any" value={form.applicationAmount} onChange={e => set('applicationAmount', e.target.value)} placeholder="उदा. २"/></label>
+    <label className="field"><span className="field-label">एकक</span><select value={form.applicationUnit} onChange={e => set('applicationUnit', e.target.value)}><option value="">निवडा...</option><option>किलो</option><option>ग्रॅम</option><option>लिटर</option><option>मिली</option><option>पिशवी</option><option>बाटली</option></select></label>
+  </div></section>;
+}
+
+export function IssueTrackingFields({ form, set }) {
+  return <section className="form-section issue-tracking-fields"><h3><Bug size={18}/> कीड / रोग व पुढील पाहणी</h3><div className="form-grid three">
+    <label className="field"><span className="field-label">कीड किंवा रोग</span><input value={form.pestDisease} onChange={e => set('pestDisease', e.target.value)} placeholder="लक्षण किंवा कीडीचे नाव"/></label>
+    <label className="field"><span className="field-label">तीव्रता</span><select value={form.issueSeverity} onChange={e => set('issueSeverity', e.target.value)}><option value="">निवडा...</option><option>कमी</option><option>मध्यम</option><option>जास्त</option></select></label>
+    <label className="field"><span className="field-label">पुढील पाहणीची तारीख</span><input type="date" value={form.followUpDate} onChange={e => set('followUpDate', e.target.value)}/></label>
+  </div><label className="field"><span className="field-label">केलेला उपाय / निरीक्षण</span><textarea rows="2" value={form.intervention} onChange={e => set('intervention', e.target.value)} placeholder="उपाय, प्रमाण आणि पुढे काय तपासायचे ते लिहा"/></label></section>;
+}
+
+export function FollowUpReminderButton({ entry, apiFetch }) {
+  const storageKey = `swarnabhoomi-entry-followup-${entry.id}`;
+  const [createdId, setCreatedId] = useState(() => { try { return localStorage.getItem(storageKey) || ''; } catch { return ''; } });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  if (!entry.followUpDate) return null;
+  async function createReminder() {
+    setBusy(true); setError('');
+    try {
+      const now = new Date();
+      const selected = new Date(`${entry.followUpDate}T09:00:00`);
+      const scheduled = selected <= now ? new Date(now.getTime() + 60 * 60 * 1000) : selected;
+      const localDateTime = `${scheduled.getFullYear()}-${String(scheduled.getMonth()+1).padStart(2,'0')}-${String(scheduled.getDate()).padStart(2,'0')}T${String(scheduled.getHours()).padStart(2,'0')}:${String(scheduled.getMinutes()).padStart(2,'0')}:00`;
+      const subscriptionId = localStorage.getItem('swarnabhoomi-push-subscription-id');
+      const response = await apiFetch(`${(import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')}/api/reminders`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scheduledAt: localDateTime, reason: `पुढील पाहणी: ${entry.pestDisease || entry.intervention || 'पीक तपासा'}`, browserSubscriptionId: subscriptionId ? Number(subscriptionId) : null, cropOrPlot: entry.farmSection || '' })
+      });
+      if (!response.ok) throw new Error('स्मरणपत्र तयार झाले नाही.');
+      const reminder = await response.json();
+      setCreatedId(String(reminder.id));
+      try { localStorage.setItem(storageKey, String(reminder.id)); } catch { /* Reminder remains saved on the server. */ }
+    } catch { setError('स्मरणपत्र तयार झाले नाही. पुन्हा प्रयत्न करा.'); }
+    finally { setBusy(false); }
+  }
+  return <div className="follow-up-reminder">{createdId ? <span>स्मरणपत्र तयार झाले</span> : <button type="button" onClick={createReminder} disabled={busy}>{busy?<LoaderCircle className="spin" size={14}/>:<Bell size={14}/>} पाहणीची आठवण तयार करा</button>}{error&&<small role="status">{error}</small>}</div>;
+}
+
+function readReceiptUrls(value) {
+  try { const parsed = typeof value === 'string' ? JSON.parse(value || '[]') : value; return Array.isArray(parsed) ? parsed.filter(url => typeof url === 'string' && url) : []; }
+  catch { return []; }
+}
+
+function ReceiptPhoto({ url, apiFetch, onRemove }) {
+  const [image, setImage] = useState('');
+  useEffect(() => {
+    let active = true, objectUrl = '';
+    apiFetch(url).then(response => { if (!response.ok) throw Error(); return response.blob(); }).then(blob => {
+      if (active) { objectUrl = URL.createObjectURL(blob); setImage(objectUrl); }
+    }).catch(() => {});
+    return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [url, apiFetch]);
+  return <div className="receipt-thumb">{image ? <a href={image} target="_blank" rel="noreferrer" title="पावती मोठी पाहा"><img src={image} alt="खर्चाची पावती"/></a> : <span>पावती</span>}{onRemove&&<button type="button" onClick={onRemove} aria-label="पावती काढा"><Trash2 size={14}/></button>}</div>;
+}
+
+export function ReceiptUploader({ value, onChange, uploadFile, apiFetch, onError }) {
+  const [uploading, setUploading] = useState(false);
+  const urls = readReceiptUrls(value);
+  async function addFiles(files) {
+    setUploading(true);
+    try {
+      const next = [...urls];
+      for (const file of files) {
+        const url = await uploadFile(file);
+        if (url) next.push(url);
+      }
+      onChange(JSON.stringify(next));
+    } catch { onError?.(); }
+    finally { setUploading(false); }
+  }
+  return <section className="daily-feature-card receipt-card"><div className="daily-feature-title"><ImagePlus size={17}/><div><b>खर्चाच्या पावत्या</b><small>खत, बियाणे किंवा मजुरीची पावती जोडा</small></div></div><label className="receipt-picker"><input type="file" accept="image/*" multiple onChange={e => { const files = [...(e.target.files || [])]; if (files.length) addFiles(files); e.target.value = ''; }}/><ImagePlus size={17}/>{uploading ? 'फोटो अपलोड होत आहेत…' : 'पावतीचे फोटो निवडा'}</label>{urls.length > 0 && <div className="receipt-thumbs">{urls.map((url, index) => <ReceiptPhoto key={`${url}-${index}`} url={url} apiFetch={apiFetch} onRemove={() => onChange(JSON.stringify(urls.filter((_, itemIndex) => itemIndex !== index)))}/>)}</div>}</section>;
+}
+
+export function ReceiptGallery({ value, apiFetch }) {
+  const urls = readReceiptUrls(value);
+  if (!urls.length) return null;
+  return <div className="saved-receipts"><strong>जोडलेल्या पावत्या</strong><div className="receipt-thumbs">{urls.map((url, index) => <ReceiptPhoto key={`${url}-${index}`} url={url} apiFetch={apiFetch}/>)}</div></div>;
+}
+
+export async function uploadEntryPhoto(apiFetch, file) {
+  const data = new FormData();
+  data.append('file', file);
+  const response = await apiFetch(`${(import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')}/api/photos`, { method: 'POST', body: data });
+  if (!response.ok) throw new Error('Photo upload failed.');
+  return (await response.json()).url;
+}
+
+export function PlotSeasonComparison({ entries }) {
+  const [mode, setMode] = useState('plot');
+  const groups = useMemo(() => {
+    const result = new Map();
+    for (const entry of entries) {
+      const year = String(entry.entryDate || '').slice(0, 4) || '—';
+      const key = mode === 'plot' ? (entry.farmSection || 'शेताचा विभाग नोंदलेला नाही') : `${year} · ${entry.seasonName || 'हंगाम नोंदलेला नाही'}`;
+      if (!result.has(key)) result.set(key, { key, entries: [], cost: 0, sales: 0, production: 0, area: 0 });
+      const group = result.get(key);
+      group.entries.push(entry);
+      group.cost += Number(entry.laborCost || 0) + Number(entry.materialsCost || 0) + Number(entry.otherCost || 0);
+      group.sales += Number(entry.saleIncome || 0);
+      group.production += Number(entry.productionKg || 0);
+      if (!group.area && Number(entry.plotAreaAcres) > 0) group.area = Number(entry.plotAreaAcres);
+    }
+    return [...result.values()].sort((a, b) => (b.sales - b.cost) - (a.sales - a.cost));
+  }, [entries, mode]);
+  const money = value => `₹${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+  return <section className="daily-feature-card comparison-card"><header><div className="daily-feature-title"><Activity size={17}/><div><b>प्लॉट व हंगाम तुलना</b><small>नोंदींवरून खर्च, उत्पादन आणि विक्रीची तुलना</small></div></div><div className="comparison-toggle"><button type="button" className={mode === 'plot' ? 'selected' : ''} onClick={() => setMode('plot')}>प्लॉट</button><button type="button" className={mode === 'season' ? 'selected' : ''} onClick={() => setMode('season')}>हंगाम</button></div></header>
+    {groups.length ? <div className="comparison-table-wrap"><table className="comparison-table"><thead><tr><th>{mode === 'plot' ? 'पीक / प्लॉट' : 'वर्ष / हंगाम'}</th><th>खर्च</th><th>विक्री</th><th>उत्पादन</th><th>निव्वळ</th><th>एकरी उत्पादन</th></tr></thead><tbody>{groups.map(group => <tr key={group.key}><th>{group.key}</th><td>{money(group.cost)}</td><td>{money(group.sales)}</td><td>{group.production.toLocaleString('mr-IN', { maximumFractionDigits: 1 })} कि.</td><td className={group.sales - group.cost >= 0 ? 'positive' : 'negative'}>{money(group.sales - group.cost)}</td><td>{group.area ? `${(group.production / group.area).toLocaleString('mr-IN', { maximumFractionDigits: 1 })} कि./एकर` : 'क्षेत्र नोंदवा'}</td></tr>)}</tbody></table></div> : <p className="comparison-empty"><Leaf size={15}/> तुलना सुरू करण्यासाठी दैनिक नोंदी जोडा.</p>}
+  </section>;
+}
+
+export function OfflineQueueStatus() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    const update = () => {
+      try {
+        const queue = JSON.parse(localStorage.getItem('swarnabhoomi-offline-entry-queue-v1') || '[]');
+        setCount(Array.isArray(queue) ? queue.length : 0);
+      } catch { setCount(0); }
+    };
+    update();
+    window.addEventListener('swarnabhoomi-entry-queued', update);
+    window.addEventListener('swarnabhoomi-entries-synced', update);
+    window.addEventListener('storage', update);
+    return () => {
+      window.removeEventListener('swarnabhoomi-entry-queued', update);
+      window.removeEventListener('swarnabhoomi-entries-synced', update);
+      window.removeEventListener('storage', update);
+    };
+  }, []);
+  if (!count) return null;
+  return <div className="offline-status" role="status"><strong>{count.toLocaleString('mr-IN')} नोंदी समक्रमणाच्या प्रतीक्षेत</strong><button type="button" disabled={!navigator.onLine} onClick={() => window.dispatchEvent(new Event('swarnabhoomi-entry-queued'))}>आता समक्रमित करा</button></div>;
+}
+
+export function downloadEntriesCsv(entries) {
+  const columns = [
+    ['दिनांक', 'entryDate'], ['पीक / प्लॉट', 'farmSection'], ['हंगाम', 'seasonName'], ['क्षेत्र (एकर)', 'plotAreaAcres'],
+    ['हवामान', 'weather'], ['पिनकोड', 'pincode'], ['हवामान माहिती', 'weatherDetails'], ['काम', 'workDone'], ['साहित्य / खते', 'materials'],
+    ['पाणी (लिटर)', 'waterLitres'], ['निविष्ठेचा प्रकार', 'applicationKind'], ['निविष्ठा', 'applicationName'], ['प्रमाण', 'applicationAmount'], ['एकक', 'applicationUnit'],
+    ['कीड / रोग', 'pestDisease'], ['तीव्रता', 'issueSeverity'], ['केलेला उपाय', 'intervention'], ['पुढील पाहणी', 'followUpDate'],
+    ['मजूर संख्या', 'workerCount'], ['मजुरी खर्च (₹)', 'laborCost'], ['साहित्य खर्च (₹)', 'materialsCost'], ['इतर खर्च (₹)', 'otherCost'],
+    ['एकूण खर्च (₹)', entry => Number(entry.laborCost || 0) + Number(entry.materialsCost || 0) + Number(entry.otherCost || 0)],
+    ['उत्पादन (कि.)', 'productionKg'], ['विक्री (कि.)', 'soldKg'], ['विक्री उत्पन्न (₹)', 'saleIncome'],
+    ['निव्वळ उत्पन्न (₹)', entry => Number(entry.saleIncome || 0) - Number(entry.laborCost || 0) - Number(entry.materialsCost || 0) - Number(entry.otherCost || 0)],
+    ['पिकाची स्थिती', 'cropCondition'], ['माती निरीक्षण', 'soilNotes'], ['उद्याची कामे', 'tomorrowPlan'], ['विशेष नोंद', 'specialNote'],
+    ['शेत फोटो URL', 'photoUrl'], ['पावती फोटो URL', 'receiptPhotoUrls']
+  ];
+  const quote = value => {
+    let text = String(value ?? '');
+    if (/^[\s]*[=+\-@]/.test(text)) text = `'${text}`;
+    return `"${text.replaceAll('"', '""')}"`;
+  };
+  const rows = [columns.map(([label]) => quote(label)).join(','), ...entries.map(entry => columns.map(([, value]) => quote(typeof value === 'function' ? value(entry) : entry[value])).join(','))];
+  const blob = new Blob([`\uFEFF${rows.join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `swarnabhoomi-dainik-nondi-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+}

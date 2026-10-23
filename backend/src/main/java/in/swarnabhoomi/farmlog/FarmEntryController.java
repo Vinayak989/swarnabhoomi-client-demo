@@ -33,6 +33,10 @@ public class FarmEntryController {
     @GetMapping("/entries") public List<FarmEntry> entries() { return repo.findAllByOrderByEntryDateDescIdDesc(); }
     @PostMapping("/entries") public FarmEntry create(@RequestBody FarmEntry entry) {
         if (entry.getEntryDate() == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "दिनांक आवश्यक आहे");
+        if (entry.getClientRequestId() != null && !entry.getClientRequestId().isBlank()) {
+            FarmEntry existing = repo.findFirstByClientRequestId(entry.getClientRequestId()).orElse(null);
+            if (existing != null) return existing;
+        }
         return repo.save(entry);
     }
     @PutMapping("/entries/{id}") public FarmEntry update(@PathVariable Long id, @RequestBody FarmEntry entry) {

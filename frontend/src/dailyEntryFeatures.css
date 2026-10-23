@@ -1,0 +1,54 @@
+.daily-feature-card {
+  background: #fff;
+  border: 1px solid #e5eadf;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(44, 67, 37, .045);
+  padding: 16px;
+  margin: 14px 0;
+}
+.daily-feature-title { display: flex; align-items: center; gap: 10px; color: #376b3a; }
+.daily-feature-title > div { display: grid; gap: 2px; }
+.daily-feature-title b { color: #263a29; font-size: 14px; }
+.daily-feature-title small { color: #758074; font-size: 12px; }
+.quick-entry-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.quick-entry-buttons button, .comparison-toggle button, .receipt-picker {
+  border: 1px solid #dce5d8; border-radius: 10px; background: #f8faf6; color: #385d39;
+  padding: 8px 12px; font: inherit; font-size: 13px; cursor: pointer;
+}
+.quick-entry-buttons button:hover, .comparison-toggle button.selected { background: #eaf3e5; border-color: #9ebc91; }
+.daily-structured-fields, .issue-tracking-fields { margin: 18px 0; }
+.receipt-card { display: grid; gap: 12px; }
+.receipt-picker { display: inline-flex; width: fit-content; align-items: center; gap: 8px; }
+.receipt-picker input { display: none; }
+.receipt-thumbs { display: flex; flex-wrap: wrap; gap: 10px; }
+.receipt-thumb { width: 84px; height: 74px; position: relative; border-radius: 9px; overflow: hidden; background: #f1f3ef; display: grid; place-items: center; color: #687366; font-size: 11px; }
+.receipt-thumb img { width: 84px; height: 74px; object-fit: cover; }
+.receipt-thumb button { position: absolute; top: 3px; right: 3px; display: grid; place-items: center; border: 0; border-radius: 50%; width: 24px; height: 24px; background: #fff; color: #a34438; cursor: pointer; }
+.comparison-card { margin: 24px 0 18px; }
+.comparison-card > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.comparison-toggle { display: flex; gap: 5px; }
+.comparison-toggle button { padding: 6px 10px; }
+.comparison-table-wrap { overflow-x: auto; margin-top: 14px; }
+.comparison-table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 12px; }
+.comparison-table th, .comparison-table td { text-align: left; padding: 10px 9px; border-bottom: 1px solid #edf0e9; white-space: nowrap; }
+.comparison-table thead th { color: #6d796a; font-weight: 600; background: #f8faf6; }
+.comparison-table tbody th { color: #334a35; font-weight: 650; }
+.comparison-table .positive { color: #24733b; font-weight: 650; }
+.comparison-table .negative { color: #a44339; font-weight: 650; }
+.comparison-empty { display: flex; align-items: center; gap: 8px; color: #768173; font-size: 13px; margin: 14px 0 2px; }
+.offline-status { display: inline-flex; gap: 8px; align-items: center; color: #6b6551; font-size: 12px; }
+.offline-status button { border: 1px solid #dce5d8; background: #f8faf6; color: #385d39; border-radius: 8px; padding: 6px 9px; cursor: pointer; }
+.offline-status strong { color: #9b6a19; }
+.offline-save-toast { position: fixed; z-index: 2500; right: 20px; bottom: 20px; width: min(390px, calc(100vw - 32px)); padding: 14px 16px; border-radius: 12px; background: #243b28; color: #fff; box-shadow: 0 12px 34px rgba(0,0,0,.22); font-size: 14px; line-height: 1.55; }
+.saved-receipts { display: grid; gap: 8px; margin: 12px 0; }
+.saved-receipts > strong { color: #52624f; font-size: 12px; }
+.follow-up-reminder { margin-top: 12px; display: flex; align-items: center; gap: 8px; }
+.follow-up-reminder button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: 8px; border: 1px solid #d8e5d2; background: #f4f8f1; color: #376b3a; font: inherit; font-size: 12px; cursor: pointer; }
+.follow-up-reminder button:disabled { opacity: .65; cursor: wait; }
+.follow-up-reminder span { color: #28713b; font-size: 12px; }
+.follow-up-reminder small { color: #a34438; font-size: 12px; }
+@media (max-width: 700px) {
+  .daily-feature-card { padding: 13px; border-radius: 13px; }
+  .comparison-card > header { align-items: flex-start; flex-direction: column; }
+  .quick-entry-buttons button { flex: 1 1 42%; }
+}
