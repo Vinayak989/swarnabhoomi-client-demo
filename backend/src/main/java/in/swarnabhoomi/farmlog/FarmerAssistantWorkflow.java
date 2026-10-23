@@ -79,15 +79,18 @@ public class FarmerAssistantWorkflow {
     private final ObjectMapper objectMapper;
     private final String apiKey;
     private final String model;
+    private final String fallbackModel;
     private final CompiledGraph<AssistantState> assistantGraph;
 
     public FarmerAssistantWorkflow(RestClient.Builder restClientBuilder, ObjectMapper objectMapper,
             @Value("${app.gemini.api-key:}") String apiKey,
-            @Value("${app.gemini.model:gemini-2.5-flash}") String model) {
+            @Value("${app.gemini.model:gemini-3.8-flash}") String model,
+            @Value("${app.gemini.fallback-model:gemini-3.6-flash}") String fallbackModel) {
         this.restClient = restClientBuilder.baseUrl("https://generativelanguage.googleapis.com").build();
         this.objectMapper = objectMapper;
         this.apiKey = apiKey;
         this.model = model;
+        this.fallbackModel = fallbackModel;
         this.assistantGraph = createGraph();
     }
 
@@ -145,15 +148,10 @@ public class FarmerAssistantWorkflow {
         try {
             List<FarmerAssistantController.ChatMessage> messages = objectMapper.readValue(
                     state.messagesJson(), new TypeReference<>() { });
-            JsonNode response = restClient.post()
-                    .uri("/v1beta/models/{model}:generateContent", model)
-                    .header("x-goog-api-key", apiKey)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of(
-                            "systemInstruction", Map.of("parts", List.of(Map.of("text", systemPrompt))),
-                            "contents", toGeminiContents(messages)))
-                    .retrieve()
-                    .body(JsonNode.class);
+            Map<String, Object> requestBody = Map.of(
+                    "systemInstruction", Map.of("parts", List.of(Map.of("text", systemPrompt))),
+                    "contents", toGeminiContents(messages));
+            JsonNode response = requestGemini(requestBody);
 
             String answer = extractAnswer(response);
             if (answer.isBlank()) {
@@ -172,6 +170,28 @@ public class FarmerAssistantWorkflow {
         } catch (JsonProcessingException exception) {
             return failure(HttpStatus.BAD_REQUEST, "संभाषण वाचता आले नाही.");
         }
+    }
+
+    private JsonNode requestGemini(Map<String, Object> requestBody) {
+        try {
+            return requestGemini(model, requestBody);
+        } catch (RestClientResponseException primaryException) {
+            if (primaryException.getStatusCode().value() != 503 || model.equals(fallbackModel)) {
+                throw primaryException;
+            }
+            log.warn("Gemini model {} returned HTTP 503; trying fallback model {}", model, fallbackModel);
+            return requestGemini(fallbackModel, requestBody);
+        }
+    }
+
+    private JsonNode requestGemini(String modelName, Map<String, Object> requestBody) {
+        return restClient.post()
+                .uri("/v1beta/models/{model}:generateContent", modelName)
+                .header("x-goog-api-key", apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestBody)
+                .retrieve()
+                .body(JsonNode.class);
     }
 
     private List<Map<String, Object>> toGeminiContents(List<FarmerAssistantController.ChatMessage> messages) {
@@ -223,6 +243,10 @@ public class FarmerAssistantWorkflow {
         if (status == 429) {
             return failure(HttpStatus.SERVICE_UNAVAILABLE,
                     "Google Gemini ची विनंती मर्यादा पूर्ण झाली. थोड्या वेळाने पुन्हा प्रयत्न करा.");
+        }
+        if (status == 503) {
+            return failure(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Google Gemini सध्या उपलब्ध नाही. कृपया थोड्या वेळाने पुन्हा प्रयत्न करा.");
         }
         return failure(HttpStatus.BAD_GATEWAY, "Google Gemini HTTP " + status + " प्रतिसाद देत आहे.");
     }
