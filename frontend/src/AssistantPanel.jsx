@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bot, Camera, ImagePlus, LoaderCircle, Mic, MicOff, Send, Sprout, Volume2, X } from 'lucide-react';
+import { BellPlus, Bot, Camera, CheckCircle2, ImagePlus, LoaderCircle, Mic, MicOff, Send, Sprout, Volume2, X } from 'lucide-react';
 import './assistant.css';
 
 const MAX_ORIGINAL_PHOTO_SIZE = 10_000_000;
@@ -9,6 +9,23 @@ const suggestions = [
   'उन्हाळ्यात भाजीपाला किती वेळा पाणी द्यावे?',
   'मातीचा पोत सुधारण्यासाठी काय करता येईल?'
 ];
+
+function indiaDateTimeInput(date) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).formatToParts(date).map(part => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+function reminderReasonFromAnswer(answer) {
+  const firstLine = answer.split('\n').map(line => line.trim()).find(Boolean) || '';
+  return (firstLine.replace(/^[\s*#\-•\d.)]+/, '').trim() || 'शेतीचे काम तपासणे').slice(0, 180);
+}
+
+function money(value) {
+  return `₹${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+}
 
 async function preparePhoto(file) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
@@ -42,13 +59,18 @@ async function preparePhoto(file) {
   }
 }
 
-export default function AssistantPanel({ apiFetch, apiBase, messages, setMessages, onUnauthorized }) {
+export default function AssistantPanel({ apiFetch, apiBase, messages, setMessages, farmData, onUnauthorized }) {
   const [question, setQuestion] = useState('');
   const [photo, setPhoto] = useState(null);
   const [sending, setSending] = useState(false);
   const [listening, setListening] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+  const [useFarmContext, setUseFarmContext] = useState(true);
+  const [reminderDraft, setReminderDraft] = useState(null);
+  const [reminderSaving, setReminderSaving] = useState(false);
+  const [reminderError, setReminderError] = useState('');
+  const [savedReminderIndices, setSavedReminderIndices] = useState(() => new Set());
   const recognitionRef = useRef(null);
   const conversationRef = useRef(null);
   const cameraInputRef = useRef(null);
@@ -102,7 +124,10 @@ export default function AssistantPanel({ apiFetch, apiBase, messages, setMessage
       const response = await apiFetch(`${apiBase}/assistant/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: requestMessages })
+        body: JSON.stringify({
+          messages: requestMessages,
+          farmContext: useFarmContext && farmData?.summary?.recordCount ? farmData.context : null
+        })
       });
       const result = await response.json().catch(() => null);
       if (response.status === 401) {
@@ -183,6 +208,47 @@ export default function AssistantPanel({ apiFetch, apiBase, messages, setMessage
     void sendQuestion(question);
   }
 
+  function analyzeFarmRecords() {
+    if (!farmData?.summary?.recordCount || sending) return;
+    void sendQuestion('माझ्या शेतीच्या नोंदींचा आढावा द्या. नोंदवलेला खर्च, उत्पन्न आणि उत्पादन समजावून सांगा; अलीकडच्या नोंदींमध्ये दिसणारे बदल किंवा वारंवार दिसणाऱ्या अडचणी नमूद करा. अपुरी माहिती असल्यास स्पष्ट सांगा.', false, null);
+  }
+
+  function openReminder(answer, index) {
+    setReminderError('');
+    setReminderDraft({
+      sourceIndex: index,
+      scheduledAt: indiaDateTimeInput(new Date(Date.now() + 24 * 60 * 60 * 1000)),
+      reason: reminderReasonFromAnswer(answer)
+    });
+  }
+
+  async function saveReminder(event) {
+    event.preventDefault();
+    if (!reminderDraft) return;
+    setReminderSaving(true);
+    setReminderError('');
+    try {
+      const response = await apiFetch(`${apiBase}/reminders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scheduledAt: reminderDraft.scheduledAt, reason: reminderDraft.reason })
+      });
+      if (response.status === 401) {
+        onUnauthorized();
+        throw Error('पुन्हा लॉगिन करा.');
+      }
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw Error(result?.message || 'स्मरणपत्र जतन करता आले नाही.');
+      setSavedReminderIndices(current => new Set([...current, reminderDraft.sourceIndex]));
+      setReminderDraft(null);
+      setNotice('सल्ल्यावर आधारित स्मरणपत्र जतन झाले. ते स्मरणपत्रे विभागात दिसेल.');
+    } catch (exception) {
+      setReminderError(exception.message || 'स्मरणपत्र जतन करता आले नाही.');
+    } finally {
+      setReminderSaving(false);
+    }
+  }
+
   return <section className="assistant-page" lang="mr">
     <div className="assistant-hero">
       <div className="assistant-hero-icon"><Sprout size={24}/></div>
@@ -192,6 +258,23 @@ export default function AssistantPanel({ apiFetch, apiBase, messages, setMessage
         <p>मराठीत बोला किंवा लिहा. प्रश्नाच्या भाषेत सोपे मार्गदर्शन मिळवा.</p>
       </div>
     </div>
+    {farmData?.summary?.recordCount > 0 ? <section className="assistant-farm-card" aria-label="शेती नोंदींचा सारांश">
+      <div className="assistant-farm-heading">
+        <div><span>तुमच्या नोंदींवरून</span><h2>शेतीचा एकूण आढावा</h2></div>
+        <label className="assistant-context-toggle"><input type="checkbox" checked={useFarmContext} onChange={event => setUseFarmContext(event.target.checked)}/> AI उत्तरात नोंदी वापरा</label>
+      </div>
+      <div className="assistant-farm-metrics">
+        <div><span>नोंदी</span><b>{farmData.summary.recordCount.toLocaleString('mr-IN')}</b></div>
+        <div><span>एकूण खर्च</span><b>{money(farmData.summary.totalCostRs)}</b></div>
+        <div><span>विक्री उत्पन्न</span><b>{money(farmData.summary.totalSalesRs)}</b></div>
+        <div><span>उत्पादन</span><b>{Number(farmData.summary.totalProductionKg || 0).toLocaleString('mr-IN', { maximumFractionDigits: 1 })} किलो</b></div>
+        <div><span>निव्वळ शिल्लक</span><b>{money(farmData.summary.netRs)}</b></div>
+      </div>
+      <div className="assistant-farm-footer">
+        <span>{useFarmContext ? 'सल्ला मागताना एकूण आकडे आणि अलीकडच्या ५ नोंदी Gemini कडे जातील. दैनिक नोंदीतील फोटो, पिनकोड आणि स्थान पाठवले जात नाही; प्रश्नासोबत जोडलेला फोटो पाठवला जातो.' : 'तुमच्या नोंदींचा सारांश फक्त या स्क्रीनवर दिसतो; AI कडे पाठवला जाणार नाही.'}</span>
+        <button type="button" className="assistant-analysis-button" onClick={analyzeFarmRecords} disabled={!useFarmContext || sending}><Sprout size={15}/> नोंदींचे AI विश्लेषण</button>
+      </div>
+    </section> : <div className="assistant-farm-empty"><Sprout size={16}/> दैनिक नोंदी केल्यावर AI तुमच्या शेताच्या नोंदींवर आधारित उत्तर देऊ शकेल.</div>}
     <div className="assistant-card">
       <div className="assistant-chat" ref={conversationRef} aria-live="polite">
         {!messages.length && <div className="assistant-welcome">
@@ -209,7 +292,10 @@ export default function AssistantPanel({ apiFetch, apiBase, messages, setMessage
               <span>{message.role === 'assistant' ? 'AI शेती सहाय्यक' : 'तुम्ही'}</span>
               <p>{message.content}</p>
               {message.imageUrl && <img className="assistant-attachment" src={message.imageUrl} alt="तुमच्या प्रश्नासोबतचा शेताचा फोटो"/>}
-              {message.role === 'assistant' && <button type="button" className="assistant-speak" onClick={() => speak(message.content)} aria-label="उत्तर मोठ्याने ऐका" title="उत्तर मोठ्याने ऐका"><Volume2 size={15}/></button>}
+              {message.role === 'assistant' && <div className="assistant-message-actions">
+                <button type="button" className="assistant-speak" onClick={() => speak(message.content)} aria-label="उत्तर मोठ्याने ऐका" title="उत्तर मोठ्याने ऐका"><Volume2 size={15}/><span>ऐका</span></button>
+                <button type="button" className="assistant-reminder-button" disabled={savedReminderIndices.has(index)} onClick={() => openReminder(message.content, index)}>{savedReminderIndices.has(index) ? <CheckCircle2 size={14}/> : <BellPlus size={14}/>} {savedReminderIndices.has(index) ? 'स्मरणपत्र जतन झाले' : 'सल्ल्यावर स्मरणपत्र'}</button>
+              </div>}
             </div>
           </article>
         )}
@@ -233,7 +319,7 @@ export default function AssistantPanel({ apiFetch, apiBase, messages, setMessage
           disabled={sending}
         />
         <div className="assistant-composer-actions">
-          <span>प्रश्न व फोटो Google Gemini API कडे पाठवले जातात. महत्त्वाच्या निर्णयांपूर्वी स्थानिक कृषी तज्ज्ञांचा सल्ला घ्या.</span>
+          <span>प्रश्न व जोडलेला फोटो Google Gemini API कडे पाठवले जातात. नोंदींचा वापर सुरू असल्यास वर दिलेला सारांशही पाठवला जाईल. महत्त्वाच्या निर्णयांपूर्वी स्थानिक कृषी तज्ज्ञांचा सल्ला घ्या.</span>
           <div>
             <input ref={cameraInputRef} className="assistant-file-input" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={event => { void selectPhoto(event.target.files?.[0]); event.target.value = ''; }}/>
             <input ref={libraryInputRef} className="assistant-file-input" type="file" accept="image/jpeg,image/png,image/webp" onChange={event => { void selectPhoto(event.target.files?.[0]); event.target.value = ''; }}/>
@@ -249,5 +335,17 @@ export default function AssistantPanel({ apiFetch, apiBase, messages, setMessage
         </div>
       </form>
     </div>
+    {reminderDraft && <div className="assistant-reminder-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !reminderSaving) setReminderDraft(null); }}>
+      <form className="assistant-reminder-modal" onSubmit={saveReminder}>
+        <button type="button" className="assistant-reminder-close" onClick={() => setReminderDraft(null)} disabled={reminderSaving} aria-label="बंद करा"><X size={18}/></button>
+        <div className="assistant-reminder-icon"><BellPlus size={20}/></div>
+        <span>AI सल्ल्याची आठवण</span><h2>स्मरणपत्र तयार करा</h2>
+        <label>काम किंवा तपासणी<input value={reminderDraft.reason} onChange={event => setReminderDraft(current => ({ ...current, reason: event.target.value }))} maxLength={300} required/></label>
+        <label>तारीख आणि वेळ (भारतीय वेळ)<input type="datetime-local" min={indiaDateTimeInput(new Date())} value={reminderDraft.scheduledAt} onChange={event => setReminderDraft(current => ({ ...current, scheduledAt: event.target.value }))} required/></label>
+        {reminderError && <div className="assistant-error" role="alert">{reminderError}</div>}
+        <p>स्मरणपत्र जतन झाल्यावर ते स्मरणपत्रे विभागात दिसेल.</p>
+        <button type="submit" className="primary assistant-reminder-save" disabled={reminderSaving}>{reminderSaving ? <LoaderCircle className="spin" size={16}/> : <BellPlus size={16}/>} स्मरणपत्र जतन करा</button>
+      </form>
+    </div>}
   </section>;
 }

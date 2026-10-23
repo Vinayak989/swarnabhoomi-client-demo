@@ -18,6 +18,7 @@ public class FarmerAssistantController {
     private static final int MAX_MESSAGES = 12;
     private static final int MAX_MESSAGE_LENGTH = 2000;
     private static final int MAX_CONVERSATION_LENGTH = 8000;
+    private static final int MAX_FARM_CONTEXT_LENGTH = 6000;
     private static final int MAX_IMAGE_BYTES = 4_000_000;
     private static final int MAX_IMAGE_DATA_URL_LENGTH = 5_400_000;
 
@@ -31,7 +32,7 @@ public class FarmerAssistantController {
     public ChatResponse chat(@RequestBody ChatRequest request) {
         validate(request);
         validateImagePlacement(request.messages());
-        return new ChatResponse(assistantWorkflow.answer(request.messages()));
+        return new ChatResponse(assistantWorkflow.answer(request.messages(), request.farmContext()));
     }
 
     @ExceptionHandler(ResponseStatusException.class)
@@ -55,6 +56,7 @@ public class FarmerAssistantController {
             totalLength += message.content().length();
         }
         if (totalLength > MAX_CONVERSATION_LENGTH
+                || request.farmContext() != null && request.farmContext().length() > MAX_FARM_CONTEXT_LENGTH
                 || !"user".equals(request.messages().get(request.messages().size() - 1).role())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "संभाषण खूप मोठे आहे किंवा शेवटचा संदेश प्रश्न नाही.");
         }
@@ -95,7 +97,7 @@ public class FarmerAssistantController {
         }
     }
 
-    public record ChatRequest(List<ChatMessage> messages) {
+    public record ChatRequest(List<ChatMessage> messages, String farmContext) {
     }
 
     public record ChatMessage(String role, String content, String imageDataUrl) {
