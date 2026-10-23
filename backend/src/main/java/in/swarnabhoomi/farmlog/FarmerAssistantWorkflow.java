@@ -12,6 +12,8 @@ import org.bsc.langgraph4j.StateGraph;
 import org.bsc.langgraph4j.state.AgentState;
 import org.bsc.langgraph4j.state.Channel;
 import org.bsc.langgraph4j.state.Channels;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -35,6 +37,8 @@ import static org.bsc.langgraph4j.action.AsyncNodeAction.node_async;
 /** Runs text chat and crop-photo questions through a LangGraph4j workflow. */
 @Service
 public class FarmerAssistantWorkflow {
+    private static final Logger log = LoggerFactory.getLogger(FarmerAssistantWorkflow.class);
+
     private static final String SYSTEM_PROMPT = """
             You are a helpful agricultural assistant for farmers in India. Answer in the same language as the
             farmer's latest question. Be clear, practical, and concise. Ask a brief clarifying question when
@@ -89,6 +93,7 @@ public class FarmerAssistantWorkflow {
 
     public String answer(List<FarmerAssistantController.ChatMessage> messages) {
         if (apiKey.isBlank()) {
+            log.error("Farmer assistant is unavailable: GEMINI_API_KEY is not configured");
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                     "Google Gemini API सुरू करण्यासाठी GEMINI_API_KEY कॉन्फिगर करा.");
         }
@@ -157,8 +162,11 @@ public class FarmerAssistantWorkflow {
             }
             return Map.of(ANSWER, answer, ERROR_STATUS, 0, ERROR_MESSAGE, "");
         } catch (RestClientResponseException exception) {
+            log.warn("Gemini API returned HTTP {}", exception.getStatusCode().value());
             return geminiHttpFailure(exception.getStatusCode().value());
         } catch (ResourceAccessException exception) {
+            log.warn("Gemini API request failed due to connectivity: {}",
+                    exception.getMostSpecificCause().getClass().getSimpleName());
             return failure(HttpStatus.SERVICE_UNAVAILABLE,
                     "Google Gemini शी संपर्क होऊ शकला नाही. इंटरनेट कनेक्शन तपासून पुन्हा प्रयत्न करा.");
         } catch (JsonProcessingException exception) {

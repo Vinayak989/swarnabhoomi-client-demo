@@ -1,6 +1,8 @@
 package in.swarnabhoomi.farmlog;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,6 +32,12 @@ public class FarmerAssistantController {
         validate(request);
         validateImagePlacement(request.messages());
         return new ChatResponse(assistantWorkflow.answer(request.messages()));
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ChatErrorResponse> handleAssistantError(ResponseStatusException exception) {
+        return ResponseEntity.status(exception.getStatusCode())
+                .body(new ChatErrorResponse(exception.getReason()));
     }
 
     private void validate(ChatRequest request) {
@@ -94,5 +102,8 @@ public class FarmerAssistantController {
     }
 
     public record ChatResponse(String answer) {
+    }
+
+    public record ChatErrorResponse(String detail) {
     }
 }
