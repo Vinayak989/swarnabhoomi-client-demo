@@ -19,12 +19,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -86,7 +88,13 @@ public class FarmerAssistantWorkflow {
             @Value("${app.gemini.api-key:}") String apiKey,
             @Value("${app.gemini.model:gemini-3.8-flash}") String model,
             @Value("${app.gemini.fallback-model:gemini-3.6-flash}") String fallbackModel) {
-        this.restClient = restClientBuilder.baseUrl("https://generativelanguage.googleapis.com").build();
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Duration.ofSeconds(10));
+        requestFactory.setReadTimeout(Duration.ofSeconds(20));
+        this.restClient = restClientBuilder
+                .baseUrl("https://generativelanguage.googleapis.com")
+                .requestFactory(requestFactory)
+                .build();
         this.objectMapper = objectMapper;
         this.apiKey = apiKey;
         this.model = model;
@@ -180,6 +188,12 @@ public class FarmerAssistantWorkflow {
                 throw primaryException;
             }
             log.warn("Gemini model {} returned HTTP 503; trying fallback model {}", model, fallbackModel);
+            return requestGemini(fallbackModel, requestBody);
+        } catch (ResourceAccessException primaryException) {
+            if (model.equals(fallbackModel)) {
+                throw primaryException;
+            }
+            log.warn("Gemini model {} did not respond; trying fallback model {}", model, fallbackModel);
             return requestGemini(fallbackModel, requestBody);
         }
     }
