@@ -83,6 +83,7 @@ function ConsultantPanel({ apiBase, accountType = 'farmer', authToken, onUnautho
   )).sort((a, b) => a.localeCompare(b, 'mr-IN')), [consultants]);
 
   const hasConsultantFilters = Boolean(search.trim() || areaFilter || specialtyFilter.trim() || minimumExperience);
+  const canAddConsultant = accountType === 'consultant' || accountType === 'admin';
 
   async function register(event) {
     event.preventDefault();
@@ -104,7 +105,7 @@ function ConsultantPanel({ apiBase, accountType = 'farmer', authToken, onUnautho
       setConsultants(current => [result, ...current.filter(item => item.id !== result.id)].slice(0, 200));
       setForm(EMPTY_FORM);
       setShowForm(false);
-      setNotice('तुमची सल्लागार नोंदणी प्रकाशित झाली.');
+      setNotice(accountType === 'admin' ? 'सल्लागार प्रोफाइल प्रकाशित झाले.' : 'तुमची सल्लागार नोंदणी प्रकाशित झाली.');
     } catch (exception) {
       setError(exception.message || 'नोंदणी जतन करता आली नाही.');
     } finally {
@@ -147,20 +148,20 @@ function ConsultantPanel({ apiBase, accountType = 'farmer', authToken, onUnautho
       <div>
         <span className="consultant-eyebrow"><Sprout size={14}/> सेंद्रिय शेतीसाठी शेतकरी ते शेतकरी मार्गदर्शन</span>
         <h1>सेंद्रिय शेती सल्लागार</h1>
-        <p>{accountType === 'consultant' ? 'तुमचे सेंद्रिय शेतीचे मार्गदर्शन शेतकऱ्यांपर्यंत पोहोचवा.' : 'तुमच्या भागातील सल्लागारांचे कौशल्य, अनुभव आणि संपर्क तपशील पाहा.'}</p>
+        <p>{accountType === 'admin' ? 'सेंद्रिय सल्लागारांच्या प्रोफाइलची नोंदणी आणि व्यवस्थापन करा.' : accountType === 'consultant' ? 'तुमचे सेंद्रिय शेतीचे मार्गदर्शन शेतकऱ्यांपर्यंत पोहोचवा.' : 'तुमच्या भागातील सल्लागारांचे कौशल्य, अनुभव आणि संपर्क तपशील पाहा.'}</p>
       </div>
-      {accountType === 'consultant' && <button type="button" className="consultant-primary" onClick={() => { setShowForm(value => !value); setNotice(''); }}>
+      {canAddConsultant && <button type="button" className="consultant-primary" onClick={() => { setShowForm(value => !value); setNotice(''); }}>
         {showForm ? <X size={16}/> : <Plus size={16}/>}
-        {showForm ? 'फॉर्म बंद करा' : 'सल्लागार प्रोफाइल प्रकाशित करा'}
+        {showForm ? 'फॉर्म बंद करा' : accountType === 'admin' ? 'सल्लागार जोडा' : 'सल्लागार प्रोफाइल प्रकाशित करा'}
       </button>}
     </div>
 
     {error && <div className="consultant-message consultant-error" role="alert">{error}</div>}
     {notice && <div className="consultant-message consultant-success" role="status"><CheckCircle2 size={16}/>{notice}</div>}
 
-    {showForm && accountType === 'consultant' && <form className="consultant-form" onSubmit={register}>
+    {showForm && canAddConsultant && <form className="consultant-form" onSubmit={register}>
       <div className="consultant-section-heading">
-        <div><span>तुमची माहिती</span><h2>सल्लागार नोंदणी</h2></div>
+        <div><span>{accountType === 'admin' ? 'सल्लागाराची माहिती' : 'तुमची माहिती'}</span><h2>{accountType === 'admin' ? 'सल्लागार प्रोफाइल जोडा' : 'सल्लागार नोंदणी'}</h2></div>
         <UserRound size={20}/>
       </div>
       <div className="consultant-form-grid">
@@ -171,7 +172,7 @@ function ConsultantPanel({ apiBase, accountType = 'farmer', authToken, onUnautho
         <label className="consultant-field consultant-field-wide"><span>तज्ज्ञता <i>*</i></span><input value={form.expertise} onChange={event => setForm({ ...form, expertise: event.target.value })} maxLength={300} required placeholder="उदा. सेंद्रिय खते, कीड व्यवस्थापन, माती परीक्षण"/></label>
         <label className="consultant-field consultant-field-wide"><span>परिचय</span><textarea value={form.introduction} onChange={event => setForm({ ...form, introduction: event.target.value })} maxLength={800} rows="3" placeholder="तुमचे मार्गदर्शन कसे उपयुक्त ठरू शकते ते सांगा."/></label>
       </div>
-      <div className="consultant-form-footer"><span>* आवश्यक माहिती</span><button className="consultant-primary" type="submit" disabled={saving}>{saving ? <LoaderCircle className="consultant-spin" size={16}/> : <CheckCircle2 size={16}/>} नोंदणी प्रकाशित करा</button></div>
+      <div className="consultant-form-footer"><span>* आवश्यक माहिती</span><button className="consultant-primary" type="submit" disabled={saving}>{saving ? <LoaderCircle className="consultant-spin" size={16}/> : <CheckCircle2 size={16}/>} {accountType === 'admin' ? 'सल्लागार जोडा' : 'नोंदणी प्रकाशित करा'}</button></div>
     </form>}
 
     <div className="consultant-directory-head">

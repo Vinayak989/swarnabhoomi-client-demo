@@ -33,6 +33,9 @@ public class OrganicConsultantController {
     @PostMapping
     public ResponseEntity<ConsultantResponse> register(@RequestBody ConsultantRequest request,
             @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
+        if (!"admin".equals(user.getRole()) && !"consultant".equals(user.getRole())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "सल्लागार नोंदणीसाठी प्रशासक प्रवेश आवश्यक आहे.");
+        }
         validate(request);
         OrganicConsultant consultant = new OrganicConsultant();
         consultant.setOwner(user);
