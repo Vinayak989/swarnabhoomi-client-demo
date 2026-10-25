@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
-import { ArrowDownWideNarrow, Check, ClipboardList, Heart, LocateFixed, MapPin, Minus, PackagePlus, Phone, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, ShoppingCart, Trash2, Upload, UserRound, Wheat, X } from 'lucide-react';
+import { ArrowDownWideNarrow, Check, ClipboardList, FileDown, Heart, LocateFixed, MapPin, Minus, PackagePlus, Phone, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, ShoppingCart, Trash2, Upload, UserRound, Wheat, X } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import './marketplace.css';
 
@@ -40,6 +40,68 @@ function readCart(userId) {
   } catch {
     return [];
   }
+}
+
+function wrappedLines(context, value, maxWidth) {
+  const words = String(value || '—').split(/\s+/);
+  const lines = [];
+  let line = '';
+  words.forEach(word => {
+    const next = line ? `${line} ${word}` : word;
+    if (line && context.measureText(next).width > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else line = next;
+  });
+  if (line) lines.push(line);
+  return lines;
+}
+
+function receiptPdfBytes(canvas) {
+  const encoder = new TextEncoder();
+  const encodedJpeg = canvas.toDataURL('image/jpeg', 0.94).split(',')[1];
+  const binaryJpeg = window.atob(encodedJpeg);
+  const jpeg = new Uint8Array(binaryJpeg.length);
+  for (let index = 0; index < binaryJpeg.length; index++) jpeg[index] = binaryJpeg.charCodeAt(index);
+  const pageWidth = 595.28;
+  const pageHeight = 841.89;
+  const content = encoder.encode(`q\n${pageWidth} 0 0 ${pageHeight} 0 0 cm\n/Im0 Do\nQ\n`);
+  const objects = [
+    encoder.encode('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n'),
+    encoder.encode('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n'),
+    encoder.encode(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`),
+    null,
+    null
+  ];
+  const imageHeader = encoder.encode(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${canvas.width} /Height ${canvas.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`);
+  const imageFooter = encoder.encode('\nendstream\nendobj\n');
+  objects[3] = new Uint8Array(imageHeader.length + jpeg.length + imageFooter.length);
+  objects[3].set(imageHeader, 0);
+  objects[3].set(jpeg, imageHeader.length);
+  objects[3].set(imageFooter, imageHeader.length + jpeg.length);
+  const contentHeader = encoder.encode(`5 0 obj\n<< /Length ${content.length} >>\nstream\n`);
+  const contentFooter = encoder.encode('endstream\nendobj\n');
+  objects[4] = new Uint8Array(contentHeader.length + content.length + contentFooter.length);
+  objects[4].set(contentHeader, 0);
+  objects[4].set(content, contentHeader.length);
+  objects[4].set(contentFooter, contentHeader.length + content.length);
+
+  const header = encoder.encode('%PDF-1.4\n');
+  const offsets = [];
+  let byteOffset = header.length;
+  objects.forEach((object, index) => {
+    offsets.push(byteOffset);
+    byteOffset += object.length;
+  });
+  const xrefOffset = byteOffset;
+  const xref = encoder.encode(`xref\n0 6\n0000000000 65535 f \n${offsets.map(offset => `${String(offset).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
+  const output = new Uint8Array(header.length + objects.reduce((sum, object) => sum + object.length, 0) + xref.length);
+  let cursor = 0;
+  [header, ...objects, xref].forEach(part => {
+    output.set(part, cursor);
+    cursor += part.length;
+  });
+  return output;
 }
 
 function distanceKm(a, b) {
@@ -218,6 +280,8 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   const [buyerOrdersLoading, setBuyerOrdersLoading] = useState(false);
   const [buyerOrdersError, setBuyerOrdersError] = useState('');
   const [buyerOrdersNotice, setBuyerOrdersNotice] = useState('');
+  const [receiptBusyId, setReceiptBusyId] = useState(null);
+  const [receiptError, setReceiptError] = useState('');
   const [contact, setContact] = useState(null);
   const [activeListing, setActiveListing] = useState(null);
   const [sellerListingTokens, setSellerListingTokens] = useState(() => {
@@ -677,6 +741,133 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     return ({ PENDING: 'प्रलंबित', ACCEPTED: 'स्वीकारली', DECLINED: 'नाकारली', COMPLETED: 'पूर्ण' })[status] || status;
   }
 
+  async function downloadOrderReceipt(order) {
+    setReceiptBusyId(order.id);
+    setReceiptError('');
+    try {
+      await document.fonts?.ready;
+      const canvas = document.createElement('canvas');
+      canvas.width = 1240;
+      canvas.height = 1754;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('PDF तयार करता आला नाही.');
+      const margin = 96;
+      const contentWidth = canvas.width - margin * 2;
+      const fontFamily = '"Noto Sans Devanagari", "Noto Sans", sans-serif';
+      const money = value => `₹${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const unitLabel = UNITS.find(([value]) => value === order.unit)?.[1] || order.unit;
+      const status = requestStatusLabel(order.status);
+      const createdAt = new Date(order.createdAt).toLocaleString('mr-IN', { dateStyle: 'medium', timeStyle: 'short' });
+      const amount = order.totalAmount ?? (Number(order.pricePerUnit || 0) * Number(order.quantity || 0));
+      const fulfillment = order.fulfillment === 'DELIVERY' ? 'पोहोचवून हवे' : 'स्वतः घेऊन जाणार';
+      const wrap = (value, x, y, maxWidth, lineHeight, color, size = 29, weight = 400, maxLines = 3) => {
+        context.fillStyle = color;
+        context.font = `${weight} ${size}px ${fontFamily}`;
+        const lines = wrappedLines(context, value, maxWidth).slice(0, maxLines);
+        const allLines = wrappedLines(context, value, maxWidth);
+        if (allLines.length > maxLines) lines[maxLines - 1] = `${lines[maxLines - 1]}…`;
+        lines.forEach((line, index) => {
+          if (context.measureText(line).width > maxWidth) {
+            let fitted = `${line}…`;
+            while (context.measureText(fitted).width > maxWidth && fitted.length > 2) {
+              fitted = `${fitted.slice(0, -2)}…`;
+            }
+            lines[index] = fitted;
+          }
+        });
+        lines.forEach((line, index) => context.fillText(line, x, y + index * lineHeight));
+        return lines.length;
+      };
+      const rule = y => { context.strokeStyle = '#e2eadf'; context.lineWidth = 2; context.beginPath(); context.moveTo(margin, y); context.lineTo(canvas.width - margin, y); context.stroke(); };
+      context.fillStyle = '#f0f7ec';
+      context.fillRect(0, 0, canvas.width, 420);
+      context.fillStyle = '#4c8054';
+      context.beginPath();
+      context.arc(margin + 34, 106, 33, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = '#fff';
+      context.font = `700 35px ${fontFamily}`;
+      context.textAlign = 'center';
+      context.fillText('श्री', margin + 34, 117);
+      context.textAlign = 'left';
+      context.fillStyle = '#294732';
+      context.font = `700 46px ${fontFamily}`;
+      context.fillText('स्वर्णभूमी', margin + 86, 92);
+      context.fillStyle = '#6f8371';
+      context.font = `400 25px ${fontFamily}`;
+      context.fillText('शेतकरी बाजार · खरेदी ऑर्डर पावती', margin + 86, 135);
+      context.fillStyle = '#315f38';
+      context.font = `700 42px ${fontFamily}`;
+      context.fillText('खरेदीची पावती', margin, 235);
+      context.fillStyle = '#78877a';
+      context.font = `400 23px ${fontFamily}`;
+      context.fillText('ORDER RECEIPT · PAYMENT IS NOT PROCESSED IN THE APP', margin, 282);
+      context.fillStyle = '#fff';
+      context.fillRect(margin, 330, contentWidth, 190);
+      context.strokeStyle = '#dce8d8';
+      context.strokeRect(margin, 330, contentWidth, 190);
+      wrap('ऑर्डर क्रमांक', margin + 28, 376, 380, 34, '#849185', 22, 400);
+      wrap(`#${Number(order.id).toLocaleString('mr-IN')}`, margin + 28, 423, 430, 44, '#304736', 32, 700);
+      wrap('ऑर्डरची वेळ', margin + 540, 376, 470, 34, '#849185', 22, 400);
+      wrap(createdAt, margin + 540, 423, 490, 44, '#304736', 28, 700);
+      wrap(`स्थिती: ${status}`, margin + 28, 482, contentWidth - 56, 38, '#47764b', 25, 700);
+
+      let y = 590;
+      wrap('खरेदी केलेला शेतमाल', margin, y, contentWidth, 45, '#879486', 23, 700);
+      y += 58;
+      const productLineCount = wrap(order.productName || `शेतमाल #${order.listingId}`, margin, y, contentWidth, 55, '#304736', 39, 700, 2);
+      y += productLineCount * 55 + 22;
+      rule(y);
+      y += 50;
+      wrap('प्रमाण', margin, y, 480, 35, '#879486', 22, 400);
+      wrap(`${Number(order.quantity).toLocaleString('mr-IN')} ${unitLabel}`, margin, y + 44, 480, 40, '#304736', 29, 700);
+      wrap('प्रति एकक किंमत', margin + 540, y, 480, 35, '#879486', 22, 400);
+      wrap(order.pricePerUnit == null ? '—' : money(order.pricePerUnit), margin + 540, y + 44, 480, 40, '#304736', 29, 700);
+      y += 126;
+      rule(y);
+      y += 58;
+      wrap('ऑर्डरची एकूण रक्कम', margin, y, 600, 42, '#6f8371', 25, 400);
+      wrap(money(amount), margin, y + 65, contentWidth, 64, '#315f38', 49, 700);
+      y += 160;
+      rule(y);
+      y += 52;
+      wrap('विक्रेता', margin, y, 480, 34, '#879486', 22, 400);
+      const sellerNameLines = wrap(order.sellerName || 'शेतकरी विक्रेता', margin, y + 43, 490, 42, '#304736', 29, 700, 2);
+      wrap('खरेदीदार', margin + 540, y, 480, 34, '#879486', 22, 400);
+      const buyerNameLines = wrap(order.buyerName || 'खरेदीदार', margin + 540, y + 43, 490, 42, '#304736', 29, 700, 2);
+      const phoneY = y + 43 + Math.max(sellerNameLines, buyerNameLines) * 42 + 9;
+      wrap(order.sellerPhone || '—', margin, phoneY, 490, 38, '#47764b', 25, 400);
+      wrap(order.buyerPhone || buyerPhone || '—', margin + 540, phoneY, 490, 38, '#6f8371', 25, 400);
+      y = phoneY + 72;
+      wrap('वितरण पद्धत', margin, y, contentWidth, 34, '#879486', 22, 400);
+      wrap(fulfillment, margin, y + 44, contentWidth, 40, '#304736', 28, 700);
+      y += 115;
+      context.fillStyle = '#f7f9f5';
+      context.fillRect(margin, y, contentWidth, 143);
+      wrap('टीप', margin + 24, y + 36, contentWidth - 48, 30, '#708072', 22, 700);
+      wrap('ही ऑर्डरची पावती आहे; अॅपमध्ये पेमेंट झालेले नाही. पेमेंट आणि अंतिम व्यवहार विक्रेत्याशी ठरवा.', margin + 24, y + 77, contentWidth - 48, 34, '#6f7d70', 22, 400);
+      context.fillStyle = '#8c988d';
+      context.font = `400 20px ${fontFamily}`;
+      context.textAlign = 'center';
+      context.fillText('स्वर्णभूमी · शेतकऱ्यांकडून थेट शेतमाल', canvas.width / 2, 1695);
+      context.textAlign = 'left';
+
+      const pdf = receiptPdfBytes(canvas);
+      const url = URL.createObjectURL(new Blob([pdf], { type: 'application/pdf' }));
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `Swarnabhoomi-Order-${order.id}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch (downloadError) {
+      setReceiptError(downloadError.message || 'पावती PDF तयार करता आली नाही.');
+    } finally {
+      setReceiptBusyId(null);
+    }
+  }
+
   const phoneDigits = contact?.phone.replace(/\D/g, '') || '';
 
   return <div className="market-page" lang="mr">
@@ -808,6 +999,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       </div>
       {buyerOrdersNotice && <div className="market-message market-success" role="status"><Check size={15}/>{buyerOrdersNotice}</div>}
       {buyerOrdersError && <div className="market-message market-error" role="alert">{buyerOrdersError}</div>}
+      {receiptError && <div className="market-message market-error" role="alert">{receiptError}</div>}
       {buyerOrdersLoading ? <div className="market-empty">ऑर्डर लोड होत आहेत…</div>
         : !buyerOrders.length ? <div className="market-empty market-cart-empty"><ClipboardList size={30}/><b>अजून ऑर्डर नाही</b><span>कार्टमधून ऑर्डर दिल्यावर त्याची स्थिती येथे दिसेल.</span><button type="button" className="market-location-button" onClick={() => setView('browse')}><Search size={15}/> शेतमाल शोधा</button></div>
           : <div className="market-buyer-order-list">{buyerOrders.map(order => <article className="market-buyer-order-card" key={order.id}>
@@ -816,6 +1008,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
             {order.totalAmount != null && <b className="market-buyer-order-total">₹{Number(order.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>}
             <time dateTime={order.createdAt}>{new Date(order.createdAt).toLocaleString('mr-IN', { dateStyle: 'medium', timeStyle: 'short' })}</time>
             {order.sellerPhone && <a href={`tel:${order.sellerPhone}`} className="market-request-phone"><Phone size={13}/>विक्रेत्याशी संपर्क · {order.sellerPhone}</a>}
+            <button type="button" className="market-receipt-button" onClick={() => downloadOrderReceipt(order)} disabled={receiptBusyId === order.id}><FileDown size={15}/>{receiptBusyId === order.id ? 'पावती तयार होत आहे…' : 'PDF पावती डाउनलोड करा'}</button>
           </article>)}</div>}
     </section> : view === 'register' ? <section className="market-form-card">
       <div className="market-card-heading"><div><span>विक्रेत्याची माहिती</span><h2>तुमचा उपलब्ध शेतमाल जोडा</h2></div><div className="market-private-badge"><ShieldCheck size={14}/> संपर्क फक्त प्रवेशानंतर</div></div>
