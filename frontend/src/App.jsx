@@ -7,6 +7,8 @@ import InformationPanel from './InformationPanel.jsx';
 import MarketplacePanel from './MarketplacePanel.jsx';
 import ConsultantPanel from './ConsultantPanel.jsx';
 import AuthPanel from './AuthPanel.jsx';
+import GovernmentSchemesPanel, { GovernmentSchemeBanner } from './GovernmentSchemes.jsx';
+import { Landmark } from 'lucide-react';
 import { FollowUpReminderButton, InputLogFields, IssueTrackingFields, OfflineQueueStatus, PlotSeasonFields, QuickEntryTemplates, ReceiptGallery, ReceiptUploader, downloadEntriesCsv, uploadEntryPhoto } from './DailyEntryFeatures.jsx';
 import { queueFarmEntry } from './offlineEntrySync.js';
 import './brand.css';
@@ -30,6 +32,7 @@ const entryCost = e => Number(e.laborCost||0)+Number(e.materialsCost||0)+Number(
 const weatherDetailText = raw => {if(!raw)return '';try{const d=typeof raw==='string'?JSON.parse(raw):raw;return [d.district,d.state,d.warning,d.note].filter(Boolean).join(' · ')}catch{return String(raw)}};
 const ANALYTICS={cost:{label:'एकूण खर्च',value:entryCost,format:money},income:{label:'एकूण उत्पन्न',value:e=>Number(e.saleIncome||0),format:money},production:{label:'एकूण उत्पादन',value:e=>Number(e.productionKg||0),format:v=>`${Number(v).toLocaleString('mr-IN',{maximumFractionDigits:1})} किलो`}};
 const NAV_ITEMS = {
+  schemes: { label: 'सरकारी योजना', icon: Landmark },
   entries: { label: 'दैनिक नोंद', icon: CalendarDays },
   reminders: { label: 'स्मरणपत्रे', icon: Bell },
   assistant: { label: 'AI शेती सहाय्यक', icon: Sprout },
@@ -40,7 +43,7 @@ const NAV_ITEMS = {
 };
 const accountTabLabel=(account,tab)=>account.id==='farmer'&&tab==='marketplace'?'शेतमाल विक्री':NAV_ITEMS[tab].label;
 const ACCOUNT_TYPES = [
-  { id: 'farmer', label: 'शेतकरी', initials: 'शे', homeTab: 'entries', tabs: ['entries', 'reminders', 'assistant', 'marketplace', 'information', 'consultants'], description: 'दैनिक नोंद, शेतीसाठी AI मदत, शेतमाल विक्री, स्मरणपत्रे आणि सेंद्रिय सल्लागार' },
+  { id: 'farmer', label: 'शेतकरी', initials: 'शे', homeTab: 'entries', tabs: ['entries', 'reminders', 'assistant', 'marketplace', 'information', 'consultants', 'schemes'], description: 'दैनिक नोंद, शेतीसाठी AI मदत, शेतमाल विक्री, स्मरणपत्रे आणि सेंद्रिय सल्लागार' },
   { id: 'seller', label: 'विक्रेता', initials: 'वि', homeTab: 'marketplace', tabs: ['marketplace', 'information'], description: 'शेतमालाची नोंद, उपलब्ध साठा आणि खरेदीदारांच्या विनंत्या सांभाळा' },
   { id: 'buyer', label: 'खरेदीदार', initials: 'ख्रे', homeTab: 'marketplace', tabs: ['marketplace', 'information'], description: 'शेतमाल शोधा आणि विक्रेत्यांशी संपर्क करा' },
   { id: 'consultant', label: 'सेंद्रिय सल्लागार', initials: 'स', homeTab: 'consultants', tabs: ['consultants', 'information'], description: 'सल्लागार प्रोफाइल प्रकाशित करा आणि शेती माहिती पहा' },
@@ -70,6 +73,7 @@ function App(){
   const [accountType,setAccountType]=useState(()=>readSessionUser()?.role||null),[lastAccountType,setLastAccountType]=useState(readAccountType);
   const [activeTab,setActiveTab]=useState(()=>{const role=readSessionUser()?.role;const account=ACCOUNT_TYPES.find(item=>item.id===role);const requested=new URLSearchParams(window.location.search).get('tab');return account?.tabs.includes(requested)?requested:(account?.homeTab||'entries')});
   const [showBackToTop,setShowBackToTop]=useState(false);
+  const [schemeFeed,setSchemeFeed]=useState(null),[schemeLoading,setSchemeLoading]=useState(false),[schemeRefreshing,setSchemeRefreshing]=useState(false),[schemeError,setSchemeError]=useState('');
   const mainRef=useRef(null);
   const [entries,setEntries]=useState([]),[form,setForm]=useState(fresh),[open,setOpen]=useState(false),[search,setSearch]=useState(''),[loading,setLoading]=useState(false),[weatherBusy,setWeatherBusy]=useState(false),[weatherError,setWeatherError]=useState(''),[preview,setPreview]=useState(''),[printing,setPrinting]=useState(false),[pdfBusy,setPdfBusy]=useState(false),[printEntries,setPrintEntries]=useState([]),[printPhotos,setPrintPhotos]=useState({}),[activeRecord,setActiveRecord]=useState(null),[analyticsMetric,setAnalyticsMetric]=useState(null),[assistantMessages,setAssistantMessages]=useState([]);
   const currentAccount=ACCOUNT_TYPES.find(account=>account.id===accountType)||ACCOUNT_TYPES[0];
@@ -80,7 +84,7 @@ function App(){
     sessionStorage.removeItem('swarnabhoomi-user');
     sessionStorage.removeItem('swarnabhoomi-auth');
     sessionStorage.removeItem('swarnabhoomi-marketplace-auth');
-    setAuthToken('');setAuthUser(null);setSelectedAccount(null);setAccountType(null);setEntries([]);setAssistantMessages([]);
+    setAuthToken('');setAuthUser(null);setSelectedAccount(null);setAccountType(null);setEntries([]);setAssistantMessages([]);setSchemeFeed(null);
   },[]);
   const apiFetch=useCallback((url,options={})=>{
     const headers={...(options.headers||{}),...(authToken?{Authorization:`Bearer ${authToken}`}:{})};
@@ -89,6 +93,16 @@ function App(){
     const request=fetch(url,{...options,headers}).then(response=>{if(response.status===401&&authToken)logout();return response});
     return creatingEntry?request.then(response=>response.status>=500?queueFarmEntry(options.body,authUser?.id):response).catch(error=>{if(error instanceof TypeError)return queueFarmEntry(options.body,authUser?.id);throw error}):request;
   },[authToken,authUser,logout]);
+  const refreshSchemeFeed=useCallback(async(silent=false)=>{
+    if(!authToken||accountType!=='farmer')return;
+    if(silent)setSchemeRefreshing(true);else setSchemeLoading(true);
+    try{
+      const response=await apiFetch(`${API}/schemes/organic`);
+      if(!response.ok)throw Error('scheme-feed-unavailable');
+      setSchemeFeed(await response.json());setSchemeError('');
+    }catch{setSchemeError('सरकारी योजनांची माहिती सध्या मिळत नाही. थोड्या वेळाने पुन्हा प्रयत्न करा.');}
+    finally{setSchemeLoading(false);setSchemeRefreshing(false);}
+  },[apiFetch,authToken,accountType]);
   function chooseAccount(account){setSelectedAccount(account);setLastAccountType(account.id)}
   function enterAccount(result,requestedAccount){
     if(!result?.token||!result?.user)return;
@@ -106,6 +120,12 @@ function App(){
   }
   const load=async()=>{try{const r=await apiFetch(`${API}/entries`);if(r.ok)setEntries(await r.json())}catch{}};
   useEffect(()=>{if(accountType==='farmer'&&authUser)load();else setEntries([])},[authToken,accountType,authUser?.id]);
+  useEffect(()=>{
+    if(accountType!=='farmer'||!authUser){setSchemeFeed(null);return;}
+    refreshSchemeFeed();
+    const timer=window.setInterval(()=>refreshSchemeFeed(true),5*60*1000);
+    return()=>window.clearInterval(timer);
+  },[accountType,authUser?.id,refreshSchemeFeed]);
   useEffect(()=>{const main=mainRef.current;if(!main)return;window.scrollTo({top:0,behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});main.classList.remove('tab-entering');void main.offsetWidth;main.classList.add('tab-entering')},[activeTab,accountType]);
   useEffect(()=>{const updateVisibility=()=>setShowBackToTop(window.scrollY>480);updateVisibility();window.addEventListener('scroll',updateVisibility,{passive:true});return()=>window.removeEventListener('scroll',updateVisibility)},[]);
   useEffect(()=>{if(!printing)return;const originalTitle=document.title;document.title='Swarnabhoomi-Dainik-Sheti-Nondi';const finish=()=>{document.title=originalTitle;setPrinting(false);setPrintPhotos(current=>{Object.values(current).forEach(URL.revokeObjectURL);return {}})};const timer=window.setTimeout(()=>window.print(),350);window.addEventListener('afterprint',finish);return()=>{window.clearTimeout(timer);window.removeEventListener('afterprint',finish);document.title=originalTitle}},[printing]);
@@ -153,6 +173,7 @@ function App(){
   return <div className="app-shell">
     <aside className="sidebar"><div className="brand"><img className="brand-logo" src={farmLogo} alt="स्वर्णभूमी सेंद्रिय शेतीचे चिन्ह"/></div><div className="nav-label">मुख्य मेनू</div>{currentAccount.tabs.map(tab=>{const item=NAV_ITEMS[tab],Icon=item.icon,label=accountTabLabel(currentAccount,tab);return <button type="button" key={tab} className={`nav ${activeTab===tab?'active':''}`} onClick={()=>setActiveTab(tab)} aria-label={label} title={label}><Icon size={18}/>{label}</button>})}<div className="sidebar-tip"><Leaf size={19}/><b>आजची छोटी नोंद,<br/>उद्याची मोठी भरभराट.</b><span>तुमच्या शेताचा प्रत्येक दिवस जपून ठेवा.</span><div className="tip-leaves">✳　✳</div></div><button type="button" className="profile account-profile" onClick={logout} aria-label="लॉगआउट"><div className="avatar">{currentAccount.initials}</div><span><b>{currentAccount.label} खाते</b><small>{authUser.mobileNumber} · लॉगआउट</small></span><ChevronRight size={16}/></button></aside>
     <main ref={mainRef} className="main"><header className="topbar"><div><span className="crumb">स्वर्णभूमी　/　</span><b>{accountTabLabel(currentAccount,activeTab)}</b></div><div className="today"><CalendarDays size={16}/>{new Date().toLocaleDateString('mr-IN',{weekday:'long',day:'numeric',month:'long'})}</div></header>
+      {accountType==='farmer'&&<GovernmentSchemeBanner announcements={schemeFeed?.announcements||[]} onOpen={()=>setActiveTab('schemes')}/>}
       {activeTab==='entries'?<>
       <section className="welcome"><div><span className="eyebrow"><span className="pulse"/> तुमच्या शेताची डायरी</span><h1>नमस्कार, शेतकरी मित्रा! <span>🌱</span></h1><p>आज शेतात काय घडलं? तुमची नोंद इथे जतन करा.</p></div><button className="primary" onClick={()=>{setForm(fresh());setOpen(true)}}><Plus size={19}/> आजची नोंद लिहा</button><div className="welcome-art"><span>☀️</span><div>〰️〰️</div></div></section>
       <section className="stats"><Stat icon={<Wallet/>} label="एकूण खर्च" value={<AnimatedMetric value={totals.cost} format="money"/>} tone="peach" analyticsKey="cost" onAnalytics={setAnalyticsMetric}/><Stat icon={<TrendingUp/>} label="एकूण उत्पन्न" value={<AnimatedMetric value={totals.income} format="money"/>} tone="green" analyticsKey="income" onAnalytics={setAnalyticsMetric}/><Stat icon={<Boxes/>} label="एकूण उत्पादन" value={<AnimatedMetric value={totals.production} format="quantity"/>} tone="blue" analyticsKey="production" onAnalytics={setAnalyticsMetric}/><div className="stat-card net"><div className="net-label">निव्वळ शिल्लक</div><strong><AnimatedMetric value={totals.income-totals.cost} format="money"/></strong><span>आतापर्यंतची कमाई</span><div className="net-icon">↗</div></div></section>
@@ -163,6 +184,7 @@ function App(){
       <footer>🌿　तुमच्या कष्टांना योग्य नोंद — स्वर्णभूमी</footer></>:activeTab==='reminders'?<ReminderPanel apiFetch={apiFetch} apiBase={API} entries={entries} userId={authUser.id} onUnauthorized={logout}/>:null}
       <div hidden={activeTab!=='assistant'}><AssistantPanel apiFetch={apiFetch} apiBase={API} messages={assistantMessages} setMessages={setAssistantMessages} farmData={assistantFarmData} onUnauthorized={logout}/></div>
       {activeTab==='information'&&<InformationPanel/>}
+      {activeTab==='schemes'&&accountType==='farmer'&&<GovernmentSchemesPanel feed={schemeFeed} loading={schemeLoading} refreshing={schemeRefreshing} error={schemeError} onRefresh={()=>refreshSchemeFeed(false)}/>}
       {activeTab==='admin'&&<AdminOverview apiBase={API} apiFetch={apiFetch}/>}
       {activeTab==='marketplace'&&<MarketplacePanel key={authUser.id} accountType={accountType} apiBase={API} auth={authToken} userId={authUser.id} buyerPhone={authUser.mobileNumber} onUnauthorized={logout}/>}
       {activeTab==='consultants'&&<ConsultantPanel apiBase={API}/>}
