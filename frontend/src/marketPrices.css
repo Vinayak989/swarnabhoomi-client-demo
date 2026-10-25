@@ -15,7 +15,7 @@
 .market-prices-stats span{color:#758676;font-size:11px;font-weight:650}
 .market-prices-stats strong{margin-top:4px;color:#345b3c;font-size:20px;line-height:1.3}
 .market-prices-stats .market-prices-updated strong{font-size:14px}
-.market-prices-controls{display:grid;grid-template-columns:minmax(230px,1fr) minmax(150px,220px) minmax(170px,220px);gap:10px}
+.market-prices-controls{display:grid;grid-template-columns:minmax(210px,1fr) repeat(3,minmax(145px,200px));gap:10px}
 .market-prices-search,.market-prices-select{display:flex;align-items:center;gap:9px;min-width:0;height:45px;padding:0 12px;border:1px solid #e0e8dd;border-radius:10px;background:rgba(255,255,255,.92);color:#779078}
 .market-prices-search input,.market-prices-select select{width:100%;min-width:0;border:0;outline:none;background:transparent;color:#3f5745;font:inherit;font-size:12px}
 .market-prices-search input::placeholder{color:#9aa79a}
