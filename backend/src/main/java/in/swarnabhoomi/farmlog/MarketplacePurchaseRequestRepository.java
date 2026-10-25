@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MarketplacePurchaseRequestRepository extends JpaRepository<MarketplacePurchaseRequest, Long> {
     List<MarketplacePurchaseRequest> findTop100ByListingIdOrderByCreatedAtDesc(Long listingId);
+    List<MarketplacePurchaseRequest> findTop100ByBuyerUserIdOrderByCreatedAtDesc(Long buyerUserId);
     long countByStatus(MarketplacePurchaseRequest.Status status);
     Page<MarketplacePurchaseRequest> findAllByOrderByCreatedAtDesc(Pageable pageable);
 }

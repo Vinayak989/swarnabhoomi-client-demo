@@ -9,7 +9,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.TreeMap;
 import java.util.regex.Pattern;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -29,6 +31,7 @@ import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/marketplace")
@@ -138,9 +141,11 @@ public class FarmMarketplaceController {
     }
 
     @PostMapping("/listings/{id}/purchase-requests")
+    @Transactional
     public ResponseEntity<PurchaseRequestReceipt> createPurchaseRequest(@PathVariable Long id,
-            @RequestBody PurchaseRequestCreate request) {
-        FarmProductListing listing = findListing(id);
+            @RequestBody PurchaseRequestCreate request,
+            @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser buyer) {
+        FarmProductListing listing = findListingForUpdate(id);
         if (Boolean.FALSE.equals(listing.getAvailable()) || listing.getPricePerUnit() == null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "हा शेतमाल सध्या खरेदीसाठी उपलब्ध नाही.");
         }
@@ -149,17 +154,67 @@ public class FarmMarketplaceController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "खरेदीची माहिती तपासा. प्रमाण उपलब्ध साठ्यापेक्षा जास्त असू शकत नाही.");
         }
 
-        MarketplacePurchaseRequest purchaseRequest = new MarketplacePurchaseRequest();
-        purchaseRequest.setListingId(id);
-        purchaseRequest.setBuyerName(request.buyerName().trim());
-        purchaseRequest.setBuyerPhone(request.buyerPhone().replaceAll("[\\s-]", ""));
-        purchaseRequest.setQuantity(request.quantity());
-        purchaseRequest.setUnit(listing.getUnit());
-        purchaseRequest.setFulfillment(request.fulfillment());
-        purchaseRequest.setNote(trimToNull(request.note()));
+        MarketplacePurchaseRequest purchaseRequest = newPurchaseRequest(id, listing, buyer,
+                request.buyerName(), request.quantity(), request.fulfillment(), request.note());
+        reserveStock(listing, request.quantity());
+        repository.save(listing);
         purchaseRequestRepository.save(purchaseRequest);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new PurchaseRequestReceipt("खरेदीची विनंती विक्रेत्याकडे पाठवली आहे."));
+    }
+
+    @PostMapping("/orders")
+    @Transactional
+    public ResponseEntity<CheckoutResponse> checkout(@RequestBody CheckoutRequest request,
+            @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser buyer) {
+        if (!validCheckoutRequest(request)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "कार्टमधील खरेदीची माहिती तपासा.");
+        }
+
+        TreeMap<Long, BigDecimal> quantities = new TreeMap<>();
+        for (CheckoutLine line : request.items()) {
+            if (quantities.putIfAbsent(line.listingId(), line.quantity()) != null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "एका शेतमालाची मात्रा कार्टमध्ये एकदाच द्या.");
+            }
+        }
+
+        TreeMap<Long, FarmProductListing> lockedListings = new TreeMap<>();
+        for (Long listingId : quantities.keySet()) {
+            FarmProductListing listing = findListingForUpdate(listingId);
+            BigDecimal requested = quantities.get(listingId);
+            if (Boolean.FALSE.equals(listing.getAvailable()) || listing.getPricePerUnit() == null
+                    || requested.compareTo(BigDecimal.valueOf(listing.getQuantity())) > 0) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "एक किंवा अधिक शेतमालाचा साठा बदलला आहे. कार्ट तपासून पुन्हा प्रयत्न करा.");
+            }
+            lockedListings.put(listingId, listing);
+        }
+
+        List<MarketplacePurchaseRequest> orders = new ArrayList<>();
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        for (Map.Entry<Long, BigDecimal> item : quantities.entrySet()) {
+            FarmProductListing listing = lockedListings.get(item.getKey());
+            BigDecimal quantity = item.getValue();
+            MarketplacePurchaseRequest order = newPurchaseRequest(item.getKey(), listing, buyer,
+                    request.buyerName(), quantity, request.fulfillment(), request.note());
+            orders.add(order);
+            totalAmount = totalAmount.add(listing.getPricePerUnit().multiply(quantity));
+            reserveStock(listing, quantity);
+        }
+
+        repository.saveAll(lockedListings.values());
+        List<PurchaseRequestResponse> savedOrders = purchaseRequestRepository.saveAll(orders).stream()
+                .map(PurchaseRequestResponse::from).toList();
+        return ResponseEntity.status(HttpStatus.CREATED).body(new CheckoutResponse(
+                "ऑर्डर विक्रेत्यांकडे पाठवले आहेत. विक्रेत्यांच्या प्रतिसादानंतर स्थिती येथे दिसेल.",
+                savedOrders, totalAmount.setScale(2, java.math.RoundingMode.HALF_UP)));
+    }
+
+    @GetMapping("/buyer/orders")
+    public List<PurchaseRequestResponse> buyerOrders(
+            @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser buyer) {
+        return purchaseRequestRepository.findTop100ByBuyerUserIdOrderByCreatedAtDesc(buyer.getId()).stream()
+                .map(PurchaseRequestResponse::from).toList();
     }
 
     @GetMapping("/seller/listings/{id}")
@@ -172,11 +227,12 @@ public class FarmMarketplaceController {
     }
 
     @PatchMapping("/seller/listings/{id}")
+    @Transactional
     public ListingResponse updateSellerListing(@PathVariable Long id,
             @RequestHeader(value = "X-Seller-Token", required = false) String sellerToken,
             @RequestBody SellerListingUpdate update,
             @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
-        FarmProductListing listing = findOwnedListing(id, user);
+        FarmProductListing listing = findOwnedListingForUpdate(id, user);
         requireSeller(listing, sellerToken);
         if (update == null || !validPrice(update.pricePerUnit())
                 || update.quantity() == null || !Double.isFinite(update.quantity())
@@ -201,11 +257,13 @@ public class FarmMarketplaceController {
     }
 
     @PatchMapping("/seller/listings/{id}/purchase-requests/{requestId}")
+    @Transactional
     public PurchaseRequestResponse updatePurchaseRequest(@PathVariable Long id, @PathVariable Long requestId,
             @RequestHeader(value = "X-Seller-Token", required = false) String sellerToken,
             @RequestBody PurchaseRequestStatusUpdate update,
             @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
-        requireSeller(findOwnedListing(id, user), sellerToken);
+        FarmProductListing listing = findOwnedListingForUpdate(id, user);
+        requireSeller(listing, sellerToken);
         MarketplacePurchaseRequest request = purchaseRequestRepository.findById(requestId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "खरेदीची विनंती सापडली नाही."));
         if (!id.equals(request.getListingId())) {
@@ -215,7 +273,23 @@ public class FarmMarketplaceController {
                 || !Set.of("ACCEPTED", "DECLINED", "COMPLETED").contains(update.status().toUpperCase(Locale.ROOT))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "विनंतीची स्थिती तपासा.");
         }
-        request.setStatus(MarketplacePurchaseRequest.Status.valueOf(update.status().toUpperCase(Locale.ROOT)));
+        MarketplacePurchaseRequest.Status nextStatus = MarketplacePurchaseRequest.Status.valueOf(
+                update.status().toUpperCase(Locale.ROOT));
+        boolean validTransition = request.getStatus() == MarketplacePurchaseRequest.Status.PENDING
+                && (nextStatus == MarketplacePurchaseRequest.Status.ACCEPTED
+                    || nextStatus == MarketplacePurchaseRequest.Status.DECLINED)
+                || request.getStatus() == MarketplacePurchaseRequest.Status.ACCEPTED
+                    && nextStatus == MarketplacePurchaseRequest.Status.COMPLETED;
+        if (!validTransition) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "या ऑर्डरची स्थिती आधीच बदलली आहे.");
+        }
+        if (nextStatus == MarketplacePurchaseRequest.Status.DECLINED) {
+            BigDecimal restored = BigDecimal.valueOf(listing.getQuantity()).add(request.getQuantity());
+            listing.setQuantity(restored.doubleValue());
+            listing.setAvailable(restored.signum() > 0 && listing.getPricePerUnit() != null);
+            repository.save(listing);
+        }
+        request.setStatus(nextStatus);
         return PurchaseRequestResponse.from(purchaseRequestRepository.save(request));
     }
 
@@ -261,10 +335,48 @@ public class FarmMarketplaceController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "विक्रीची नोंद सापडली नाही."));
     }
 
+    private FarmProductListing findListingForUpdate(Long id) {
+        return repository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "विक्रीची नोंद सापडली नाही."));
+    }
+
+    private static MarketplacePurchaseRequest newPurchaseRequest(Long listingId, FarmProductListing listing,
+            AppUser buyer, String buyerName, BigDecimal quantity,
+            MarketplacePurchaseRequest.Fulfillment fulfillment, String note) {
+        MarketplacePurchaseRequest order = new MarketplacePurchaseRequest();
+        order.setListingId(listingId);
+        order.setBuyerUserId(buyer.getId());
+        order.setBuyerName(buyerName.trim());
+        order.setBuyerPhone(buyer.getMobileNumber());
+        order.setProductName(listing.getProductName());
+        order.setSellerName(listing.getSellerName());
+        order.setSellerPhone(listing.getPhone());
+        order.setPricePerUnit(listing.getPricePerUnit());
+        order.setQuantity(quantity);
+        order.setUnit(listing.getUnit());
+        order.setFulfillment(fulfillment);
+        order.setNote(trimToNull(note));
+        return order;
+    }
+
+    private static void reserveStock(FarmProductListing listing, BigDecimal quantity) {
+        BigDecimal remaining = BigDecimal.valueOf(listing.getQuantity()).subtract(quantity);
+        listing.setQuantity(remaining.max(BigDecimal.ZERO).doubleValue());
+        if (remaining.signum() <= 0) listing.setAvailable(false);
+    }
+
     private FarmProductListing findOwnedListing(Long id, AppUser user) {
         return repository.findByIdAndOwnerId(id, user.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "या विक्रीची नोंद सापडली नाही."));
+    }
+
+    private FarmProductListing findOwnedListingForUpdate(Long id, AppUser user) {
+        FarmProductListing listing = findListingForUpdate(id);
+        if (listing.getOwner() == null || !user.getId().equals(listing.getOwner().getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "या विक्रीची नोंद सापडली नाही.");
+        }
+        return listing;
     }
 
     private static boolean validPurchaseRequest(PurchaseRequestCreate request) {
@@ -277,6 +389,20 @@ public class FarmMarketplaceController {
                 && request.quantity().stripTrailingZeros().scale() <= 3
                 && request.fulfillment() != null
                 && !tooLong(request.note(), 500);
+    }
+
+    private static boolean validCheckoutRequest(CheckoutRequest request) {
+        return request != null && !blankOrLong(request.buyerName(), 100)
+                && request.fulfillment() != null && !tooLong(request.note(), 500)
+                && request.items() != null && !request.items().isEmpty() && request.items().size() <= 50
+                && request.items().stream().allMatch(line -> line != null && line.listingId() != null
+                    && line.listingId() > 0 && validOrderQuantity(line.quantity()));
+    }
+
+    private static boolean validOrderQuantity(BigDecimal quantity) {
+        return quantity != null && quantity.signum() > 0
+                && quantity.compareTo(new BigDecimal("1000000000")) <= 0
+                && quantity.stripTrailingZeros().scale() <= 3;
     }
 
     private static boolean validPrice(BigDecimal price) {
@@ -339,6 +465,13 @@ public class FarmMarketplaceController {
     public record PurchaseRequestCreate(String buyerName, String buyerPhone, BigDecimal quantity,
             MarketplacePurchaseRequest.Fulfillment fulfillment, String note) {}
 
+    public record CheckoutLine(Long listingId, BigDecimal quantity) {}
+
+    public record CheckoutRequest(String buyerName, MarketplacePurchaseRequest.Fulfillment fulfillment,
+            String note, List<CheckoutLine> items) {}
+
+    public record CheckoutResponse(String message, List<PurchaseRequestResponse> orders, BigDecimal totalAmount) {}
+
     public record PurchaseRequestReceipt(String message) {}
 
     public record SellerListingUpdate(BigDecimal pricePerUnit, Double quantity, Boolean available) {}
@@ -346,11 +479,14 @@ public class FarmMarketplaceController {
     public record PurchaseRequestStatusUpdate(String status) {}
 
     public record PurchaseRequestResponse(Long id, Long listingId, String buyerName, String buyerPhone,
-            BigDecimal quantity, String unit, MarketplacePurchaseRequest.Fulfillment fulfillment, String note,
+            String productName, String sellerName, String sellerPhone, BigDecimal quantity, String unit, BigDecimal pricePerUnit,
+            BigDecimal totalAmount, MarketplacePurchaseRequest.Fulfillment fulfillment, String note,
             MarketplacePurchaseRequest.Status status, java.time.Instant createdAt) {
         static PurchaseRequestResponse from(MarketplacePurchaseRequest request) {
             return new PurchaseRequestResponse(request.getId(), request.getListingId(), request.getBuyerName(),
-                    request.getBuyerPhone(), request.getQuantity(), request.getUnit(), request.getFulfillment(),
+                    request.getBuyerPhone(), request.getProductName(), request.getSellerName(), request.getSellerPhone(), request.getQuantity(),
+                    request.getUnit(), request.getPricePerUnit(), request.getPricePerUnit() == null ? null
+                        : request.getPricePerUnit().multiply(request.getQuantity()), request.getFulfillment(),
                     request.getNote(), request.getStatus(), request.getCreatedAt());
         }
     }

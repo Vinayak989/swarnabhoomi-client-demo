@@ -23,6 +23,8 @@ public class AccessFilter extends OncePerRequestFilter {
     private static final Pattern SELLER_MANAGEMENT = Pattern.compile(
             "^/api/marketplace/seller/listings/[0-9]+(?:/purchase-requests(?:/[0-9]+)?)?$");
     private static final Pattern PURCHASE_REQUEST = Pattern.compile("^/api/marketplace/listings/[0-9]+/purchase-requests$");
+    private static final String MARKETPLACE_ORDERS = "/api/marketplace/orders";
+    private static final String MARKETPLACE_BUYER_ORDERS = "/api/marketplace/buyer/orders";
     @Value("${app.access.enabled:false}") private boolean enabled;
     @Value("${app.access.username:demo}") private String expectedUsername;
     @Value("${app.access.password:}") private String expectedPassword;
@@ -78,6 +80,8 @@ public class AccessFilter extends OncePerRequestFilter {
                         || "POST".equalsIgnoreCase(method) && path.equals("/api/marketplace/photos")
                         || "GET".equalsIgnoreCase(method) && MARKETPLACE_PHOTO.matcher(path).matches()
                         || "POST".equalsIgnoreCase(method) && PURCHASE_REQUEST.matcher(path).matches()
+                        || "POST".equalsIgnoreCase(method) && MARKETPLACE_ORDERS.equals(path)
+                        || "GET".equalsIgnoreCase(method) && MARKETPLACE_BUYER_ORDERS.equals(path)
                         || ("GET".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method))
                             && SELLER_MANAGEMENT.matcher(path).matches()));
     }

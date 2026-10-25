@@ -26,8 +26,20 @@ public class MarketplacePurchaseRequest {
     @Column(nullable = false)
     private Long listingId;
 
+    @Column(name = "buyer_user_id")
+    private Long buyerUserId;
+
     @Column(nullable = false, length = 100)
     private String buyerName;
+
+    @Column(name = "product_name", length = 120)
+    private String productName;
+
+    @Column(name = "seller_name", length = 100)
+    private String sellerName;
+
+    @Column(name = "seller_phone", length = 20)
+    private String sellerPhone;
 
     @Column(nullable = false, length = 20)
     private String buyerPhone;
@@ -37,6 +49,9 @@ public class MarketplacePurchaseRequest {
 
     @Column(nullable = false, length = 16)
     private String unit;
+
+    @Column(name = "price_per_unit", precision = 12, scale = 2)
+    private BigDecimal pricePerUnit;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
@@ -61,14 +76,24 @@ public class MarketplacePurchaseRequest {
     public Long getId() { return id; }
     public Long getListingId() { return listingId; }
     public void setListingId(Long value) { listingId = value; }
+    public Long getBuyerUserId() { return buyerUserId; }
+    public void setBuyerUserId(Long value) { buyerUserId = value; }
     public String getBuyerName() { return buyerName; }
     public void setBuyerName(String value) { buyerName = value; }
+    public String getProductName() { return productName; }
+    public void setProductName(String value) { productName = value; }
+    public String getSellerName() { return sellerName; }
+    public void setSellerName(String value) { sellerName = value; }
+    public String getSellerPhone() { return sellerPhone; }
+    public void setSellerPhone(String value) { sellerPhone = value; }
     public String getBuyerPhone() { return buyerPhone; }
     public void setBuyerPhone(String value) { buyerPhone = value; }
     public BigDecimal getQuantity() { return quantity; }
     public void setQuantity(BigDecimal value) { quantity = value; }
     public String getUnit() { return unit; }
     public void setUnit(String value) { unit = value; }
+    public BigDecimal getPricePerUnit() { return pricePerUnit; }
+    public void setPricePerUnit(BigDecimal value) { pricePerUnit = value; }
     public Fulfillment getFulfillment() { return fulfillment; }
     public void setFulfillment(Fulfillment value) { fulfillment = value; }
     public String getNote() { return note; }

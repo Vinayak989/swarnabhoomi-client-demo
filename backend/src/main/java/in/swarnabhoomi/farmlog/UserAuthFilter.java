@@ -17,6 +17,8 @@ public class UserAuthFilter extends OncePerRequestFilter {
     public static final String USER_ATTRIBUTE = "swarnabhoomi.authenticatedUser";
     private static final Pattern MARKETPLACE_CONTACT = Pattern.compile("^/api/marketplace/listings/[0-9]+/contact$");
     private static final Pattern MARKETPLACE_PURCHASE = Pattern.compile("^/api/marketplace/listings/[0-9]+/purchase-requests$");
+    private static final String MARKETPLACE_ORDERS = "/api/marketplace/orders";
+    private static final String MARKETPLACE_BUYER_ORDERS = "/api/marketplace/buyer/orders";
     private static final Pattern MARKETPLACE_SELLER = Pattern.compile(
             "^/api/marketplace/seller/listings/[0-9]+(?:/purchase-requests(?:/[0-9]+)?)?$");
     private final AuthService authService;
@@ -32,6 +34,8 @@ public class UserAuthFilter extends OncePerRequestFilter {
         boolean userMarketplaceRoute = path.equals("/api/marketplace/access")
                 || MARKETPLACE_CONTACT.matcher(path).matches()
                 || MARKETPLACE_SELLER.matcher(path).matches() && ("GET".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method))
+                || MARKETPLACE_ORDERS.equals(path) && "POST".equalsIgnoreCase(method)
+                || MARKETPLACE_BUYER_ORDERS.equals(path) && "GET".equalsIgnoreCase(method)
                 || "POST".equalsIgnoreCase(method) && (path.equals("/api/marketplace/listings")
                     || path.equals("/api/marketplace/photos") || MARKETPLACE_PURCHASE.matcher(path).matches());
         return "OPTIONS".equalsIgnoreCase(method)
@@ -64,6 +68,8 @@ public class UserAuthFilter extends OncePerRequestFilter {
                 && !("seller".equals(user.getRole()) || "farmer".equals(user.getRole()))
                 || MARKETPLACE_PURCHASE.matcher(path).matches() && "POST".equalsIgnoreCase(method)
                     && !"buyer".equals(user.getRole())
+                || MARKETPLACE_ORDERS.equals(path) && !"buyer".equals(user.getRole())
+                || MARKETPLACE_BUYER_ORDERS.equals(path) && !"buyer".equals(user.getRole())
                 || MARKETPLACE_CONTACT.matcher(path).matches() && !"buyer".equals(user.getRole())
                 || MARKETPLACE_SELLER.matcher(path).matches()
                     && !("GET".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method))
