@@ -1,15 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, LoaderCircle, MapPin, MessageCircle, MessageSquareText, Phone, Plus, Search, Sprout, UserRound, X } from 'lucide-react';
+import { CheckCircle2, LoaderCircle, MapPin, MessageCircle, MessageSquareText, Phone, Search, Sprout, X } from 'lucide-react';
 import './consultant.css';
 
-const EMPTY_FORM = {
-  name: '',
-  phone: '',
-  serviceArea: '',
-  expertise: '',
-  experienceYears: '',
-  introduction: ''
-};
 const EMPTY_CONSULTATION = {
   farmerName: '',
   phone: '',
@@ -29,18 +21,15 @@ function phoneLinks(phone) {
   };
 }
 
-function ConsultantPanel({ apiBase, accountType = 'farmer', authToken, onUnauthorized }) {
+function ConsultantPanel({ apiBase }) {
   const [consultants, setConsultants] = useState([]);
   const [search, setSearch] = useState('');
   const [areaFilter, setAreaFilter] = useState('');
   const [specialtyFilter, setSpecialtyFilter] = useState('');
   const [minimumExperience, setMinimumExperience] = useState('');
-  const [form, setForm] = useState(EMPTY_FORM);
   const [requestingConsultant, setRequestingConsultant] = useState(null);
   const [consultation, setConsultation] = useState(EMPTY_CONSULTATION);
-  const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -83,35 +72,6 @@ function ConsultantPanel({ apiBase, accountType = 'farmer', authToken, onUnautho
   )).sort((a, b) => a.localeCompare(b, 'mr-IN')), [consultants]);
 
   const hasConsultantFilters = Boolean(search.trim() || areaFilter || specialtyFilter.trim() || minimumExperience);
-  const canAddConsultant = accountType === 'consultant' || accountType === 'admin';
-
-  async function register(event) {
-    event.preventDefault();
-    setSaving(true);
-    setError('');
-    setNotice('');
-    try {
-      const response = await fetch(`${apiBase}/consultants`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({
-          ...form,
-          experienceYears: Number(form.experienceYears)
-        })
-      });
-      const result = await response.json().catch(() => null);
-      if (response.status === 401) onUnauthorized?.();
-      if (!response.ok) throw new Error(result?.message || 'नोंदणी जतन करता आली नाही.');
-      setConsultants(current => [result, ...current.filter(item => item.id !== result.id)].slice(0, 200));
-      setForm(EMPTY_FORM);
-      setShowForm(false);
-      setNotice(accountType === 'admin' ? 'सल्लागार प्रोफाइल प्रकाशित झाले.' : 'तुमची सल्लागार नोंदणी प्रकाशित झाली.');
-    } catch (exception) {
-      setError(exception.message || 'नोंदणी जतन करता आली नाही.');
-    } finally {
-      setSaving(false);
-    }
-  }
 
   function openConsultationRequest(consultant) {
     setConsultation(EMPTY_CONSULTATION);
@@ -148,32 +108,12 @@ function ConsultantPanel({ apiBase, accountType = 'farmer', authToken, onUnautho
       <div>
         <span className="consultant-eyebrow"><Sprout size={14}/> सेंद्रिय शेतीसाठी शेतकरी ते शेतकरी मार्गदर्शन</span>
         <h1>सेंद्रिय शेती सल्लागार</h1>
-        <p>{accountType === 'admin' ? 'सेंद्रिय सल्लागारांच्या प्रोफाइलची नोंदणी आणि व्यवस्थापन करा.' : accountType === 'consultant' ? 'तुमचे सेंद्रिय शेतीचे मार्गदर्शन शेतकऱ्यांपर्यंत पोहोचवा.' : 'तुमच्या भागातील सल्लागारांचे कौशल्य, अनुभव आणि संपर्क तपशील पाहा.'}</p>
+        <p>तुमच्या भागातील सल्लागारांचे कौशल्य, अनुभव आणि संपर्क तपशील पाहा.</p>
       </div>
-      {canAddConsultant && <button type="button" className="consultant-primary" onClick={() => { setShowForm(value => !value); setNotice(''); }}>
-        {showForm ? <X size={16}/> : <Plus size={16}/>}
-        {showForm ? 'फॉर्म बंद करा' : accountType === 'admin' ? 'सल्लागार जोडा' : 'सल्लागार प्रोफाइल प्रकाशित करा'}
-      </button>}
     </div>
 
     {error && <div className="consultant-message consultant-error" role="alert">{error}</div>}
     {notice && <div className="consultant-message consultant-success" role="status"><CheckCircle2 size={16}/>{notice}</div>}
-
-    {showForm && canAddConsultant && <form className="consultant-form" onSubmit={register}>
-      <div className="consultant-section-heading">
-        <div><span>{accountType === 'admin' ? 'सल्लागाराची माहिती' : 'तुमची माहिती'}</span><h2>{accountType === 'admin' ? 'सल्लागार प्रोफाइल जोडा' : 'सल्लागार नोंदणी'}</h2></div>
-        <UserRound size={20}/>
-      </div>
-      <div className="consultant-form-grid">
-        <label className="consultant-field"><span>पूर्ण नाव <i>*</i></span><input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} maxLength={100} required placeholder="तुमचे नाव"/></label>
-        <label className="consultant-field"><span>मोबाइल नंबर <i>*</i></span><input type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value })} pattern="(?:\+91[\s-]?)?[6-9][0-9]{9}" maxLength={16} required placeholder="+91 98765 43210"/><small>हा नंबर कॉल, SMS आणि WhatsApp संपर्कासाठी सार्वजनिक दिसेल.</small></label>
-        <label className="consultant-field"><span>सेवा क्षेत्र / जिल्हा <i>*</i></span><input value={form.serviceArea} onChange={event => setForm({ ...form, serviceArea: event.target.value })} maxLength={120} required placeholder="उदा. सांगली जिल्हा"/></label>
-        <label className="consultant-field"><span>अनुभव (वर्षे) <i>*</i></span><input type="number" min="0" max="80" value={form.experienceYears} onChange={event => setForm({ ...form, experienceYears: event.target.value })} required placeholder="उदा. ५"/></label>
-        <label className="consultant-field consultant-field-wide"><span>तज्ज्ञता <i>*</i></span><input value={form.expertise} onChange={event => setForm({ ...form, expertise: event.target.value })} maxLength={300} required placeholder="उदा. सेंद्रिय खते, कीड व्यवस्थापन, माती परीक्षण"/></label>
-        <label className="consultant-field consultant-field-wide"><span>परिचय</span><textarea value={form.introduction} onChange={event => setForm({ ...form, introduction: event.target.value })} maxLength={800} rows="3" placeholder="तुमचे मार्गदर्शन कसे उपयुक्त ठरू शकते ते सांगा."/></label>
-      </div>
-      <div className="consultant-form-footer"><span>* आवश्यक माहिती</span><button className="consultant-primary" type="submit" disabled={saving}>{saving ? <LoaderCircle className="consultant-spin" size={16}/> : <CheckCircle2 size={16}/>} {accountType === 'admin' ? 'सल्लागार जोडा' : 'नोंदणी प्रकाशित करा'}</button></div>
-    </form>}
 
     <div className="consultant-directory-head">
       <div><span>समुदायातील मार्गदर्शक · {filteredConsultants.length.toLocaleString('mr-IN')} सल्लागार</span><h2>सल्लागार शोधा</h2></div>
@@ -204,7 +144,7 @@ function ConsultantPanel({ apiBase, accountType = 'farmer', authToken, onUnautho
           <button type="button" className="consultant-request-button" onClick={() => openConsultationRequest(consultant)}><MessageSquareText size={14}/> सल्ला विनंती पाठवा</button>
         </article>;
       })}</div>
-      : <div className="consultant-empty"><div className="consultant-empty-icon"><Sprout size={22}/></div><b>{hasConsultantFilters ? 'या फिल्टरसाठी सल्लागार सापडले नाहीत' : 'अजून सल्लागार नोंदणीकृत नाहीत'}</b><span>{hasConsultantFilters ? 'शोध, सेवा क्षेत्र किंवा अनुभवाची अट बदलून पाहा.' : 'पहिले सल्लागार म्हणून नोंदणी करून शेतकरी समुदायाला मार्गदर्शन करा.'}</span></div>}
+      : <div className="consultant-empty"><div className="consultant-empty-icon"><Sprout size={22}/></div><b>{hasConsultantFilters ? 'या फिल्टरसाठी सल्लागार सापडले नाहीत' : 'अजून सल्लागार नोंदणीकृत नाहीत'}</b><span>{hasConsultantFilters ? 'शोध, सेवा क्षेत्र किंवा अनुभवाची अट बदलून पाहा.' : 'प्रशासक सल्लागार प्रोफाइल जोडताच ती येथे दिसेल.'}</span></div>}
     <p className="consultant-privacy-note">सल्लागारांची संपर्क माहिती सार्वजनिक आहे. संपर्क करण्यापूर्वी माहितीची खात्री करा.</p>
 
     {requestingConsultant && <div className="consultant-request-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setRequestingConsultant(null); }}>

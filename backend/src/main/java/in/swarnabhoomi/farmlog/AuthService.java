@@ -56,6 +56,10 @@ public class AuthService implements ApplicationRunner {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "प्रशासक खाते सार्वजनिक sign up मधून तयार करता येत नाही. प्रशासकाने ते सर्व्हरवरून तयार करावे.");
         }
+        if ("consultant".equals(role)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "सेंद्रिय सल्लागार प्रोफाइल प्रशासकाकडून जोडली जातात.");
+        }
         String mobile = normalizeMobile(mobileValue);
         validatePassword(password);
         if (users.existsByMobileNumberAndRole(mobile, role)) {

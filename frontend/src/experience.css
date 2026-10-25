@@ -1034,6 +1034,7 @@ select:focus-visible {
 .account-admin-hero > span { display: inline-flex; align-items: center; gap: 7px; }
 .admin-refresh { display: inline-flex; align-items: center; gap: 7px; margin-top: 15px; padding: 8px 11px; border: 1px solid #cbdcc8; border-radius: 8px; background: rgba(255,255,255,.72); color: #507456; font-family: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
 .admin-refresh:disabled { opacity: .7; cursor: wait; }
+.account-admin-notice { padding: 10px 12px; border: 1px solid #d7e8d3; border-radius: 8px; background: #f0f8ee; color: #47734c; font-size: 12px; }
 .account-admin-stats { grid-template-columns: repeat(3,minmax(0,1fr)); }
 .admin-stat-card { min-width: 0; display: grid; gap: 7px; text-align: left; padding: 15px 16px; border: 1px solid #e7ece4; border-radius: 13px; background: #fff; color: #3e5744; cursor: pointer; transition: border-color .18s, transform .18s, box-shadow .18s; }
 .admin-stat-card:hover { transform: translateY(-2px); border-color: #c8dcc5; box-shadow: 0 8px 20px rgba(44,82,46,.07); }
@@ -1046,6 +1047,14 @@ select:focus-visible {
 .admin-records-head h2 { margin: 5px 0; color: #304b36; font-size: 18px; }
 .admin-records-head p { margin: 0; color: #879489; font-size: 11px; }
 .admin-record-tools { display: flex; align-items: center; gap: 8px; }
+.admin-consultant-form { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 13px; margin: 16px 0 5px; padding: 16px; border: 1px solid #e2ebdf; border-radius: 11px; background: #fbfcf9; }
+.admin-consultant-form label { display: grid; gap: 6px; color: #536b58; font-size: 11px; font-weight: 650; }
+.admin-consultant-form label.wide { grid-column: 1 / -1; }
+.admin-consultant-form input,.admin-consultant-form textarea { width: 100%; min-height: 39px; padding: 9px 10px; border: 1px solid #dfe8dc; border-radius: 7px; outline: 0; background: #fff; color: #354c39; font: 500 12px inherit; }
+.admin-consultant-form textarea { resize: vertical; }
+.admin-consultant-form input:focus,.admin-consultant-form textarea:focus { border-color: #87ac82; box-shadow: 0 0 0 3px rgba(91,145,91,.1); }
+.admin-consultant-form > button { justify-self: start; display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 8px 12px; border: 0; border-radius: 8px; background: #39784a; color: #fff; font: 700 12px inherit; cursor: pointer; }
+.admin-consultant-form > button:disabled { opacity: .7; cursor: wait; }
 .admin-search { display: flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 9px; border: 1px solid #e2e9df; border-radius: 8px; color: #879489; }
 .admin-search input { width: 145px; min-width: 0; border: 0; outline: 0; background: transparent; color: #384d3d; font-family: inherit; font-size: 12px; }
 .admin-record-tools .outline { min-height: 36px; }
@@ -1079,6 +1088,8 @@ select:focus-visible {
   .admin-records { padding: 13px; }
   .admin-records-head { align-items: stretch; flex-direction: column; }
   .admin-record-tools { width: 100%; }
+  .admin-consultant-form { grid-template-columns: 1fr; padding: 12px; }
+  .admin-consultant-form label.wide { grid-column: auto; }
   .admin-search { flex: 1; }
   .admin-search input { width: 100%; }
   .admin-stat-card { padding: 12px; }

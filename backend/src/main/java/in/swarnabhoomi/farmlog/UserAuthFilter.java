@@ -68,7 +68,7 @@ public class UserAuthFilter extends OncePerRequestFilter {
                     && !("GET".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method))
                 || MARKETPLACE_SELLER.matcher(path).matches() && !"seller".equals(user.getRole())
                 || path.equals("/api/consultants") && "POST".equalsIgnoreCase(method)
-                    && !("consultant".equals(user.getRole()) || "admin".equals(user.getRole()))) {
+                    && !"admin".equals(user.getRole())) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType("application/json");
             response.setCharacterEncoding("UTF-8");

@@ -30,13 +30,16 @@ public class AdminController {
     private final FarmEntryRepository entries;
     private final FarmProductListingRepository listings;
     private final MarketplacePurchaseRequestRepository purchaseRequests;
+    private final OrganicConsultantRepository consultantProfiles;
 
     public AdminController(AppUserRepository users, FarmEntryRepository entries,
-            FarmProductListingRepository listings, MarketplacePurchaseRequestRepository purchaseRequests) {
+            FarmProductListingRepository listings, MarketplacePurchaseRequestRepository purchaseRequests,
+            OrganicConsultantRepository consultantProfiles) {
         this.users = users;
         this.entries = entries;
         this.listings = listings;
         this.purchaseRequests = purchaseRequests;
+        this.consultantProfiles = consultantProfiles;
     }
 
     @GetMapping("/overview")
@@ -47,6 +50,7 @@ public class AdminController {
                 users.countByRole("seller"),
                 users.countByRole("farmer"),
                 users.countByRole("consultant"),
+                consultantProfiles.count(),
                 listings.count(),
                 listings.countByAvailableTrue(),
                 purchaseRequests.count(),
@@ -65,6 +69,15 @@ public class AdminController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "खरेदीदार किंवा विक्रेता खाते निवडा.");
         }
         return users.findAllByRoleOrderByCreatedAtDesc(role, pageRequest(page, size)).map(AdminController::userRecord);
+    }
+
+    @GetMapping("/consultants")
+    public Page<ConsultantRecord> consultants(@RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size,
+            @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
+        requireAdmin(user);
+        return consultantProfiles.findAllByOrderByCreatedAtDesc(pageRequest(page, size))
+                .map(AdminController::consultantRecord);
     }
 
     @GetMapping("/daily-entries")
@@ -140,11 +153,20 @@ public class AdminController {
                 request.getFulfillment(), request.getNote(), request.getStatus(), request.getCreatedAt());
     }
 
-    public record Overview(long buyers, long sellers, long farmers, long consultants,
+    public record Overview(long buyers, long sellers, long farmers, long consultants, long consultantProfiles,
             long listings, long availableListings, long purchaseRequests, long pendingRequests,
             long dailyEntries, long todayEntries) {}
 
     public record UserRecord(Long id, String mobileNumber, String role, Instant createdAt) {}
+
+    public record ConsultantRecord(Long id, String name, String phone, String serviceArea, String expertise,
+            int experienceYears, String introduction, Instant createdAt) {}
+
+    private static ConsultantRecord consultantRecord(OrganicConsultant consultant) {
+        return new ConsultantRecord(consultant.getId(), consultant.getName(), consultant.getPhone(),
+                consultant.getServiceArea(), consultant.getExpertise(), consultant.getExperienceYears(),
+                consultant.getIntroduction(), consultant.getCreatedAt());
+    }
 
     public record ListingRecord(Long id, String sellerName, String sellerPhone, String accountMobileNumber,
             String productName, String cropType, String category, double quantity, String unit,
