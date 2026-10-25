@@ -119,6 +119,11 @@
 @media(max-width:460px){.market-hero{align-items:flex-start;padding:16px}.market-hero h1{font-size:18px}.market-hero-icon{width:48px;height:48px}.market-hero-icon svg{width:21px}.market-hero-icon span{font-size:7px}.market-search-panel{gap:7px;padding:8px}.market-search-field{flex-basis:100%}.market-radius{font-size:8px}.market-filter-row{gap:7px;padding:7px}.market-filter-field{flex:1;justify-content:space-between}.market-filter-field select{max-width:120px}.market-favorites-toggle{width:100%;justify-content:center;margin-left:0}.market-map{height:280px}.market-form-grid{grid-template-columns:1fr}.market-field-wide{grid-column:auto}.market-coordinate-grid{grid-template-columns:1fr 1fr}.market-quantity-field{grid-template-columns:1fr 90px}.market-private-badge{font-size:7px;padding:6px}.market-form-card>.market-card-heading h2{font-size:11px}.market-actions button{font-size:8px}.market-login-modal,.market-contact-modal{padding:20px}}
 
 .market-price{margin:0 0 5px;color:#315f38;font-size:12px;font-weight:800}
+.market-offer-price{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 7px;margin:0 0 7px;color:#315f38}
+.market-offer-price strong{font-size:13px;font-weight:850}
+.market-offer-price del{color:#879287;font-size:9px;font-weight:600}
+.market-offer-price>span{padding:2px 6px;border:1px solid #f2d6c7;border-radius:99px;background:#fff2e9;color:#ae5734;font-size:8px;font-weight:800}
+.market-cart-item-main .market-offer-price{margin-top:4px}
 .market-stock.unavailable{color:#9a6254}
 .market-listing-actions{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:3px}
 .market-listing-actions .market-contact-button{margin-top:0}
@@ -231,6 +236,6 @@
 .market-stock-add{display:grid;gap:6px}
 .market-stock-add-button{min-height:32px;display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid #d8e5d5;border-radius:7px;background:#f2f8ef;color:#47764b;font:700 8px inherit;cursor:pointer}
 .market-stock-add-button:disabled{opacity:.55;cursor:not-allowed}
-.market-seller-controls{grid-template-columns:minmax(135px,1fr) minmax(135px,1fr) minmax(100px,.75fr) auto auto}
+.market-seller-controls{grid-template-columns:minmax(125px,1fr) minmax(125px,1fr) minmax(105px,.75fr) minmax(125px,1fr) auto auto}
 @media(max-width:800px){.market-cart-layout{grid-template-columns:1fr}.market-checkout-card{position:static}.market-seller-controls{grid-template-columns:1fr 1fr}}
 @media(max-width:460px){.market-cart-item{grid-template-columns:58px minmax(0,1fr);gap:8px;padding:9px}.market-cart-item .market-product-photo{width:58px;height:66px}.market-cart-item-actions{gap:6px}.market-quantity-stepper input{width:55px}.market-seller-controls{grid-template-columns:1fr}}

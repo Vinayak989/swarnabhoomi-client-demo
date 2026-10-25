@@ -48,6 +48,9 @@ public class FarmProductListing {
     @Column(precision = 12, scale = 2)
     private BigDecimal pricePerUnit;
 
+    @Column(precision = 5, scale = 2)
+    private BigDecimal discountPercent;
+
     @Column
     private Boolean available = true;
 
@@ -96,6 +99,8 @@ public class FarmProductListing {
     public void setQuantity(double value) { quantity = value; }
     public BigDecimal getPricePerUnit() { return pricePerUnit; }
     public void setPricePerUnit(BigDecimal value) { pricePerUnit = value; }
+    public BigDecimal getDiscountPercent() { return discountPercent; }
+    public void setDiscountPercent(BigDecimal value) { discountPercent = value; }
     public Boolean getAvailable() { return available; }
     public void setAvailable(Boolean value) { available = value; }
     public String getSellerTokenHash() { return sellerTokenHash; }

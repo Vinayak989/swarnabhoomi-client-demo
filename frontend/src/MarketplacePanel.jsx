@@ -15,6 +15,7 @@ const EMPTY_FORM = {
   category: 'भाजीपाला',
   quantity: '',
   pricePerUnit: '',
+  discountPercent: '',
   unit: 'kg',
   description: ''
 };
@@ -455,7 +456,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     listing: listings.find(listing => listing.id === item.listingId)
   })).filter(item => item.listing), [cart, listings]);
   const cartTotal = useMemo(() => cartRows.reduce((sum, item) =>
-    sum + Number(item.listing.pricePerUnit || 0) * Number(item.quantity), 0), [cartRows]);
+    sum + effectivePrice(item.listing) * Number(item.quantity), 0), [cartRows]);
 
   const filteredListings = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('mr-IN');
@@ -550,6 +551,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
         longitude: Number(current.longitude),
         quantity: Number(current.quantity),
         pricePerUnit: Number(current.pricePerUnit),
+        discountPercent: current.discountPercent === '' ? null : Number(current.discountPercent),
         photoUrl: photoUrl || null
       };
       const response = await request('/marketplace/listings', {
@@ -672,6 +674,8 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
         headers: { 'Content-Type': 'application/json', 'X-Seller-Token': sellerToken },
         body: JSON.stringify({
           pricePerUnit: Number(listing.pricePerUnit),
+          discountPercent: listing.discountPercent === '' || listing.discountPercent == null
+            ? null : Number(listing.discountPercent),
           quantity: Number(listing.quantity),
           available: Boolean(listing.available)
         })
@@ -776,6 +780,25 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   function formatPrice(price, unit) {
     const unitLabel = UNITS.find(([value]) => value === unit)?.[1] || unit;
     return `₹${Number(price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / ${unitLabel}`;
+  }
+
+  function effectivePrice(listing) {
+    return Number(listing.discountedPricePerUnit ?? listing.pricePerUnit ?? 0);
+  }
+
+  function hasOffer(listing) {
+    return Number(listing.discountPercent || 0) > 0
+      && effectivePrice(listing) < Number(listing.pricePerUnit || 0);
+  }
+
+  function priceDisplay(listing) {
+    if (listing.pricePerUnit == null) return <p className="market-price">किंमत उपलब्ध नाही</p>;
+    if (!hasOffer(listing)) return <p className="market-price">{formatPrice(listing.pricePerUnit, listing.unit)}</p>;
+    return <div className="market-offer-price">
+      <strong>{formatPrice(effectivePrice(listing), listing.unit)}</strong>
+      <del>{formatPrice(listing.pricePerUnit, listing.unit)}</del>
+      <span>{Number(listing.discountPercent).toLocaleString('mr-IN', { maximumFractionDigits: 2 })}% सूट</span>
+    </div>;
   }
 
   function requestStatusLabel(status) {
@@ -994,7 +1017,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
                   <div className="market-listing-heading"><span>{listing.category}</span>{listing.distance !== null&&<small>{listing.distance < 1 ? `${Math.round(listing.distance*1000).toLocaleString('mr-IN')} मी` : `${listing.distance.toLocaleString('mr-IN',{maximumFractionDigits:1})} किमी`}</small>}<button type="button" className={`market-favorite-button ${favoriteIds.has(String(listing.id)) ? 'saved' : ''}`} aria-label={favoriteIds.has(String(listing.id)) ? 'आवडत्यामधून काढा' : 'आवडत्यात जतन करा'} aria-pressed={favoriteIds.has(String(listing.id))} onClick={event => toggleFavorite(listing.id, event)}><Heart size={14} fill={favoriteIds.has(String(listing.id)) ? 'currentColor' : 'none'}/></button></div>
                   <h3>{listing.productName}</h3><p className="market-crop-type">{listing.cropType}</p>
                   <p className={`market-stock ${listing.available === false ? 'unavailable' : ''}`}>{listing.available === false ? 'सध्या उपलब्ध नाही' : `${formatQuantity(listing)} उपलब्ध`}</p>
-                  <p className="market-price">{listing.pricePerUnit == null ? 'किंमत उपलब्ध नाही' : formatPrice(listing.pricePerUnit, listing.unit)}</p>
+                  {priceDisplay(listing)}
                   <div className="market-seller"><UserRound size={13}/><b>{listing.sellerName}</b></div>
                   <p className="market-address"><MapPin size={13}/>{listing.address}</p>
                   <div className="market-listing-actions">
@@ -1021,13 +1044,13 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
             const overStock = Number(item.quantity) > Number(listing.quantity);
             return <article className={`market-cart-item ${!available || overStock ? 'unavailable' : ''}`} key={listing.id}>
               <ProductPhoto apiBase={apiBase} photoUrl={listing.photoUrl} authorization={authorization} productName={listing.productName}/>
-              <div className="market-cart-item-main"><div><b>{listing.productName}</b><span>{listing.sellerName} · {formatPrice(listing.pricePerUnit, listing.unit)}</span></div>
+              <div className="market-cart-item-main"><div><b>{listing.productName}</b><span>{listing.sellerName}</span>{priceDisplay(listing)}</div>
                 <small>{formatQuantity(listing)} उपलब्ध{overStock ? ' · साठा बदलला, प्रमाण कमी करा' : ''}{!available ? ' · सध्या उपलब्ध नाही' : ''}</small>
                 <div className="market-cart-item-actions"><div className="market-quantity-stepper">
                   <button type="button" aria-label="प्रमाण कमी करा" onClick={() => updateCartQuantity(listing, Math.max(0.001, Number(item.quantity) - 1))} disabled={Number(item.quantity) <= 0.001}><Minus size={13}/></button>
                   <input aria-label={`${listing.productName} चे प्रमाण`} type="number" min="0.001" max={listing.quantity} step="0.001" value={item.quantity} onChange={event => updateCartQuantity(listing, event.target.value)} disabled={!available}/>
                   <button type="button" aria-label="प्रमाण वाढवा" onClick={() => updateCartQuantity(listing, Math.min(Number(listing.quantity), Number(item.quantity) + 1))} disabled={!available || Number(item.quantity) >= Number(listing.quantity)}><Plus size={13}/></button>
-                </div><span className="market-cart-line-total">₹{(Number(listing.pricePerUnit || 0) * Number(item.quantity)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div><span className="market-cart-line-total">₹{(effectivePrice(listing) * Number(item.quantity)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   <button type="button" className="market-cart-remove" onClick={() => removeCartItem(listing.id)} aria-label="कार्टमधून काढा"><Trash2 size={15}/></button></div>
               </div>
             </article>;
@@ -1103,6 +1126,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
             <label className="market-field"><span>एकक</span><select name="unit" value={form.unit} onChange={updateField}>{UNITS.map(([unit,label])=><option value={unit} key={unit}>{label}</option>)}</select></label>
           </div>
           <label className="market-field"><span>प्रति एकक किंमत (₹) *</span><input name="pricePerUnit" type="number" min="0.01" max="9999999999.99" step="0.01" value={form.pricePerUnit} onChange={updateField} required placeholder="उदा. ८०.००"/><small>खरेदीदारांना ही किंमत दिसेल.</small></label>
+          <label className="market-field"><span>ऑफर सवलत (%) <small>ऐच्छिक</small></span><input name="discountPercent" type="number" min="0" max="99.99" step="0.01" value={form.discountPercent} onChange={updateField} placeholder="उदा. १०"/><small>सवलतीनंतरची किंमत खरेदीदारांना दिसेल.</small></label>
           <label className="market-field market-field-wide"><span>शेतमालाची माहिती <small>ऐच्छिक</small></span><textarea name="description" value={form.description} onChange={updateField} maxLength={1000} placeholder="काढणीची तारीख, उपलब्धता किंवा इतर तपशील"/></label>
         </div>
         <div className="market-photo-picker">
@@ -1126,6 +1150,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
             <div className="market-card-heading"><div><span>{row.listing.category}</span><h2>{row.listing.productName} · {row.listing.cropType}</h2></div><span className={`market-availability ${row.listing.available ? 'available' : ''}`}>{row.listing.available ? 'विक्री सुरू' : 'बंद'}</span></div>
             <div className="market-seller-controls">
               <label className="market-field"><span>किंमत (₹ / {UNITS.find(([value]) => value === row.listing.unit)?.[1] || row.listing.unit})</span><input type="number" min="0.01" max="9999999999.99" step="0.01" value={row.listing.pricePerUnit ?? ''} onChange={event => updateSellerListing(row.listing.id, 'pricePerUnit', event.target.value)}/></label>
+              <label className="market-field"><span>ऑफर सवलत (%)</span><input type="number" min="0" max="99.99" step="0.01" value={row.listing.discountPercent ?? ''} onChange={event => updateSellerListing(row.listing.id, 'discountPercent', event.target.value)} placeholder="ऐच्छिक"/><small>रिकामे ठेवल्यास ऑफर काढली जाईल.</small></label>
               <label className="market-field"><span>उपलब्ध प्रमाण ({UNITS.find(([value]) => value === row.listing.unit)?.[1] || row.listing.unit})</span><input type="number" min="0" max="1000000000" step="any" value={row.listing.quantity} onChange={event => updateSellerListing(row.listing.id, 'quantity', event.target.value)}/></label>
               <div className="market-stock-add"><label className="market-field"><span>साठ्यात वाढवा</span><input type="number" min="0.001" max="1000000000" step="any" value={sellerStockAdds[row.listing.id] ?? ''} onChange={event => setSellerStockAdds(current => ({ ...current, [row.listing.id]: event.target.value }))} placeholder="प्रमाण"/></label><button type="button" className="market-stock-add-button" onClick={() => addSellerStock(row)} disabled={sellerSavingId === row.listing.id || !sellerStockAdds[row.listing.id]}><Plus size={13}/> साठ्यात जोडा</button></div>
               <label className="market-availability-toggle"><input type="checkbox" checked={Boolean(row.listing.available)} onChange={event => updateSellerListing(row.listing.id, 'available', event.target.checked)}/> खरेदीसाठी उपलब्ध</label>

@@ -138,6 +138,7 @@ public class FarmMarketplaceController {
         listing.setCategory(request.category().trim());
         listing.setQuantity(request.quantity());
         listing.setPricePerUnit(request.pricePerUnit().setScale(2, java.math.RoundingMode.HALF_UP));
+        listing.setDiscountPercent(normalizeDiscount(request.discountPercent()));
         listing.setAvailable(true);
         listing.setUnit(request.unit().trim().toLowerCase(Locale.ROOT));
         listing.setDescription(trimToNull(request.description()));
@@ -213,7 +214,7 @@ public class FarmMarketplaceController {
             order.setPaymentMethod(MarketplacePurchaseRequest.PaymentMethod.CASH);
             order.setPaymentStatus(MarketplacePurchaseRequest.PaymentStatus.PENDING);
             orders.add(order);
-            totalAmount = totalAmount.add(listing.getPricePerUnit().multiply(quantity));
+            totalAmount = totalAmount.add(order.getPricePerUnit().multiply(quantity));
             reserveStock(listing, quantity);
         }
 
@@ -254,6 +255,7 @@ public class FarmMarketplaceController {
         FarmProductListing listing = findOwnedListingForUpdate(id, user);
         requireSeller(listing, sellerToken);
         if (update == null || !validPrice(update.pricePerUnit())
+                || !validDiscountPercent(update.discountPercent(), update.pricePerUnit())
                 || update.quantity() == null || !Double.isFinite(update.quantity())
                 || update.quantity() < 0 || update.quantity() > 1_000_000_000
                 || update.available() == null
@@ -261,6 +263,7 @@ public class FarmMarketplaceController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "किंमत, प्रमाण आणि उपलब्धतेची माहिती तपासा.");
         }
         listing.setPricePerUnit(update.pricePerUnit().setScale(2, java.math.RoundingMode.HALF_UP));
+        listing.setDiscountPercent(normalizeDiscount(update.discountPercent()));
         listing.setQuantity(update.quantity());
         listing.setAvailable(update.available());
         return ListingResponse.from(repository.save(listing));
@@ -390,6 +393,7 @@ public class FarmMarketplaceController {
                 || request.quantity() == null || !Double.isFinite(request.quantity())
                 || request.quantity() <= 0 || request.quantity() > 1_000_000_000
                 || !validPrice(request.pricePerUnit())
+                || !validDiscountPercent(request.discountPercent(), request.pricePerUnit())
                 || request.unit() == null || !UNITS.contains(request.unit().trim().toLowerCase(Locale.ROOT))
                 || tooLong(request.description(), 1000)
                 || tooLong(request.photoUrl(), 100)
@@ -420,7 +424,7 @@ public class FarmMarketplaceController {
         order.setProductName(listing.getProductName());
         order.setSellerName(listing.getSellerName());
         order.setSellerPhone(listing.getPhone());
-        order.setPricePerUnit(listing.getPricePerUnit());
+        order.setPricePerUnit(discountedPrice(listing.getPricePerUnit(), listing.getDiscountPercent()));
         order.setQuantity(quantity);
         order.setUnit(listing.getUnit());
         order.setFulfillment(fulfillment);
@@ -482,6 +486,28 @@ public class FarmMarketplaceController {
                 && price.stripTrailingZeros().scale() <= 2;
     }
 
+    private static boolean validDiscountPercent(BigDecimal discountPercent, BigDecimal pricePerUnit) {
+        if (discountPercent == null) return true;
+        return validPrice(pricePerUnit) && discountPercent.signum() >= 0
+                && discountPercent.compareTo(new BigDecimal("99.99")) <= 0
+                && discountPercent.stripTrailingZeros().scale() <= 2
+                && (discountPercent.signum() == 0 || discountedPrice(pricePerUnit, discountPercent).signum() > 0);
+    }
+
+    private static BigDecimal normalizeDiscount(BigDecimal discountPercent) {
+        return discountPercent == null || discountPercent.signum() == 0 ? null
+                : discountPercent.setScale(2, java.math.RoundingMode.HALF_UP);
+    }
+
+    private static BigDecimal discountedPrice(BigDecimal pricePerUnit, BigDecimal discountPercent) {
+        if (pricePerUnit == null) return null;
+        if (discountPercent == null || discountPercent.signum() <= 0) {
+            return pricePerUnit.setScale(2, java.math.RoundingMode.HALF_UP);
+        }
+        return pricePerUnit.multiply(new BigDecimal("100").subtract(discountPercent))
+                .divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+    }
+
     private static String newSellerToken() {
         byte[] bytes = new byte[32];
         SECURE_RANDOM.nextBytes(bytes);
@@ -530,7 +556,8 @@ public class FarmMarketplaceController {
             String unit,
             String description,
             String photoUrl,
-            BigDecimal pricePerUnit) {}
+            BigDecimal pricePerUnit,
+            BigDecimal discountPercent) {}
 
     public record CreateListingResponse(ListingResponse listing, String sellerManagementToken) {}
 
@@ -548,7 +575,7 @@ public class FarmMarketplaceController {
 
     public record PurchaseRequestReceipt(String message) {}
 
-    public record SellerListingUpdate(BigDecimal pricePerUnit, Double quantity, Boolean available) {}
+    public record SellerListingUpdate(BigDecimal pricePerUnit, BigDecimal discountPercent, Double quantity, Boolean available) {}
 
     public record PurchaseRequestStatusUpdate(String status, String paymentStatus) {}
 
@@ -578,6 +605,8 @@ public class FarmMarketplaceController {
             String category,
             double quantity,
             BigDecimal pricePerUnit,
+            BigDecimal discountPercent,
+            BigDecimal discountedPricePerUnit,
             boolean available,
             String unit,
             String description,
@@ -594,6 +623,8 @@ public class FarmMarketplaceController {
                     listing.getCategory(),
                     listing.getQuantity(),
                     listing.getPricePerUnit(),
+                    listing.getDiscountPercent(),
+                    discountedPrice(listing.getPricePerUnit(), listing.getDiscountPercent()),
                     !Boolean.FALSE.equals(listing.getAvailable()),
                     listing.getUnit(),
                     listing.getDescription(),
