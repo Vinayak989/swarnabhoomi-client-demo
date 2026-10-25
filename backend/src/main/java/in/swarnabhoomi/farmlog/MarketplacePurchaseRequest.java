@@ -18,6 +18,8 @@ import java.time.Instant;
 public class MarketplacePurchaseRequest {
     public enum Status { PENDING, ACCEPTED, DECLINED, COMPLETED }
     public enum Fulfillment { PICKUP, DELIVERY }
+    public enum PaymentMethod { CASH, UPI }
+    public enum PaymentStatus { PENDING, PAID, FAILED }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -64,6 +66,14 @@ public class MarketplacePurchaseRequest {
     @Column(nullable = false, length = 16)
     private Status status = Status.PENDING;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method", length = 12)
+    private PaymentMethod paymentMethod;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", length = 12)
+    private PaymentStatus paymentStatus;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -100,5 +110,9 @@ public class MarketplacePurchaseRequest {
     public void setNote(String value) { note = value; }
     public Status getStatus() { return status; }
     public void setStatus(Status value) { status = value; }
+    public PaymentMethod getPaymentMethod() { return paymentMethod; }
+    public void setPaymentMethod(PaymentMethod value) { paymentMethod = value; }
+    public PaymentStatus getPaymentStatus() { return paymentStatus; }
+    public void setPaymentStatus(PaymentStatus value) { paymentStatus = value; }
     public Instant getCreatedAt() { return createdAt; }
 }

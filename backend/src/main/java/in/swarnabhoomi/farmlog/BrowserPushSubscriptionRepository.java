@@ -7,5 +7,6 @@ public interface BrowserPushSubscriptionRepository extends JpaRepository<Browser
     Optional<BrowserPushSubscription> findByEndpoint(String endpoint);
     Optional<BrowserPushSubscription> findByIdAndOwnerIdAndActiveTrue(Long id, Long ownerId);
     Optional<BrowserPushSubscription> findByIdAndOwnerId(Long id, Long ownerId);
+    java.util.List<BrowserPushSubscription> findAllByOwnerIdAndActiveTrue(Long ownerId);
 
 }

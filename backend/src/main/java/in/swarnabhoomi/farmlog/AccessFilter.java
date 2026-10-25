@@ -76,6 +76,7 @@ public class AccessFilter extends OncePerRequestFilter {
                     && ("GET".equalsIgnoreCase(method) || "POST".equalsIgnoreCase(method)))
                 || (path.startsWith("/api/marketplace/")
                     && ("GET".equalsIgnoreCase(method) && path.equals("/api/marketplace/listings")
+                        || "GET".equalsIgnoreCase(method) && path.equals("/api/marketplace/payment-options")
                         || "POST".equalsIgnoreCase(method) && path.equals("/api/marketplace/listings")
                         || "POST".equalsIgnoreCase(method) && path.equals("/api/marketplace/photos")
                         || "GET".equalsIgnoreCase(method) && MARKETPLACE_PHOTO.matcher(path).matches()

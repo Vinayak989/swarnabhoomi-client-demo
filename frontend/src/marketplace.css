@@ -202,6 +202,15 @@
 .market-checkout-card>.market-card-heading>svg{color:#59845c}
 .market-checkout-card .market-field input[readonly]{background:#f7f9f5;color:#788678}
 .market-checkout-card .market-field textarea{min-height:62px}
+.market-payment-options{display:grid;gap:7px;margin:0;padding:10px;border:1px solid #e5ebe2;border-radius:9px}
+.market-payment-options legend{padding:0 4px;color:#637464;font-size:9px;font-weight:700}
+.market-payment-choice{display:grid;grid-template-columns:16px minmax(0,1fr);align-items:start;gap:8px;padding:9px;border:1px solid #e3eae0;border-radius:8px;background:#fbfcfa;cursor:pointer}
+.market-payment-choice.selected{border-color:#94b894;background:#f2f8ef}
+.market-payment-choice input{margin:2px 0 0;accent-color:#47764b}
+.market-payment-choice span{display:grid;gap:3px}
+.market-payment-choice b{color:#405843;font-size:9px}
+.market-payment-choice small{color:#78877a;font-size:8px;line-height:1.5}
+.market-payment-choice.unavailable{cursor:not-allowed;opacity:.7}
 .market-checkout-total{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-top:1px solid #e8eee5;color:#7d8a7e;font-size:9px}
 .market-checkout-total b{color:#315f38;font-size:15px}
 .market-checkout-card>.market-submit-button{width:100%}
@@ -210,6 +219,10 @@
 .market-buyer-order-main>div>span{color:#8b978b;font-size:8px}
 .market-buyer-order-main h3{margin:3px 0 0;color:#344d39;font-size:12px}
 .market-buyer-order-card>p{margin:0;color:#78877a;font-size:9px}
+.market-payment-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 8px;border-radius:6px;background:#f7f9f5;color:#78877a;font-size:8px}
+.market-payment-summary b{color:#9a7836;font-size:8px}
+.market-payment-summary b.payment-paid{color:#47764b}
+.market-payment-summary b.payment-failed{color:#a34f45}
 .market-buyer-order-total{color:#3f7145;font-size:10px}
 .market-buyer-order-card time{color:#929d92;font-size:8px}
 .market-receipt-button{min-height:34px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 11px;border:1px solid #d8e5d5;border-radius:7px;background:#f2f8ef;color:#47764b;font:700 9px inherit;cursor:pointer}

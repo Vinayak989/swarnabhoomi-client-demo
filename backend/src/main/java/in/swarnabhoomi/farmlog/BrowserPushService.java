@@ -108,12 +108,30 @@ public class BrowserPushService {
         if (!subscription.isActive()) return false;
         requireConfigured();
 
+        return send(subscription, "स्वर्णभूमी स्मरणपत्र", reminder.getReason(), "/?tab=reminders");
+    }
+
+    public boolean notifyUser(Long userId, String title, String body, String url) {
+        if (userId == null || !isConfigured()) return false;
+        boolean delivered = false;
+        for (BrowserPushSubscription subscription : repository.findAllByOwnerIdAndActiveTrue(userId)) {
+            try {
+                delivered |= send(subscription, title, body, url);
+            } catch (RuntimeException exception) {
+                log.warn("Web push notification could not be delivered to subscription {}", subscription.getId(), exception);
+            }
+        }
+        return delivered;
+    }
+
+    private boolean send(BrowserPushSubscription subscription, String title, String body, String url) {
+
         String payload;
         try {
             payload = objectMapper.writeValueAsString(Map.of(
-                    "title", "स्वर्णभूमी स्मरणपत्र",
-                    "body", reminder.getReason(),
-                    "url", "/?tab=reminders"));
+                    "title", title,
+                    "body", body,
+                    "url", url));
             PushService pushService = new PushService(publicKey, privateKey, subject);
             HttpResponse response = pushService.send(new Notification(subscription.getEndpoint(),
                     subscription.getP256dhKey(), subscription.getAuthKey(),

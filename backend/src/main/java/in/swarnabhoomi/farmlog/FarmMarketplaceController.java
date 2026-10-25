@@ -45,16 +45,25 @@ public class FarmMarketplaceController {
     private final MarketplacePurchaseRequestRepository purchaseRequestRepository;
     private final FarmPhotoRepository photoRepository;
     private final PhotoObjectStorage photoStorage;
+    private final BrowserPushService pushService;
     @Value("${spring.servlet.multipart.max-file-size:10MB}")
     private org.springframework.util.unit.DataSize maxPhotoSize;
 
     public FarmMarketplaceController(FarmProductListingRepository repository,
             MarketplacePurchaseRequestRepository purchaseRequestRepository,
-            FarmPhotoRepository photoRepository, PhotoObjectStorage photoStorage) {
+            FarmPhotoRepository photoRepository, PhotoObjectStorage photoStorage,
+            BrowserPushService pushService) {
         this.repository = repository;
         this.purchaseRequestRepository = purchaseRequestRepository;
         this.photoRepository = photoRepository;
         this.photoStorage = photoStorage;
+        this.pushService = pushService;
+    }
+
+    @GetMapping("/payment-options")
+    public PaymentOptions paymentOptions() {
+        return new PaymentOptions(true, false,
+                "UPI साठी पेमेंट गेटवे आणि विक्रेता सेटलमेंट खाते सक्रिय करणे आवश्यक आहे.");
     }
 
     @GetMapping("/listings")
@@ -170,6 +179,10 @@ public class FarmMarketplaceController {
         if (!validCheckoutRequest(request)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "कार्टमधील खरेदीची माहिती तपासा.");
         }
+        if (request.paymentMethod() == MarketplacePurchaseRequest.PaymentMethod.UPI) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "UPI पेमेंट सुरू करण्यासाठी पेमेंट गेटवे आणि विक्रेता सेटलमेंट खाते अद्याप सक्रिय नाही. कृपया रोख पर्याय निवडा.");
+        }
 
         TreeMap<Long, BigDecimal> quantities = new TreeMap<>();
         for (CheckoutLine line : request.items()) {
@@ -197,6 +210,8 @@ public class FarmMarketplaceController {
             BigDecimal quantity = item.getValue();
             MarketplacePurchaseRequest order = newPurchaseRequest(item.getKey(), listing, buyer,
                     request.buyerName(), quantity, request.fulfillment(), request.note());
+            order.setPaymentMethod(MarketplacePurchaseRequest.PaymentMethod.CASH);
+            order.setPaymentStatus(MarketplacePurchaseRequest.PaymentStatus.PENDING);
             orders.add(order);
             totalAmount = totalAmount.add(listing.getPricePerUnit().multiply(quantity));
             reserveStock(listing, quantity);
@@ -205,6 +220,10 @@ public class FarmMarketplaceController {
         repository.saveAll(lockedListings.values());
         List<PurchaseRequestResponse> savedOrders = purchaseRequestRepository.saveAll(orders).stream()
                 .map(PurchaseRequestResponse::from).toList();
+        for (MarketplacePurchaseRequest order : orders) {
+            notifyPaymentParties(order, lockedListings.get(order.getListingId()),
+                    "नवीन रोख ऑर्डर", "ऑर्डर #" + order.getId() + " विक्रेत्याकडे पाठवला आहे.");
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(new CheckoutResponse(
                 "ऑर्डर विक्रेत्यांकडे पाठवले आहेत. विक्रेत्यांच्या प्रतिसादानंतर स्थिती येथे दिसेल.",
                 savedOrders, totalAmount.setScale(2, java.math.RoundingMode.HALF_UP)));
@@ -269,7 +288,31 @@ public class FarmMarketplaceController {
         if (!id.equals(request.getListingId())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "खरेदीची विनंती सापडली नाही.");
         }
-        if (update == null || update.status() == null
+        if (update == null || update.paymentStatus() != null && update.status() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "व्यवहाराची स्थिती तपासा.");
+        }
+        if (update.paymentStatus() != null) {
+            MarketplacePurchaseRequest.PaymentStatus nextPaymentStatus;
+            try {
+                nextPaymentStatus = MarketplacePurchaseRequest.PaymentStatus.valueOf(
+                        update.paymentStatus().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException exception) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "पेमेंटची स्थिती तपासा.");
+            }
+            if (request.getPaymentMethod() != MarketplacePurchaseRequest.PaymentMethod.CASH
+                    || request.getPaymentStatus() != MarketplacePurchaseRequest.PaymentStatus.PENDING
+                    || request.getStatus() == MarketplacePurchaseRequest.Status.DECLINED
+                    || nextPaymentStatus != MarketplacePurchaseRequest.PaymentStatus.PAID) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "या पेमेंटची स्थिती विक्रेत्याकडून बदलता येत नाही.");
+            }
+            request.setPaymentStatus(nextPaymentStatus);
+            MarketplacePurchaseRequest saved = purchaseRequestRepository.save(request);
+            notifyPaymentParties(saved, listing, "रोख पेमेंट मिळाले",
+                    "ऑर्डर #" + saved.getId() + " चे रोख पेमेंट विक्रेत्याने मिळाल्याची नोंद केली.");
+            return PurchaseRequestResponse.from(saved);
+        }
+        if (update.status() == null
                 || !Set.of("ACCEPTED", "DECLINED", "COMPLETED").contains(update.status().toUpperCase(Locale.ROOT))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "विनंतीची स्थिती तपासा.");
         }
@@ -283,6 +326,17 @@ public class FarmMarketplaceController {
         if (!validTransition) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "या ऑर्डरची स्थिती आधीच बदलली आहे.");
         }
+        if (nextStatus == MarketplacePurchaseRequest.Status.COMPLETED
+                && request.getPaymentMethod() == MarketplacePurchaseRequest.PaymentMethod.CASH
+                && request.getPaymentStatus() != MarketplacePurchaseRequest.PaymentStatus.PAID) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "व्यवहार पूर्ण करण्यापूर्वी रोख पेमेंट मिळाल्याची नोंद करा.");
+        }
+        if (nextStatus == MarketplacePurchaseRequest.Status.DECLINED
+                && request.getPaymentStatus() == MarketplacePurchaseRequest.PaymentStatus.PAID) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "पेमेंट झालेला ऑर्डर नाकारता येत नाही. परताव्यासाठी खरेदीदाराशी संपर्क साधा.");
+        }
         if (nextStatus == MarketplacePurchaseRequest.Status.DECLINED) {
             BigDecimal restored = BigDecimal.valueOf(listing.getQuantity()).add(request.getQuantity());
             listing.setQuantity(restored.doubleValue());
@@ -290,7 +344,22 @@ public class FarmMarketplaceController {
             repository.save(listing);
         }
         request.setStatus(nextStatus);
-        return PurchaseRequestResponse.from(purchaseRequestRepository.save(request));
+        MarketplacePurchaseRequest saved = purchaseRequestRepository.save(request);
+        notifyPaymentParties(saved, listing, "ऑर्डर स्थिती अपडेट",
+                "ऑर्डर #" + saved.getId() + " ची स्थिती " + saved.getStatus() + " झाली.");
+        return PurchaseRequestResponse.from(saved);
+    }
+
+    private void notifyPaymentParties(MarketplacePurchaseRequest order, FarmProductListing listing,
+            String title, String message) {
+        try {
+            pushService.notifyUser(order.getBuyerUserId(), title, message, "/?tab=marketplace");
+            if (listing != null && listing.getOwner() != null) {
+                pushService.notifyUser(listing.getOwner().getId(), title, message, "/?tab=marketplace");
+            }
+        } catch (RuntimeException exception) {
+            // The payment/order record is authoritative; push delivery is best-effort.
+        }
     }
 
     @GetMapping("/listings/{id}/contact")
@@ -356,6 +425,8 @@ public class FarmMarketplaceController {
         order.setUnit(listing.getUnit());
         order.setFulfillment(fulfillment);
         order.setNote(trimToNull(note));
+        order.setPaymentMethod(MarketplacePurchaseRequest.PaymentMethod.CASH);
+        order.setPaymentStatus(MarketplacePurchaseRequest.PaymentStatus.PENDING);
         return order;
     }
 
@@ -395,6 +466,7 @@ public class FarmMarketplaceController {
         return request != null && !blankOrLong(request.buyerName(), 100)
                 && request.fulfillment() != null && !tooLong(request.note(), 500)
                 && request.items() != null && !request.items().isEmpty() && request.items().size() <= 50
+                && request.paymentMethod() != null
                 && request.items().stream().allMatch(line -> line != null && line.listingId() != null
                     && line.listingId() > 0 && validOrderQuantity(line.quantity()));
     }
@@ -468,26 +540,30 @@ public class FarmMarketplaceController {
     public record CheckoutLine(Long listingId, BigDecimal quantity) {}
 
     public record CheckoutRequest(String buyerName, MarketplacePurchaseRequest.Fulfillment fulfillment,
-            String note, List<CheckoutLine> items) {}
+            String note, List<CheckoutLine> items, MarketplacePurchaseRequest.PaymentMethod paymentMethod) {}
 
     public record CheckoutResponse(String message, List<PurchaseRequestResponse> orders, BigDecimal totalAmount) {}
+
+    public record PaymentOptions(boolean cashEnabled, boolean upiEnabled, String upiMessage) {}
 
     public record PurchaseRequestReceipt(String message) {}
 
     public record SellerListingUpdate(BigDecimal pricePerUnit, Double quantity, Boolean available) {}
 
-    public record PurchaseRequestStatusUpdate(String status) {}
+    public record PurchaseRequestStatusUpdate(String status, String paymentStatus) {}
 
     public record PurchaseRequestResponse(Long id, Long listingId, String buyerName, String buyerPhone,
             String productName, String sellerName, String sellerPhone, BigDecimal quantity, String unit, BigDecimal pricePerUnit,
             BigDecimal totalAmount, MarketplacePurchaseRequest.Fulfillment fulfillment, String note,
-            MarketplacePurchaseRequest.Status status, java.time.Instant createdAt) {
+            MarketplacePurchaseRequest.Status status, MarketplacePurchaseRequest.PaymentMethod paymentMethod,
+            MarketplacePurchaseRequest.PaymentStatus paymentStatus, java.time.Instant createdAt) {
         static PurchaseRequestResponse from(MarketplacePurchaseRequest request) {
             return new PurchaseRequestResponse(request.getId(), request.getListingId(), request.getBuyerName(),
                     request.getBuyerPhone(), request.getProductName(), request.getSellerName(), request.getSellerPhone(), request.getQuantity(),
                     request.getUnit(), request.getPricePerUnit(), request.getPricePerUnit() == null ? null
                         : request.getPricePerUnit().multiply(request.getQuantity()), request.getFulfillment(),
-                    request.getNote(), request.getStatus(), request.getCreatedAt());
+                    request.getNote(), request.getStatus(), request.getPaymentMethod(),
+                    request.getPaymentStatus(), request.getCreatedAt());
         }
     }
 

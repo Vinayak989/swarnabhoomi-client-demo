@@ -151,7 +151,8 @@ public class AdminController {
         return new PurchaseRequestRecord(request.getId(), request.getListingId(),
                 listing == null ? null : listing.getProductName(), listing == null ? null : listing.getSellerName(),
                 request.getBuyerName(), request.getBuyerPhone(), request.getQuantity(), request.getUnit(),
-                request.getFulfillment(), request.getNote(), request.getStatus(), request.getCreatedAt());
+                request.getFulfillment(), request.getNote(), request.getStatus(), request.getPaymentMethod(),
+                request.getPaymentStatus(), request.getCreatedAt());
     }
 
     public record Overview(long buyers, long sellers, long farmers, long consultants, long consultantProfiles,
@@ -176,7 +177,8 @@ public class AdminController {
     public record PurchaseRequestRecord(Long id, Long listingId, String productName, String sellerName,
             String buyerName, String buyerPhone, BigDecimal quantity, String unit,
             MarketplacePurchaseRequest.Fulfillment fulfillment, String note,
-            MarketplacePurchaseRequest.Status status, Instant createdAt) {}
+            MarketplacePurchaseRequest.Status status, MarketplacePurchaseRequest.PaymentMethod paymentMethod,
+            MarketplacePurchaseRequest.PaymentStatus paymentStatus, Instant createdAt) {}
 
     public record DailyEntryRecord(Long id, Long farmerId, String farmerMobileNumber, LocalDate entryDate,
             String weather, String pincode, String farmSection, String workDone, String materials,

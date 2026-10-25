@@ -276,6 +276,12 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   const [buyerName, setBuyerName] = useState('');
   const [buyerFulfillment, setBuyerFulfillment] = useState('PICKUP');
   const [buyerNote, setBuyerNote] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [paymentOptions, setPaymentOptions] = useState({
+    cashEnabled: true,
+    upiEnabled: false,
+    upiMessage: 'UPI सुरू करण्यासाठी पेमेंट गेटवे आणि विक्रेता सेटलमेंट खाते सक्रिय करणे आवश्यक आहे.'
+  });
   const [buyerOrders, setBuyerOrders] = useState([]);
   const [buyerOrdersLoading, setBuyerOrdersLoading] = useState(false);
   const [buyerOrdersError, setBuyerOrdersError] = useState('');
@@ -346,6 +352,15 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     return response;
   }, [apiBase, authorization]);
 
+  const loadPaymentOptions = useCallback(async () => {
+    try {
+      const response = await request('/marketplace/payment-options');
+      if (response.ok) setPaymentOptions(await response.json());
+    } catch {
+      // Keep cash available when payment configuration cannot be fetched.
+    }
+  }, [request]);
+
   const loadListings = useCallback(async (token = authorization) => {
     setLoading(true);
     setError('');
@@ -415,6 +430,10 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   useEffect(() => {
     loadListings();
   }, [loadListings]);
+
+  useEffect(() => {
+    loadPaymentOptions();
+  }, [loadPaymentOptions]);
 
   useEffect(() => {
     if (view === 'seller') loadSellerListings();
@@ -611,6 +630,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
           buyerName,
           fulfillment: buyerFulfillment,
           note: buyerNote,
+          paymentMethod,
           items: cartRows.map(item => ({ listingId: item.listingId, quantity: Number(item.quantity) }))
         })
       });
@@ -710,6 +730,27 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     }
   }
 
+  async function updatePaymentStatus(row, purchaseRequest, paymentStatus) {
+    setSellerError('');
+    setSellerNotice('');
+    try {
+      const response = await request(`/marketplace/seller/listings/${row.listing.id}/purchase-requests/${purchaseRequest.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-Seller-Token': row.sellerToken },
+        body: JSON.stringify({ paymentStatus })
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.message || 'पेमेंटची स्थिती जतन करता आली नाही.');
+      setSellerListings(current => current.map(item => item.listing.id === row.listing.id
+        ? { ...item, requests: item.requests.map(requestItem => requestItem.id === body.id ? body : requestItem) }
+        : item));
+      await loadSellerListings();
+      setSellerNotice('रोख पेमेंटची नोंद खरेदीदार आणि विक्रेत्यासाठी जतन झाली.');
+    } catch (paymentError) {
+      setSellerError(paymentError.message || 'पेमेंटची स्थिती जतन करता आली नाही.');
+    }
+  }
+
   function selectPhoto(event) {
     const file = event.target.files?.[0] || null;
     event.target.value = '';
@@ -741,6 +782,14 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     return ({ PENDING: 'प्रलंबित', ACCEPTED: 'स्वीकारली', DECLINED: 'नाकारली', COMPLETED: 'पूर्ण' })[status] || status;
   }
 
+  function paymentMethodLabel(method) {
+    return ({ CASH: 'रोख', UPI: 'UPI' })[method] || 'नोंद नाही';
+  }
+
+  function paymentStatusLabel(status) {
+    return ({ PENDING: 'पेमेंट बाकी', PAID: 'पेमेंट मिळाले', FAILED: 'पेमेंट अयशस्वी' })[status] || 'नोंद नाही';
+  }
+
   async function downloadOrderReceipt(order) {
     setReceiptBusyId(order.id);
     setReceiptError('');
@@ -757,6 +806,8 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       const money = value => `₹${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       const unitLabel = UNITS.find(([value]) => value === order.unit)?.[1] || order.unit;
       const status = requestStatusLabel(order.status);
+      const paymentMethod = paymentMethodLabel(order.paymentMethod);
+      const paymentStatus = paymentStatusLabel(order.paymentStatus);
       const createdAt = new Date(order.createdAt).toLocaleString('mr-IN', { dateStyle: 'medium', timeStyle: 'short' });
       const amount = order.totalAmount ?? (Number(order.pricePerUnit || 0) * Number(order.quantity || 0));
       const fulfillment = order.fulfillment === 'DELIVERY' ? 'पोहोचवून हवे' : 'स्वतः घेऊन जाणार';
@@ -801,7 +852,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       context.fillText('खरेदीची पावती', margin, 235);
       context.fillStyle = '#78877a';
       context.font = `400 23px ${fontFamily}`;
-      context.fillText('ORDER RECEIPT · PAYMENT IS NOT PROCESSED IN THE APP', margin, 282);
+      context.fillText('ORDER RECEIPT · PAYMENT RECORD', margin, 282);
       context.fillStyle = '#fff';
       context.fillRect(margin, 330, contentWidth, 190);
       context.strokeStyle = '#dce8d8';
@@ -811,8 +862,9 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       wrap('ऑर्डरची वेळ', margin + 540, 376, 470, 34, '#849185', 22, 400);
       wrap(createdAt, margin + 540, 423, 490, 44, '#304736', 28, 700);
       wrap(`स्थिती: ${status}`, margin + 28, 482, contentWidth - 56, 38, '#47764b', 25, 700);
+      wrap(`पेमेंट: ${paymentMethod} · ${paymentStatus}`, margin + 28, 525, contentWidth - 56, 36, '#47764b', 24, 700);
 
-      let y = 590;
+      let y = 620;
       wrap('खरेदी केलेला शेतमाल', margin, y, contentWidth, 45, '#879486', 23, 700);
       y += 58;
       const productLineCount = wrap(order.productName || `शेतमाल #${order.listingId}`, margin, y, contentWidth, 55, '#304736', 39, 700, 2);
@@ -845,7 +897,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       context.fillStyle = '#f7f9f5';
       context.fillRect(margin, y, contentWidth, 143);
       wrap('टीप', margin + 24, y + 36, contentWidth - 48, 30, '#708072', 22, 700);
-      wrap('ही ऑर्डरची पावती आहे; अॅपमध्ये पेमेंट झालेले नाही. पेमेंट आणि अंतिम व्यवहार विक्रेत्याशी ठरवा.', margin + 24, y + 77, contentWidth - 48, 34, '#6f7d70', 22, 400);
+      wrap(order.paymentStatus === 'PAID' ? 'पेमेंट मिळाल्याची नोंद विक्रेत्याने केली आहे. ही ऑर्डर पावती आहे.' : 'पेमेंट स्थिती विक्रेत्याशी तपासा. ही ऑर्डर पावती पेमेंट गेटवेची पावती नाही.', margin + 24, y + 77, contentWidth - 48, 34, '#6f7d70', 22, 400);
       context.fillStyle = '#8c988d';
       context.font = `400 20px ${fontFamily}`;
       context.textAlign = 'center';
@@ -986,9 +1038,20 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
             <label className="market-field"><span>नोंदणीकृत मोबाईल</span><input value={buyerPhone} readOnly/><small>हा नंबर विक्रेत्यांना संपर्कासाठी दिसेल.</small></label>
             <label className="market-field"><span>माल कसा हवा?</span><select value={buyerFulfillment} onChange={event => setBuyerFulfillment(event.target.value)}><option value="PICKUP">मी घेऊन जाईन</option><option value="DELIVERY">पोहोचवून हवा</option></select></label>
             <label className="market-field"><span>विक्रेत्यांसाठी संदेश <small>ऐच्छिक</small></span><textarea maxLength={500} value={buyerNote} onChange={event => setBuyerNote(event.target.value)} placeholder="सोयीची वेळ किंवा इतर माहिती"/></label>
+            <fieldset className="market-payment-options">
+              <legend>पेमेंट पद्धत</legend>
+              <label className={`market-payment-choice ${paymentMethod === 'CASH' ? 'selected' : ''}`}>
+                <input type="radio" name="paymentMethod" value="CASH" checked={paymentMethod === 'CASH'} onChange={() => setPaymentMethod('CASH')} disabled={!paymentOptions.cashEnabled}/>
+                <span><b>रोख पेमेंट</b><small>विक्रेत्याला रोख द्या; तो मिळाल्याची नोंद करेल.</small></span>
+              </label>
+              <label className={`market-payment-choice unavailable ${paymentMethod === 'UPI' ? 'selected' : ''}`}>
+                <input type="radio" name="paymentMethod" value="UPI" checked={paymentMethod === 'UPI'} onChange={() => setPaymentMethod('UPI')} disabled={!paymentOptions.upiEnabled}/>
+                <span><b>UPI पेमेंट</b><small>{paymentOptions.upiEnabled ? 'सुरक्षित UPI चेकआउट उघडा.' : paymentOptions.upiMessage}</small></span>
+              </label>
+            </fieldset>
             <div className="market-checkout-total"><span>अंदाजे एकूण</span><b>₹{cartTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></div>
             {buyerOrdersError && <div className="market-message market-error" role="alert">{buyerOrdersError}</div>}
-            <p className="market-purchase-privacy"><ShieldCheck size={14}/> ऑर्डर विक्रेत्यांना पाठवल्यानंतर त्यांच्या स्वीकृतीची स्थिती “माझ्या ऑर्डर” मध्ये दिसेल. पेमेंट विक्रेत्याशी ठरवा.</p>
+            <p className="market-purchase-privacy"><ShieldCheck size={14}/> ऑर्डर आणि पेमेंटची स्थिती खरेदीदार व विक्रेता दोघांनाही दिसेल.</p>
             <button type="submit" className="market-submit-button" disabled={buyerOrdersLoading || cartRows.some(item => item.listing.available === false || Number(item.quantity) > Number(item.listing.quantity))}><ShoppingBag size={16}/>{buyerOrdersLoading ? 'ऑर्डर पाठवत आहे…' : 'ऑर्डर निश्चित करा'}</button>
           </form>
         </div>}
@@ -1005,6 +1068,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
           : <div className="market-buyer-order-list">{buyerOrders.map(order => <article className="market-buyer-order-card" key={order.id}>
             <div className="market-buyer-order-main"><div><span>ऑर्डर #{order.id.toLocaleString('mr-IN')}</span><h3>{order.productName || `शेतमाल #${order.listingId}`}</h3></div><span className={`market-request-status status-${order.status.toLowerCase()}`}>{requestStatusLabel(order.status)}</span></div>
             <p>{order.sellerName || 'शेतकरी'} · {Number(order.quantity).toLocaleString('mr-IN')} {UNITS.find(([value]) => value === order.unit)?.[1] || order.unit}</p>
+            <div className="market-payment-summary"><span>{paymentMethodLabel(order.paymentMethod)}</span><b className={`payment-${String(order.paymentStatus || '').toLowerCase()}`}>{paymentStatusLabel(order.paymentStatus)}</b></div>
             {order.totalAmount != null && <b className="market-buyer-order-total">₹{Number(order.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>}
             <time dateTime={order.createdAt}>{new Date(order.createdAt).toLocaleString('mr-IN', { dateStyle: 'medium', timeStyle: 'short' })}</time>
             {order.sellerPhone && <a href={`tel:${order.sellerPhone}`} className="market-request-phone"><Phone size={13}/>विक्रेत्याशी संपर्क · {order.sellerPhone}</a>}
@@ -1071,9 +1135,11 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
             {!row.requests.length ? <p className="market-no-requests">अजून खरेदीची विनंती आलेली नाही.</p> : <div className="market-request-list">{row.requests.map(purchaseRequest => <div className="market-request-card" key={purchaseRequest.id}>
               <div className="market-request-top"><b>{purchaseRequest.buyerName}</b><span className={`market-request-status status-${purchaseRequest.status.toLowerCase()}`}>{requestStatusLabel(purchaseRequest.status)}</span></div>
               <p>{Number(purchaseRequest.quantity).toLocaleString('mr-IN')} {UNITS.find(([value]) => value === purchaseRequest.unit)?.[1] || purchaseRequest.unit} · {purchaseRequest.fulfillment === 'DELIVERY' ? 'पोहोचवणे हवे' : 'स्वतः घेऊन जाणार'}{purchaseRequest.totalAmount != null ? ` · ₹${Number(purchaseRequest.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}</p>
+              <div className="market-payment-summary"><span>{paymentMethodLabel(purchaseRequest.paymentMethod)}</span><b className={`payment-${String(purchaseRequest.paymentStatus || '').toLowerCase()}`}>{paymentStatusLabel(purchaseRequest.paymentStatus)}</b></div>
               <a href={`tel:${purchaseRequest.buyerPhone}`} className="market-request-phone"><Phone size={13}/>{purchaseRequest.buyerPhone}</a>
               {purchaseRequest.note && <p className="market-request-note">“{purchaseRequest.note}”</p>}
               <div className="market-request-actions">
+                {purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus === 'PENDING' && purchaseRequest.status !== 'DECLINED' && <button type="button" onClick={() => updatePaymentStatus(row, purchaseRequest, 'PAID')}>रोख पेमेंट मिळाले</button>}
                 {purchaseRequest.status === 'PENDING' && <><button type="button" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'ACCEPTED')}>स्वीकारा</button><button type="button" className="decline" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'DECLINED')}>नाकारा</button></>}
                 {purchaseRequest.status === 'ACCEPTED' && <button type="button" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'COMPLETED')}>व्यवहार पूर्ण करा</button>}
               </div>
