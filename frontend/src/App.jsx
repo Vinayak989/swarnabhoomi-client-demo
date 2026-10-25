@@ -8,6 +8,7 @@ import MarketplacePanel from './MarketplacePanel.jsx';
 import ConsultantPanel from './ConsultantPanel.jsx';
 import AuthPanel from './AuthPanel.jsx';
 import GovernmentSchemesPanel, { GovernmentSchemeBanner } from './GovernmentSchemes.jsx';
+import MarketPricesPanel from './MarketPrices.jsx';
 import { Landmark } from 'lucide-react';
 import { FollowUpReminderButton, InputLogFields, IssueTrackingFields, OfflineQueueStatus, PlotSeasonFields, QuickEntryTemplates, ReceiptGallery, ReceiptUploader, downloadEntriesCsv, uploadEntryPhoto } from './DailyEntryFeatures.jsx';
 import { queueFarmEntry } from './offlineEntrySync.js';
@@ -33,6 +34,7 @@ const weatherDetailText = raw => {if(!raw)return '';try{const d=typeof raw==='st
 const ANALYTICS={cost:{label:'एकूण खर्च',value:entryCost,format:money},income:{label:'एकूण उत्पन्न',value:e=>Number(e.saleIncome||0),format:money},production:{label:'एकूण उत्पादन',value:e=>Number(e.productionKg||0),format:v=>`${Number(v).toLocaleString('mr-IN',{maximumFractionDigits:1})} किलो`}};
 const NAV_ITEMS = {
   schemes: { label: 'सरकारी योजना', icon: Landmark },
+  prices: { label: 'बाजारभाव', icon: TrendingUp },
   entries: { label: 'दैनिक नोंद', icon: CalendarDays },
   reminders: { label: 'स्मरणपत्रे', icon: Bell },
   assistant: { label: 'AI शेती सहाय्यक', icon: Sprout },
@@ -43,9 +45,9 @@ const NAV_ITEMS = {
 };
 const accountTabLabel=(account,tab)=>account.id==='farmer'&&tab==='marketplace'?'शेतमाल विक्री':NAV_ITEMS[tab].label;
 const ACCOUNT_TYPES = [
-  { id: 'farmer', label: 'शेतकरी', initials: 'शे', homeTab: 'entries', tabs: ['entries', 'reminders', 'assistant', 'marketplace', 'information', 'consultants', 'schemes'], description: 'दैनिक नोंद, शेतीसाठी AI मदत, शेतमाल विक्री, स्मरणपत्रे आणि सेंद्रिय सल्लागार' },
-  { id: 'seller', label: 'विक्रेता', initials: 'वि', homeTab: 'marketplace', tabs: ['marketplace', 'information'], description: 'शेतमालाची नोंद, उपलब्ध साठा आणि खरेदीदारांच्या विनंत्या सांभाळा' },
-  { id: 'buyer', label: 'खरेदीदार', initials: 'ख्रे', homeTab: 'marketplace', tabs: ['marketplace', 'information'], description: 'शेतमाल शोधा आणि विक्रेत्यांशी संपर्क करा' },
+  { id: 'farmer', label: 'शेतकरी', initials: 'शे', homeTab: 'entries', tabs: ['entries', 'reminders', 'assistant', 'marketplace', 'prices', 'information', 'consultants', 'schemes'], description: 'दैनिक नोंद, शेतीसाठी AI मदत, शेतमाल विक्री, स्मरणपत्रे आणि सेंद्रिय सल्लागार' },
+  { id: 'seller', label: 'विक्रेता', initials: 'वि', homeTab: 'marketplace', tabs: ['marketplace', 'prices', 'information'], description: 'शेतमालाची नोंद, उपलब्ध साठा आणि खरेदीदारांच्या विनंत्या सांभाळा' },
+  { id: 'buyer', label: 'खरेदीदार', initials: 'ख्रे', homeTab: 'marketplace', tabs: ['marketplace', 'prices', 'information'], description: 'शेतमाल शोधा आणि विक्रेत्यांशी संपर्क करा' },
   { id: 'consultant', label: 'सेंद्रिय सल्लागार', initials: 'स', homeTab: 'consultants', tabs: ['consultants', 'information'], description: 'सल्लागार प्रोफाइल प्रकाशित करा आणि शेती माहिती पहा' },
   { id: 'admin', label: 'प्रशासक', initials: 'प्र', homeTab: 'admin', tabs: ['admin', 'marketplace', 'information'], description: 'खाते, बाजार व्यवहार, शेतकरी नोंदी आणि सल्लागार प्रोफाइल व्यवस्थापन' }
 ];
@@ -185,6 +187,7 @@ function App(){
       <div hidden={activeTab!=='assistant'}><AssistantPanel apiFetch={apiFetch} apiBase={API} messages={assistantMessages} setMessages={setAssistantMessages} farmData={assistantFarmData} onUnauthorized={logout}/></div>
       {activeTab==='information'&&<InformationPanel/>}
       {activeTab==='schemes'&&accountType==='farmer'&&<GovernmentSchemesPanel feed={schemeFeed} loading={schemeLoading} refreshing={schemeRefreshing} error={schemeError} onRefresh={()=>refreshSchemeFeed(false)}/>}
+      {activeTab==='prices'&&<MarketPricesPanel apiFetch={apiFetch} apiBase={API}/>}
       {activeTab==='admin'&&<AdminOverview apiBase={API} apiFetch={apiFetch}/>}
       {activeTab==='marketplace'&&<MarketplacePanel key={authUser.id} accountType={accountType} apiBase={API} auth={authToken} userId={authUser.id} buyerPhone={authUser.mobileNumber} onUnauthorized={logout}/>}
       {activeTab==='consultants'&&<ConsultantPanel apiBase={API}/>}
