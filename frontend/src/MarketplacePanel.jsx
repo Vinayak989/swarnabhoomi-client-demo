@@ -147,7 +147,7 @@ function ProductPhoto({ apiBase, photoUrl, authorization, productName }) {
       setSource('');
       return undefined;
     }
-    const headers = authorization ? { Authorization: `Basic ${authorization}` } : {};
+    const headers = authorization ? { Authorization: `Bearer ${authorization}` } : {};
     const imagePath = photoUrl.startsWith('/api/') ? photoUrl : `${apiBase}${photoUrl}`;
     fetch(imagePath, { headers })
       .then(response => {
@@ -172,7 +172,7 @@ function ProductPhoto({ apiBase, photoUrl, authorization, productName }) {
     : <div className="market-product-photo market-photo-placeholder"><Wheat size={30}/><span>फोटो नाही</span></div>;
 }
 
-function MarketplacePanel({ accountType = 'farmer', apiBase, auth, onAuthenticated, onUnauthorized }) {
+function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, onUnauthorized }) {
   const [view, setView] = useState('browse');
   const [listings, setListings] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -185,7 +185,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, onAuthenticat
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState(() => {
     try {
-      const stored = JSON.parse(window.localStorage.getItem('swarnabhoomi-market-favorites') || '[]');
+      const stored = JSON.parse(window.localStorage.getItem(`swarnabhoomi-market-favorites:${userId}`) || '[]');
       return new Set(Array.isArray(stored) ? stored.map(String) : []);
     } catch {
       return new Set();
@@ -198,10 +198,6 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, onAuthenticat
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [loginOpen, setLoginOpen] = useState(false);
-  const [loginError, setLoginError] = useState('');
-  const [pendingAction, setPendingAction] = useState(null);
-  const [credentials, setCredentials] = useState({ username: '', password: '' });
   const [contact, setContact] = useState(null);
   const [activeListing, setActiveListing] = useState(null);
   const [purchaseListing, setPurchaseListing] = useState(null);
@@ -211,7 +207,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, onAuthenticat
   const [purchaseError, setPurchaseError] = useState('');
   const [sellerListingTokens, setSellerListingTokens] = useState(() => {
     try {
-      const stored = JSON.parse(window.localStorage.getItem('swarnabhoomi-market-seller-tokens') || '{}');
+      const stored = JSON.parse(window.localStorage.getItem(`swarnabhoomi-market-seller-tokens:${userId}`) || '{}');
       return stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
     } catch {
       return {};
@@ -225,29 +221,27 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, onAuthenticat
   const fileInputRef = useRef(null);
   const formRef = useRef(form);
   const photoRef = useRef(photo);
-  const onAuthenticatedRef = useRef(onAuthenticated);
   const onUnauthorizedRef = useRef(onUnauthorized);
   formRef.current = form;
   photoRef.current = photo;
-  onAuthenticatedRef.current = onAuthenticated;
   onUnauthorizedRef.current = onUnauthorized;
 
   useEffect(() => setAuthorization(auth), [auth]);
   useEffect(() => setView(accountType === 'seller' ? 'seller' : 'browse'), [accountType]);
   useEffect(() => {
     try {
-      window.localStorage.setItem('swarnabhoomi-market-favorites', JSON.stringify([...favoriteIds]));
+      window.localStorage.setItem(`swarnabhoomi-market-favorites:${userId}`, JSON.stringify([...favoriteIds]));
     } catch {
       // Favorites remain usable for this session if browser storage is disabled.
     }
-  }, [favoriteIds]);
+  }, [favoriteIds, userId]);
   useEffect(() => {
     try {
-      window.localStorage.setItem('swarnabhoomi-market-seller-tokens', JSON.stringify(sellerListingTokens));
+      window.localStorage.setItem(`swarnabhoomi-market-seller-tokens:${userId}`, JSON.stringify(sellerListingTokens));
     } catch {
       // Seller listings remain manageable during this session if browser storage is disabled.
     }
-  }, [sellerListingTokens]);
+  }, [sellerListingTokens, userId]);
   useEffect(() => {
     if (!photo) {
       setPreviewUrl('');
@@ -260,7 +254,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, onAuthenticat
 
   const request = useCallback(async (path, options = {}, token = authorization) => {
     const headers = { ...(options.headers || {}) };
-    if (token) headers.Authorization = `Basic ${token}`;
+    if (token) headers.Authorization = `Bearer ${token}`;
     const response = await fetch(`${apiBase}${path}`, { ...options, headers });
     return response;
   }, [apiBase, authorization]);
@@ -292,8 +286,8 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, onAuthenticat
       const rows = await Promise.all(entries.map(async ([id, sellerToken]) => {
         const headers = { 'X-Seller-Token': sellerToken };
         const [listingResponse, requestsResponse] = await Promise.all([
-          request(`/marketplace/seller/listings/${id}`, { headers }, null),
-          request(`/marketplace/seller/listings/${id}/purchase-requests`, { headers }, null)
+          request(`/marketplace/seller/listings/${id}`, { headers }),
+          request(`/marketplace/seller/listings/${id}/purchase-requests`, { headers })
         ]);
         if (listingResponse.status === 404 || listingResponse.status === 403) return null;
         if (!listingResponse.ok) throw new Error('तुमची विक्रीची माहिती मिळाली नाही.');
@@ -381,18 +375,12 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, onAuthenticat
     }, setLocationMessage);
   }
 
-  function beginLogin(action) {
-    setPendingAction(action);
-    setLoginError('');
-    setLoginOpen(true);
-  }
-
   async function fetchContact(id, token = authorization) {
     setError('');
     try {
       const response = await request(`/marketplace/listings/${id}/contact`, {}, token);
       if (response.status === 401) {
-        beginLogin({ type: 'contact', id });
+        onUnauthorizedRef.current?.();
         return;
       }
       if (response.status === 503) {
@@ -480,7 +468,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, onAuthenticat
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...purchaseForm, quantity: Number(purchaseForm.quantity) })
-      }, null);
+      });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.message || 'खरेदीची विनंती पाठवता आली नाही. उपलब्ध प्रमाण तपासा.');
       setPurchaseReceipt(body.message || 'खरेदीची विनंती विक्रेत्याकडे पाठवली आहे.');
@@ -511,7 +499,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, onAuthenticat
           quantity: Number(listing.quantity),
           available: Boolean(listing.available)
         })
-      }, null);
+      });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.message || 'विक्रीची माहिती जतन करता आली नाही.');
       setSellerListings(current => current.map(item => item.listing.id === listing.id ? { ...item, listing: body } : item));
@@ -532,7 +520,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, onAuthenticat
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'X-Seller-Token': row.sellerToken },
         body: JSON.stringify({ status })
-      }, null);
+      });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         throw new Error(body.message || 'विनंतीची स्थिती बदलता आली नाही.');
@@ -543,33 +531,6 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, onAuthenticat
         : item));
     } catch (statusError) {
       setSellerError(statusError.message || 'विनंतीची स्थिती बदलता आली नाही.');
-    }
-  }
-
-  async function signIn(event) {
-    event.preventDefault();
-    setLoginError('');
-    const token = btoa(`${credentials.username}:${credentials.password}`);
-    try {
-      const response = await fetch(`${apiBase}/marketplace/access`, {
-        method: 'POST',
-        headers: { Authorization: `Basic ${token}` }
-      });
-      if (response.status === 503) {
-        const body = await response.json();
-        throw new Error(body.message || 'अॅप प्रवेश तपशील सर्व्हरवर कॉन्फिगर केलेले नाहीत.');
-      }
-      if (!response.ok) throw new Error('वापरकर्तानाव किंवा पासवर्ड तपासा.');
-      sessionStorage.setItem('swarnabhoomi-auth', token);
-      setAuthorization(token);
-      onAuthenticatedRef.current?.(token);
-      const action = pendingAction;
-      setPendingAction(null);
-      setLoginOpen(false);
-      setCredentials(current => ({ ...current, password: '' }));
-      if (action?.type === 'contact') await fetchContact(action.id, token);
-    } catch (signInError) {
-      setLoginError(signInError.message || 'प्रवेश करता आला नाही.');
     }
   }
 
@@ -773,19 +734,6 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, onAuthenticat
             <p className="market-purchase-privacy"><ShieldCheck size={14}/> तुमचा नंबर फक्त या विनंतीच्या विक्रेत्याला दिसेल.</p>
             <button className="market-submit-button" type="submit" disabled={purchaseSaving}>{purchaseSaving ? 'विनंती पाठवत आहे…' : <><ShoppingBag size={16}/> विनंती विक्रेत्याकडे पाठवा</>}</button>
           </>}
-      </form>
-    </div>}
-
-    {loginOpen&&<div className="market-modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setLoginOpen(false)}}>
-      <form className="market-login-modal" onSubmit={signIn}>
-        <button type="button" className="market-modal-close" onClick={() => setLoginOpen(false)} aria-label="बंद करा"><X size={18}/></button>
-        <div className="market-login-icon"><ShieldCheck size={22}/></div>
-        <span>खरेदीदार प्रवेश</span><h2>विक्रेत्याशी संपर्क साधा</h2>
-        <p>विक्रेत्याशी संपर्क साधण्यासाठी तुमचे शेअर्ड अॅप प्रवेश तपशील भरा. नवीन खाते लागत नाही.</p>
-        <label className="market-field"><span>वापरकर्तानाव</span><input autoComplete="username" value={credentials.username} onChange={event => setCredentials(current => ({ ...current, username: event.target.value }))} required/></label>
-        <label className="market-field"><span>पासवर्ड</span><input type="password" autoComplete="current-password" value={credentials.password} onChange={event => setCredentials(current => ({ ...current, password: event.target.value }))} required/></label>
-        {loginError&&<div className="market-message market-error" role="alert">{loginError}</div>}
-        <button className="market-submit-button" type="submit">प्रवेश करा</button>
       </form>
     </div>}
 

@@ -1,8 +1,12 @@
 package in.swarnabhoomi.farmlog;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
@@ -24,6 +28,14 @@ public class FarmPhoto {
     @Column(name = "original_filename", length = 255, nullable = false)
     private String originalFilename;
 
+    @Column(name = "marketplace_public")
+    private Boolean marketplacePublic = false;
+
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id")
+    private AppUser owner;
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
     public byte[] getData() { return data; }
@@ -34,4 +46,8 @@ public class FarmPhoto {
     public void setContentType(String contentType) { this.contentType = contentType; }
     public String getOriginalFilename() { return originalFilename; }
     public void setOriginalFilename(String originalFilename) { this.originalFilename = originalFilename; }
+    public boolean isMarketplacePublic() { return Boolean.TRUE.equals(marketplacePublic); }
+    public void setMarketplacePublic(boolean value) { marketplacePublic = value; }
+    public AppUser getOwner() { return owner; }
+    public void setOwner(AppUser owner) { this.owner = owner; }
 }

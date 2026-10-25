@@ -28,11 +28,11 @@ public class FarmReminderService {
         this.browserPushService = browserPushService;
     }
 
-    public List<ReminderView> list() {
-        return repository.findAllByOrderByScheduledAtAsc().stream().map(this::view).toList();
+    public List<ReminderView> list(AppUser user) {
+        return repository.findAllByOwnerIdOrderByScheduledAtAsc(user.getId()).stream().map(this::view).toList();
     }
 
-    public ReminderView create(ReminderRequest request) {
+    public ReminderView create(ReminderRequest request, AppUser user) {
         if (request == null || request.scheduledAt() == null) {
             throw badRequest("कृपया स्मरणपत्राची तारीख आणि वेळ निवडा.");
         }
@@ -55,6 +55,7 @@ public class FarmReminderService {
         }
 
         FarmReminder reminder = new FarmReminder();
+        reminder.setOwner(user);
         reminder.setScheduledAt(request.scheduledAt());
         reminder.setReason(reason);
         reminder.setMobileNumber("");
@@ -64,24 +65,21 @@ public class FarmReminderService {
         reminder.setRepeatFrequency(repeatFrequency);
         reminder.setRepeatUntil(request.repeatUntil());
         if (request.browserSubscriptionId() != null) {
-            BrowserPushSubscription subscription = pushSubscriptionRepository.findById(request.browserSubscriptionId())
-                    .filter(BrowserPushSubscription::isActive)
+            BrowserPushSubscription subscription = pushSubscriptionRepository
+                    .findByIdAndOwnerIdAndActiveTrue(request.browserSubscriptionId(), user.getId())
                     .orElseThrow(() -> badRequest("वेब सूचना सदस्यता कालबाह्य आहे. कृपया पुन्हा प्रयत्न करा."));
             reminder.setBrowserSubscription(subscription);
         }
         return view(repository.save(reminder));
     }
 
-    public void delete(Long id) {
-        if (!repository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-        }
-        repository.deleteById(id);
+    public void delete(Long id, AppUser user) {
+        FarmReminder reminder = ownedReminder(id, user);
+        repository.delete(reminder);
     }
 
-    public synchronized ReminderView complete(Long id) {
-        FarmReminder reminder = repository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public synchronized ReminderView complete(Long id, AppUser user) {
+        FarmReminder reminder = ownedReminder(id, user);
         if (!"PENDING".equals(reminder.getStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "फक्त प्रलंबित स्मरणपत्र पूर्ण करता येते.");
         }
@@ -92,9 +90,8 @@ public class FarmReminderService {
         return view(completed);
     }
 
-    public synchronized ReminderView reschedule(Long id, RescheduleRequest request) {
-        FarmReminder reminder = repository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public synchronized ReminderView reschedule(Long id, RescheduleRequest request, AppUser user) {
+        FarmReminder reminder = ownedReminder(id, user);
         if (!"PENDING".equals(reminder.getStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "फक्त प्रलंबित स्मरणपत्राची वेळ बदलता येते.");
         }
@@ -107,9 +104,8 @@ public class FarmReminderService {
         return view(repository.save(reminder));
     }
 
-    public synchronized ReminderView stopRepeat(Long id) {
-        FarmReminder reminder = repository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public synchronized ReminderView stopRepeat(Long id, AppUser user) {
+        FarmReminder reminder = ownedReminder(id, user);
         if (!"PENDING".equals(reminder.getStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "फक्त प्रलंबित स्मरणपत्राची पुनरावृत्ती थांबवता येते.");
         }
@@ -123,7 +119,7 @@ public class FarmReminderService {
     public synchronized void sendDueReminders() {
         LocalDateTime now = LocalDateTime.now(FARM_TIME_ZONE);
         List<FarmReminder> due = repository
-                .findTop50ByStatusAndScheduledAtLessThanEqualAndBrowserSubscriptionIsNotNullOrderByScheduledAtAsc(
+                .findTop50ByStatusAndOwnerIsNotNullAndScheduledAtLessThanEqualAndBrowserSubscriptionIsNotNullOrderByScheduledAtAsc(
                         "PENDING", now);
         for (FarmReminder reminder : due) {
             reminder.setStatus("SENDING");
@@ -188,6 +184,7 @@ public class FarmReminderService {
         if (repeatUntil != null && next.toLocalDate().isAfter(repeatUntil)) return;
 
         FarmReminder occurrence = new FarmReminder();
+        occurrence.setOwner(reminder.getOwner());
         occurrence.setScheduledAt(next);
         occurrence.setReason(reminder.getReason());
         occurrence.setMobileNumber("");
@@ -210,6 +207,11 @@ public class FarmReminderService {
 
     private ResponseStatusException badRequest(String message) {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+    }
+
+    private FarmReminder ownedReminder(Long id, AppUser user) {
+        return repository.findByIdAndOwnerId(id, user.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
     public record ReminderRequest(LocalDateTime scheduledAt, String reason, Long browserSubscriptionId,

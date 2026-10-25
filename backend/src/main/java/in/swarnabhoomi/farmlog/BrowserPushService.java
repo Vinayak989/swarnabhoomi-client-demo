@@ -36,14 +36,17 @@ public class BrowserPushService {
     }
 
     private final BrowserPushSubscriptionRepository repository;
+    private final FarmReminderRepository reminderRepository;
     private final ObjectMapper objectMapper;
 
     @Value("${app.web-push.public-key:}") private String publicKey;
     @Value("${app.web-push.private-key:}") private String privateKey;
     @Value("${app.web-push.subject:https://swarnabhoomi-demo.onrender.com}") private String subject;
 
-    public BrowserPushService(BrowserPushSubscriptionRepository repository, ObjectMapper objectMapper) {
+    public BrowserPushService(BrowserPushSubscriptionRepository repository,
+            FarmReminderRepository reminderRepository, ObjectMapper objectMapper) {
         this.repository = repository;
+        this.reminderRepository = reminderRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -57,7 +60,7 @@ public class BrowserPushService {
     }
 
     @Transactional
-    public SubscriptionResponse subscribe(SubscriptionRequest request) {
+    public SubscriptionResponse subscribe(SubscriptionRequest request, AppUser user) {
         requireConfigured();
         if (request == null || request.endpoint() == null || request.endpoint().length() > 2048
                 || request.keys() == null || blank(request.keys().p256dh()) || blank(request.keys().auth())) {
@@ -73,18 +76,27 @@ public class BrowserPushService {
             throw badRequest("वेब सूचना एन्क्रिप्शन की अवैध आहे.");
         }
 
-        BrowserPushSubscription subscription = repository.findByEndpoint(request.endpoint())
-                .orElseGet(BrowserPushSubscription::new);
+        BrowserPushSubscription subscription = repository.findByEndpoint(request.endpoint()).orElse(null);
+        if (subscription != null && subscription.getOwner() != null
+                && !subscription.getOwner().getId().equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "हे डिव्हाइस दुसऱ्या खात्याशी जोडलेले आहे. आधी त्या खात्यातून सूचना बंद करा.");
+        }
+        if (subscription != null && subscription.getOwner() == null) {
+            reminderRepository.detachLegacyReminders(subscription.getId());
+        }
+        if (subscription == null) subscription = new BrowserPushSubscription();
         subscription.setEndpoint(request.endpoint());
         subscription.setP256dhKey(request.keys().p256dh());
         subscription.setAuthKey(request.keys().auth());
         subscription.setActive(true);
+        subscription.setOwner(user);
         return new SubscriptionResponse(repository.save(subscription).getId());
     }
 
     @Transactional
-    public void unsubscribe(Long id) {
-        BrowserPushSubscription subscription = repository.findById(id)
+    public void unsubscribe(Long id, AppUser user) {
+        BrowserPushSubscription subscription = repository.findByIdAndOwnerId(id, user.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         subscription.setActive(false);
         repository.save(subscription);

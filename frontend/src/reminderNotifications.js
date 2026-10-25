@@ -1,7 +1,9 @@
 const PUSH_SUBSCRIPTION_KEY = 'swarnabhoomi-push-subscription-id';
+const subscriptionKey = userId => `${PUSH_SUBSCRIPTION_KEY}:${userId}`;
 
-export function getBrowserPushSubscriptionId() {
-  const id = Number(window.localStorage.getItem(PUSH_SUBSCRIPTION_KEY));
+export function getBrowserPushSubscriptionId(userId) {
+  if (!userId) return null;
+  const id = Number(window.localStorage.getItem(subscriptionKey(userId)));
   return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
@@ -20,7 +22,7 @@ async function responseBody(response, onUnauthorized) {
   return body;
 }
 
-export async function enableBrowserPush(apiFetch, apiBase, onUnauthorized) {
+export async function enableBrowserPush(apiFetch, apiBase, onUnauthorized, userId) {
   if (!window.isSecureContext || !('serviceWorker' in navigator)
       || !('PushManager' in window) || !('Notification' in window)) {
     throw Error('या ब्राउझरमध्ये डिव्हाइस सूचना उपलब्ध नाहीत. HTTPS व Chrome वापरून पुन्हा प्रयत्न करा.');
@@ -48,12 +50,12 @@ export async function enableBrowserPush(apiFetch, apiBase, onUnauthorized) {
     body: JSON.stringify(subscription.toJSON())
   }), onUnauthorized);
   if (!Number.isSafeInteger(Number(saved?.id)) || Number(saved.id) < 1) throw Error('सूचना सदस्यता जतन झाली नाही.');
-  window.localStorage.setItem(PUSH_SUBSCRIPTION_KEY, String(saved.id));
+  window.localStorage.setItem(subscriptionKey(userId), String(saved.id));
   return Number(saved.id);
 }
 
-export async function disableBrowserPush(apiFetch, apiBase, onUnauthorized) {
-  const subscriptionId = getBrowserPushSubscriptionId();
+export async function disableBrowserPush(apiFetch, apiBase, onUnauthorized, userId) {
+  const subscriptionId = getBrowserPushSubscriptionId(userId);
   if (subscriptionId) {
     const response = await apiFetch(`${apiBase}/push/subscriptions/${subscriptionId}`, { method: 'DELETE' });
     if (response.status === 401) {
@@ -69,5 +71,5 @@ export async function disableBrowserPush(apiFetch, apiBase, onUnauthorized) {
   const registration = await navigator.serviceWorker?.getRegistration('/');
   const subscription = await registration?.pushManager?.getSubscription();
   if (subscription) await subscription.unsubscribe();
-  window.localStorage.removeItem(PUSH_SUBSCRIPTION_KEY);
+  if (userId) window.localStorage.removeItem(subscriptionKey(userId));
 }

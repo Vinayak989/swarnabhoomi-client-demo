@@ -1,5 +1,6 @@
 package in.swarnabhoomi.farmlog;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -34,6 +35,11 @@ public class OrganicConsultant {
     @Column(length = 800)
     private String introduction;
 
+    @JsonIgnore
+    @jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @jakarta.persistence.JoinColumn(name = "owner_id")
+    private AppUser owner;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -55,5 +61,7 @@ public class OrganicConsultant {
     public void setExperienceYears(int value) { experienceYears = value; }
     public String getIntroduction() { return introduction; }
     public void setIntroduction(String value) { introduction = value; }
+    public AppUser getOwner() { return owner; }
+    public void setOwner(AppUser value) { owner = value; }
     public Instant getCreatedAt() { return createdAt; }
 }

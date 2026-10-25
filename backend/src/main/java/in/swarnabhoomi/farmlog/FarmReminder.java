@@ -1,5 +1,6 @@
 package in.swarnabhoomi.farmlog;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -37,6 +38,11 @@ public class FarmReminder {
     @ManyToOne
     private BrowserPushSubscription browserSubscription;
 
+    @JsonIgnore
+    @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
+    @jakarta.persistence.JoinColumn(name = "owner_id")
+    private AppUser owner;
+
     @Column(length = 120)
     private String cropOrPlot;
 
@@ -61,6 +67,8 @@ public class FarmReminder {
     public void setSentAt(LocalDateTime value) { sentAt = value; }
     public BrowserPushSubscription getBrowserSubscription() { return browserSubscription; }
     public void setBrowserSubscription(BrowserPushSubscription value) { browserSubscription = value; }
+    public AppUser getOwner() { return owner; }
+    public void setOwner(AppUser value) { owner = value; }
     public String getCropOrPlot() { return cropOrPlot; }
     public void setCropOrPlot(String value) { cropOrPlot = value; }
     public String getRepeatFrequency() { return repeatFrequency; }

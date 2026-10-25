@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
@@ -33,7 +34,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/marketplace")
 public class FarmMarketplaceController {
     private static final Pattern INDIAN_PHONE = Pattern.compile("^(?:\\+91)?[6-9][0-9]{9}$");
-    private static final Pattern PHOTO_URL = Pattern.compile("^/api/photos/[a-fA-F0-9-]{36}$");
+    private static final Pattern PHOTO_URL = Pattern.compile("^/api/marketplace/photos/[a-fA-F0-9-]{36}$");
     private static final Set<String> UNITS = Set.of("kg", "quintal", "ton", "dozen", "crate", "piece");
     private static final BigDecimal MAX_PRICE = new BigDecimal("9999999999.99");
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -59,7 +60,8 @@ public class FarmMarketplaceController {
     }
 
     @PostMapping("/photos")
-    public Map<String, String> photo(@RequestParam("file") MultipartFile file) {
+    public Map<String, String> photo(@RequestParam("file") MultipartFile file,
+            @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
         if (file.isEmpty() || file.getSize() > maxPhotoSize.toBytes()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "फोटोचा आकार १० MB पेक्षा कमी असावा.");
         }
@@ -80,6 +82,8 @@ public class FarmMarketplaceController {
             photo.setData(file.getBytes());
             photo.setContentType(type);
             photo.setOriginalFilename(filename);
+            photo.setOwner(user);
+            photo.setMarketplacePublic(true);
             photoStorage.store(photo);
             photoRepository.save(photo);
             return Map.of("url", "/api/marketplace/photos/" + photo.getId());
@@ -90,7 +94,7 @@ public class FarmMarketplaceController {
 
     @GetMapping("/photos/{id}")
     public ResponseEntity<byte[]> getPhoto(@PathVariable String id) {
-        FarmPhoto photo = photoRepository.findById(id)
+        FarmPhoto photo = photoRepository.findByIdAndMarketplacePublicTrue(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         MediaType contentType;
         try {
@@ -107,9 +111,11 @@ public class FarmMarketplaceController {
     }
 
     @PostMapping("/listings")
-    public ResponseEntity<CreateListingResponse> create(@RequestBody ListingRequest request) {
+    public ResponseEntity<CreateListingResponse> create(@RequestBody ListingRequest request,
+            @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
         validate(request);
         FarmProductListing listing = new FarmProductListing();
+        listing.setOwner(user);
         listing.setSellerName(request.sellerName().trim());
         listing.setPhone(request.phone().replaceAll("[\\s-]", ""));
         listing.setAddress(request.address().trim());
@@ -158,8 +164,9 @@ public class FarmMarketplaceController {
 
     @GetMapping("/seller/listings/{id}")
     public ListingResponse sellerListing(@PathVariable Long id,
-            @RequestHeader(value = "X-Seller-Token", required = false) String sellerToken) {
-        FarmProductListing listing = findListing(id);
+            @RequestHeader(value = "X-Seller-Token", required = false) String sellerToken,
+            @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
+        FarmProductListing listing = findOwnedListing(id, user);
         requireSeller(listing, sellerToken);
         return ListingResponse.from(listing);
     }
@@ -167,8 +174,9 @@ public class FarmMarketplaceController {
     @PatchMapping("/seller/listings/{id}")
     public ListingResponse updateSellerListing(@PathVariable Long id,
             @RequestHeader(value = "X-Seller-Token", required = false) String sellerToken,
-            @RequestBody SellerListingUpdate update) {
-        FarmProductListing listing = findListing(id);
+            @RequestBody SellerListingUpdate update,
+            @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
+        FarmProductListing listing = findOwnedListing(id, user);
         requireSeller(listing, sellerToken);
         if (update == null || !validPrice(update.pricePerUnit())
                 || update.quantity() == null || !Double.isFinite(update.quantity())
@@ -185,8 +193,9 @@ public class FarmMarketplaceController {
 
     @GetMapping("/seller/listings/{id}/purchase-requests")
     public List<PurchaseRequestResponse> sellerPurchaseRequests(@PathVariable Long id,
-            @RequestHeader(value = "X-Seller-Token", required = false) String sellerToken) {
-        requireSeller(findListing(id), sellerToken);
+            @RequestHeader(value = "X-Seller-Token", required = false) String sellerToken,
+            @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
+        requireSeller(findOwnedListing(id, user), sellerToken);
         return purchaseRequestRepository.findTop100ByListingIdOrderByCreatedAtDesc(id).stream()
                 .map(PurchaseRequestResponse::from).toList();
     }
@@ -194,8 +203,9 @@ public class FarmMarketplaceController {
     @PatchMapping("/seller/listings/{id}/purchase-requests/{requestId}")
     public PurchaseRequestResponse updatePurchaseRequest(@PathVariable Long id, @PathVariable Long requestId,
             @RequestHeader(value = "X-Seller-Token", required = false) String sellerToken,
-            @RequestBody PurchaseRequestStatusUpdate update) {
-        requireSeller(findListing(id), sellerToken);
+            @RequestBody PurchaseRequestStatusUpdate update,
+            @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
+        requireSeller(findOwnedListing(id, user), sellerToken);
         MarketplacePurchaseRequest request = purchaseRequestRepository.findById(requestId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "खरेदीची विनंती सापडली नाही."));
         if (!id.equals(request.getListingId())) {
@@ -249,6 +259,12 @@ public class FarmMarketplaceController {
     private FarmProductListing findListing(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "विक्रीची नोंद सापडली नाही."));
+    }
+
+    private FarmProductListing findOwnedListing(Long id, AppUser user) {
+        return repository.findByIdAndOwnerId(id, user.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "या विक्रीची नोंद सापडली नाही."));
     }
 
     private static boolean validPurchaseRequest(PurchaseRequestCreate request) {

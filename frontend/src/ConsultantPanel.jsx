@@ -29,7 +29,7 @@ function phoneLinks(phone) {
   };
 }
 
-function ConsultantPanel({ apiBase, accountType = 'farmer' }) {
+function ConsultantPanel({ apiBase, accountType = 'farmer', authToken, onUnauthorized }) {
   const [consultants, setConsultants] = useState([]);
   const [search, setSearch] = useState('');
   const [areaFilter, setAreaFilter] = useState('');
@@ -92,13 +92,14 @@ function ConsultantPanel({ apiBase, accountType = 'farmer' }) {
     try {
       const response = await fetch(`${apiBase}/consultants`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({
           ...form,
           experienceYears: Number(form.experienceYears)
         })
       });
       const result = await response.json().catch(() => null);
+      if (response.status === 401) onUnauthorized?.();
       if (!response.ok) throw new Error(result?.message || 'नोंदणी जतन करता आली नाही.');
       setConsultants(current => [result, ...current.filter(item => item.id !== result.id)].slice(0, 200));
       setForm(EMPTY_FORM);

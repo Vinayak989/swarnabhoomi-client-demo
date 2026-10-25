@@ -1,5 +1,6 @@
 package in.swarnabhoomi.farmlog;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 
@@ -18,6 +19,11 @@ public class FarmEntry {
     @Column(length=3000) private String weatherDetails;
     @Column(length=5000) private String receiptPhotoUrls;
     @Column(unique=true, length=80) private String clientRequestId;
+
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id")
+    private AppUser owner;
 
     public Long getId(){return id;} public void setId(Long v){id=v;}
     public LocalDate getEntryDate(){return entryDate;} public void setEntryDate(LocalDate v){entryDate=v;}
@@ -52,4 +58,5 @@ public class FarmEntry {
     public java.time.LocalDate getFollowUpDate(){return followUpDate;} public void setFollowUpDate(java.time.LocalDate v){followUpDate=v;}
     public String getReceiptPhotoUrls(){return receiptPhotoUrls;} public void setReceiptPhotoUrls(String v){receiptPhotoUrls=v;}
     public String getClientRequestId(){return clientRequestId;} public void setClientRequestId(String v){clientRequestId=v;}
+    public AppUser getOwner(){return owner;} public void setOwner(AppUser v){owner=v;}
 }

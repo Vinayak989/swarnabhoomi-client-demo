@@ -27,13 +27,19 @@ public class BrowserPushController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public BrowserPushService.SubscriptionResponse subscribe(
-            @RequestBody(required = false) BrowserPushService.SubscriptionRequest request) {
-        return service.subscribe(request);
+            @RequestBody(required = false) BrowserPushService.SubscriptionRequest request,
+            @org.springframework.web.bind.annotation.RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
+        if (!"farmer".equals(user.getRole())) throw new org.springframework.web.server.ResponseStatusException(
+                HttpStatus.FORBIDDEN, "हे वैशिष्ट्य शेतकरी खात्यासाठी आहे.");
+        return service.subscribe(request, user);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void unsubscribe(@PathVariable Long id) {
-        service.unsubscribe(id);
+    public void unsubscribe(@PathVariable Long id,
+            @org.springframework.web.bind.annotation.RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
+        if (!"farmer".equals(user.getRole())) throw new org.springframework.web.server.ResponseStatusException(
+                HttpStatus.FORBIDDEN, "हे वैशिष्ट्य शेतकरी खात्यासाठी आहे.");
+        service.unsubscribe(id, user);
     }
 }

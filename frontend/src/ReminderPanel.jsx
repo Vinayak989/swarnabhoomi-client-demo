@@ -37,7 +37,7 @@ function getBodyError(body, fallback) {
   return body?.detail || body?.message || fallback;
 }
 
-export default function ReminderPanel({ apiFetch, apiBase, onUnauthorized, entries = [] }) {
+export default function ReminderPanel({ apiFetch, apiBase, onUnauthorized, entries = [], userId }) {
   const [reminders, setReminders] = useState([]);
   const [form, setForm] = useState(() => ({
     scheduledAt: indiaDateTimeInput(new Date(Date.now() + 30 * 60 * 1000)),
@@ -47,7 +47,7 @@ export default function ReminderPanel({ apiFetch, apiBase, onUnauthorized, entri
   const [saving, setSaving] = useState(false);
   const [completingId, setCompletingId] = useState(null);
   const [pushBusy, setPushBusy] = useState(false);
-  const [pushEnabled, setPushEnabled] = useState(() => Boolean(getBrowserPushSubscriptionId()));
+  const [pushEnabled, setPushEnabled] = useState(() => Boolean(getBrowserPushSubscriptionId(userId)));
   const [listening, setListening] = useState(false);
   const [voiceNotice, setVoiceNotice] = useState('');
   const [error, setError] = useState('');
@@ -105,7 +105,7 @@ export default function ReminderPanel({ apiFetch, apiBase, onUnauthorized, entri
           ...form,
           cropOrPlot: form.cropOrPlot.trim(),
           repeatUntil: form.repeatUntil || null,
-          browserSubscriptionId: pushEnabled ? getBrowserPushSubscriptionId() : null
+          browserSubscriptionId: pushEnabled ? getBrowserPushSubscriptionId(userId) : null
         })
       });
       if (response.status === 401) { onUnauthorized(); return; }
@@ -125,11 +125,11 @@ export default function ReminderPanel({ apiFetch, apiBase, onUnauthorized, entri
     setPushBusy(true); setError(''); setNotice('');
     try {
       if (pushEnabled) {
-        await disableBrowserPush(apiFetch, apiBase, onUnauthorized);
+        await disableBrowserPush(apiFetch, apiBase, onUnauthorized, userId);
         setPushEnabled(false);
         setNotice('या डिव्हाइसवरील सूचना बंद केल्या.');
       } else {
-        await enableBrowserPush(apiFetch, apiBase, onUnauthorized);
+        await enableBrowserPush(apiFetch, apiBase, onUnauthorized, userId);
         setPushEnabled(true);
         setNotice('या डिव्हाइसवर शेतीकामाच्या सूचना सुरू झाल्या.');
       }

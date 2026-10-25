@@ -30,6 +30,18 @@ services:
         sync: false
       - key: WEB_PUSH_SUBJECT
         value: https://swarnabhoomi-demo.onrender.com
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+      - key: TWILIO_MESSAGING_SERVICE_SID
+        sync: false
+      - key: ADMIN_BOOTSTRAP_MOBILE
+        sync: false
+      - key: ADMIN_BOOTSTRAP_PASSWORD
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL

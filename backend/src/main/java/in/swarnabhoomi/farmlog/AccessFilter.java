@@ -5,6 +5,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -15,6 +17,7 @@ import java.util.Base64;
 import java.util.regex.Pattern;
 
 @Component
+@Order(Ordered.LOWEST_PRECEDENCE)
 public class AccessFilter extends OncePerRequestFilter {
     private static final Pattern MARKETPLACE_PHOTO = Pattern.compile("^/api/marketplace/photos/[a-fA-F0-9-]{36}$");
     private static final Pattern SELLER_MANAGEMENT = Pattern.compile(
@@ -37,8 +40,13 @@ public class AccessFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
             return;
         }
+        if (path.equals("/api/marketplace/access")
+                || path.matches("^/api/marketplace/listings/[0-9]+/contact$")) {
+            chain.doFilter(request, response);
+            return;
+        }
         boolean privateMarketplaceRequest = path.startsWith("/api/marketplace/");
-        if (!enabled && !privateMarketplaceRequest) {
+        if (!privateMarketplaceRequest) {
             chain.doFilter(request, response);
             return;
         }

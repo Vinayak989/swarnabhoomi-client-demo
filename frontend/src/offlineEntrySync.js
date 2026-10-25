@@ -2,8 +2,9 @@ const QUEUE_KEY = 'swarnabhoomi-offline-entry-queue-v1';
 const API = `${(import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')}/api`;
 let syncing = false;
 
-function readQueue() {
-  try { const value = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); return Array.isArray(value) ? value : []; }
+function readQueue(ownerId) {
+  if (!ownerId) return [];
+  try { const value = JSON.parse(localStorage.getItem(`${QUEUE_KEY}:${ownerId}`) || '[]'); return Array.isArray(value) ? value : []; }
   catch { return []; }
 }
 
@@ -18,13 +19,15 @@ function toast(message) {
   window.setTimeout(() => element.remove(), 6500);
 }
 
-export function queueFarmEntry(body) {
+export function queueFarmEntry(body, ownerId) {
+  if (!ownerId) throw new Error('Sign in before saving an offline farm entry.');
   const record = typeof body === 'string' ? JSON.parse(body) : body;
   if (!record || typeof record !== 'object' || !record.clientRequestId) throw new Error('Offline entry is missing its request ID.');
-  const queue = readQueue();
+  const key = `${QUEUE_KEY}:${ownerId}`;
+  const queue = readQueue(ownerId);
   if (!queue.some(item => item.clientRequestId === record.clientRequestId)) {
     queue.push(record);
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+    localStorage.setItem(key, JSON.stringify(queue));
   }
   toast('नोंद या उपकरणावर जतन झाली. इंटरनेट मिळाल्यावर ती आपोआप सर्व्हरवर पाठवली जाईल. फोटो जोडण्यासाठी इंटरनेट लागेल.');
   window.dispatchEvent(new Event('swarnabhoomi-entry-queued'));
@@ -33,22 +36,25 @@ export function queueFarmEntry(body) {
 
 async function syncQueue() {
   if (syncing || !navigator.onLine) return;
-  const token = sessionStorage.getItem('swarnabhoomi-auth') || '';
-  if (!token) return;
+  const token = sessionStorage.getItem('swarnabhoomi-user-token') || '';
+  let user;
+  try { user = JSON.parse(sessionStorage.getItem('swarnabhoomi-user') || 'null'); } catch { return; }
+  if (!token || !user?.id) return;
+  const key = `${QUEUE_KEY}:${user.id}`;
   syncing = true;
   let changed = false;
   try {
-    let queue = readQueue();
+    let queue = readQueue(user.id);
     while (queue.length && navigator.onLine) {
       const record = queue[0];
       const response = await fetch(`${API}/entries`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Basic ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(record)
       });
       if (response.status === 401 || !response.ok) break;
       queue = queue.filter(item => item.clientRequestId !== record.clientRequestId);
-      localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+      localStorage.setItem(key, JSON.stringify(queue));
       changed = true;
     }
     if (changed && queue.length === 0) toast('ऑफलाइन नोंदी सर्व्हरवर समक्रमित झाल्या.');

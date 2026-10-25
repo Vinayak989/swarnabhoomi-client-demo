@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
@@ -30,9 +31,11 @@ public class OrganicConsultantController {
     }
 
     @PostMapping
-    public ResponseEntity<ConsultantResponse> register(@RequestBody ConsultantRequest request) {
+    public ResponseEntity<ConsultantResponse> register(@RequestBody ConsultantRequest request,
+            @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
         validate(request);
         OrganicConsultant consultant = new OrganicConsultant();
+        consultant.setOwner(user);
         consultant.setName(request.name().trim());
         consultant.setPhone(request.phone().replaceAll("[\\s-]", ""));
         consultant.setServiceArea(request.serviceArea().trim());

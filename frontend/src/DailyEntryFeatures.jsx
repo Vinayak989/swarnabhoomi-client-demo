@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Bug, Droplets, ImagePlus, Sprout, Trash2 } from 'lucide-react';
 import { Bell, LoaderCircle } from 'lucide-react';
+import { getBrowserPushSubscriptionId } from './reminderNotifications.js';
 import './dailyEntryFeatures.css';
 
 const templates = [
@@ -39,8 +40,8 @@ export function IssueTrackingFields({ form, set }) {
   </div><label className="field"><span className="field-label">केलेला उपाय / निरीक्षण</span><textarea rows="2" value={form.intervention} onChange={e => set('intervention', e.target.value)} placeholder="उपाय, प्रमाण आणि पुढे काय तपासायचे ते लिहा"/></label></section>;
 }
 
-export function FollowUpReminderButton({ entry, apiFetch }) {
-  const storageKey = `swarnabhoomi-entry-followup-${entry.id}`;
+export function FollowUpReminderButton({ entry, apiFetch, userId }) {
+  const storageKey = `swarnabhoomi-entry-followup-${userId}-${entry.id}`;
   const [createdId, setCreatedId] = useState(() => { try { return localStorage.getItem(storageKey) || ''; } catch { return ''; } });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -52,10 +53,10 @@ export function FollowUpReminderButton({ entry, apiFetch }) {
       const selected = new Date(`${entry.followUpDate}T09:00:00`);
       const scheduled = selected <= now ? new Date(now.getTime() + 60 * 60 * 1000) : selected;
       const localDateTime = `${scheduled.getFullYear()}-${String(scheduled.getMonth()+1).padStart(2,'0')}-${String(scheduled.getDate()).padStart(2,'0')}T${String(scheduled.getHours()).padStart(2,'0')}:${String(scheduled.getMinutes()).padStart(2,'0')}:00`;
-      const subscriptionId = localStorage.getItem('swarnabhoomi-push-subscription-id');
+      const subscriptionId = getBrowserPushSubscriptionId(userId);
       const response = await apiFetch(`${(import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')}/api/reminders`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scheduledAt: localDateTime, reason: `पुढील पाहणी: ${entry.pestDisease || entry.intervention || 'पीक तपासा'}`, browserSubscriptionId: subscriptionId ? Number(subscriptionId) : null, cropOrPlot: entry.farmSection || '' })
+        body: JSON.stringify({ scheduledAt: localDateTime, reason: `पुढील पाहणी: ${entry.pestDisease || entry.intervention || 'पीक तपासा'}`, browserSubscriptionId: subscriptionId, cropOrPlot: entry.farmSection || '' })
       });
       if (!response.ok) throw new Error('स्मरणपत्र तयार झाले नाही.');
       const reminder = await response.json();
@@ -116,12 +117,12 @@ export async function uploadEntryPhoto(apiFetch, file) {
   return (await response.json()).url;
 }
 
-export function OfflineQueueStatus() {
+export function OfflineQueueStatus({ ownerId }) {
   const [count, setCount] = useState(0);
   useEffect(() => {
     const update = () => {
       try {
-        const queue = JSON.parse(localStorage.getItem('swarnabhoomi-offline-entry-queue-v1') || '[]');
+        const queue = JSON.parse(localStorage.getItem(`swarnabhoomi-offline-entry-queue-v1:${ownerId}`) || '[]');
         setCount(Array.isArray(queue) ? queue.length : 0);
       } catch { setCount(0); }
     };
@@ -134,7 +135,7 @@ export function OfflineQueueStatus() {
       window.removeEventListener('swarnabhoomi-entries-synced', update);
       window.removeEventListener('storage', update);
     };
-  }, []);
+  }, [ownerId]);
   if (!count) return null;
   return <div className="offline-status" role="status"><strong>{count.toLocaleString('mr-IN')} नोंदी समक्रमणाच्या प्रतीक्षेत</strong><button type="button" disabled={!navigator.onLine} onClick={() => window.dispatchEvent(new Event('swarnabhoomi-entry-queued'))}>आता समक्रमित करा</button></div>;
 }

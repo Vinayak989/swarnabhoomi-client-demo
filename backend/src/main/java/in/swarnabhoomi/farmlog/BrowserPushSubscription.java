@@ -1,5 +1,6 @@
 package in.swarnabhoomi.farmlog;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -26,6 +27,11 @@ public class BrowserPushSubscription {
     @Column(nullable = false)
     private boolean active = true;
 
+    @JsonIgnore
+    @jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
+    @jakarta.persistence.JoinColumn(name = "owner_id")
+    private AppUser owner;
+
     public Long getId() { return id; }
     public String getEndpoint() { return endpoint; }
     public void setEndpoint(String value) { endpoint = value; }
@@ -35,4 +41,6 @@ public class BrowserPushSubscription {
     public void setAuthKey(String value) { authKey = value; }
     public boolean isActive() { return active; }
     public void setActive(boolean value) { active = value; }
+    public AppUser getOwner() { return owner; }
+    public void setOwner(AppUser value) { owner = value; }
 }
