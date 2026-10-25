@@ -938,3 +938,82 @@ select:focus-visible {
   .info-resources > a { font-size: 12px; }
   .info-weed-card .info-photo img { height: 235px; }
 }
+
+/* A consistent, readable type scale for every app page and feature panel. */
+.main :is(p, li, td, th, dt, dd, figcaption) {
+  font-size: max(13px, min(1em, 14px)) !important;
+  line-height: 1.7;
+}
+
+.main :is(button, a, input, textarea, select, label) {
+  font-size: max(13px, min(1em, 14px)) !important;
+  line-height: 1.45;
+}
+
+.main :is(span, small) {
+  font-size: max(12px, min(1em, 13px)) !important;
+  line-height: 1.5;
+}
+
+.main :is(.assistant-farm-empty, .assistant-farm-footer > span,
+  .assistant-composer-actions > span, .assistant-message-content,
+  .calculation, .error, .weather-result, .market-message, .market-radius,
+  .market-location-note, .market-result-count, .market-map-note,
+  .market-photo-placeholder, .market-listing-heading, .market-crop-type,
+  .market-stock, .market-seller, .market-address, .market-empty,
+  .market-private-badge, .market-form-intro, .market-precision-note,
+  .market-auth-note, .market-availability, .market-request-status,
+  .market-no-requests, .market-request-top > b, .consultant-message,
+  .consultant-experience, .consultant-area, .consultant-expertise,
+  .consultant-introduction, .consultant-request-intro, .consultant-empty,
+  .consultant-privacy-note, .reminder-weather-controls > span,
+  .reminder-weather-result > span, .reminder-weather-error,
+  .reminder-voice-row > span, .reminder-filter-note, .analytics-empty,
+  .analytics-note, .record-photo-note) {
+  font-size: max(12px, min(1em, 14px)) !important;
+  line-height: 1.65;
+}
+
+.main :is(.assistant-farm-heading h2, .reminder-weather-heading h2,
+  .market-form-card > .market-card-heading h2) {
+  font-size: 16px !important;
+  line-height: 1.45;
+}
+
+.sidebar :is(small, .nav-label, .sidebar-tip > span, .today, .crumb) {
+  font-size: 12px !important;
+  line-height: 1.55;
+}
+
+.account-select-screen p {
+  font-size: 14px !important;
+  line-height: 1.7;
+}
+
+.account-select-screen :is(small, span, button) {
+  font-size: 13px !important;
+  line-height: 1.5;
+}
+
+.login-screen :is(p, label, button, input, small) {
+  font-size: 13px !important;
+  line-height: 1.55;
+}
+
+.market-map .leaflet-control-attribution,
+.analytics-axis-label,
+.analytics-x-label {
+  font-size: 11px !important;
+}
+
+@media (max-width: 700px) {
+  .main :is(p, li, td, th, dt, dd, figcaption) {
+    font-size: 13px !important;
+  }
+
+  .main :is(button, a, input, textarea, select, label) {
+    font-size: 13px !important;
+  }
+
+  .account-select-screen p { font-size: 13px !important; }
+}
