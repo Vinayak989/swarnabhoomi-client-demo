@@ -114,7 +114,6 @@ export default function AuthPanel({ account, apiBase, onAuthenticated, onBack })
         {mode === 'login' && account.id === 'admin' && <p className="auth-notice">प्रशासक खाते प्रणाली प्रशासकाकडून तयार केलेले असावे.</p>}
         {error && <p className="auth-error" role="alert">{error}</p>}
         <button className="auth-submit" disabled={busy || (mode === 'register' && !canRegister)}>{busy ? 'कृपया थांबा…' : <><LockKeyhole size={17}/> {mode === 'register' ? 'खाते तयार करा' : 'लॉगिन करा'}</>}</button>
-        {mode === 'login' && <button className="auth-text-button" type="button" onClick={() => changeMode('otp')}>मोबाईल OTP ने लॉगिन करा</button>}
         {canRegister && <button className="auth-switch" type="button" onClick={() => changeMode(mode === 'register' ? 'login' : 'register')}>
           {mode === 'register' ? 'आधीच खाते आहे? लॉगिन करा' : 'खाते नाही? नवीन खाते तयार करा'}
         </button>}
