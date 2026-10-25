@@ -91,7 +91,8 @@ public class MandiPriceService {
             feed = new Feed(List.copyOf(prices), Instant.now(), dataUpdatedAt, true,
                     "Maharashtra", "Data.gov.in / AGMARKNET", SOURCE_URL, null);
         } catch (Exception exception) {
-            log.warn("Unable to refresh Maharashtra mandi prices: {}", exception.getMessage());
+            log.warn("Unable to refresh Maharashtra mandi prices ({}): {}",
+                    exception.getClass().getSimpleName(), exception.getMessage(), exception);
             Feed previous = feed;
             feed = new Feed(previous.prices(), Instant.now(), previous.dataUpdatedAt(), previous.available(),
                     previous.state(), previous.source(), previous.sourceUrl(),
