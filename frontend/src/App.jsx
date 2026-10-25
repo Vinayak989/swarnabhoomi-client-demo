@@ -37,7 +37,8 @@ const NAV_ITEMS = {
   admin: { label: 'व्यवस्थापन', icon: Activity }
 };
 const ACCOUNT_TYPES = [
-  { id: 'farmer', label: 'शेतकरी / विक्रेता', initials: 'शे', homeTab: 'entries', tabs: ['entries', 'reminders', 'assistant', 'information', 'marketplace', 'consultants'], description: 'दैनिक नोंद, बाजारात शेतमाल विक्री व खरेदी, स्मरणपत्रे आणि सल्लागार' },
+  { id: 'farmer', label: 'शेतकरी', initials: 'शे', homeTab: 'entries', tabs: ['entries', 'reminders', 'assistant', 'information', 'consultants'], description: 'दैनिक नोंद, शेतीसाठी AI मदत, स्मरणपत्रे आणि सेंद्रिय सल्लागार' },
+  { id: 'seller', label: 'विक्रेता', initials: 'वि', homeTab: 'marketplace', tabs: ['marketplace', 'information'], description: 'शेतमालाची नोंद, उपलब्ध साठा आणि खरेदीदारांच्या विनंत्या सांभाळा' },
   { id: 'buyer', label: 'खरेदीदार', initials: 'ख्रे', homeTab: 'marketplace', tabs: ['marketplace', 'consultants', 'information'], description: 'शेतमाल शोधा, विक्रेत्यांशी संपर्क करा आणि सल्लागार पाहा' },
   { id: 'consultant', label: 'सेंद्रिय सल्लागार', initials: 'स', homeTab: 'consultants', tabs: ['consultants', 'information'], description: 'सल्लागार प्रोफाइल प्रकाशित करा आणि शेती माहिती पहा' },
   { id: 'admin', label: 'प्रशासक', initials: 'प्र', homeTab: 'admin', tabs: ['admin', 'marketplace', 'consultants', 'information'], description: 'सार्वजनिक बाजार व सल्लागार निर्देशिकेचे निरीक्षण' }
@@ -45,7 +46,6 @@ const ACCOUNT_TYPES = [
 function readAccountType() {
   try {
     const saved = localStorage.getItem('swarnabhoomi-account-role');
-    if (saved === 'seller') { localStorage.setItem('swarnabhoomi-account-role', 'farmer'); return 'farmer'; }
     return ACCOUNT_TYPES.some(account => account.id === saved) ? saved : null;
   } catch { return null; }
 }
@@ -65,9 +65,9 @@ function App(){
     return creatingEntry?request.then(response=>response.status>=500?queueFarmEntry(options.body):response).catch(error=>{if(error instanceof TypeError)return queueFarmEntry(options.body);throw error}):request;
   },[auth]);
   const authenticateMarketplace=useCallback(token=>{sessionStorage.setItem('swarnabhoomi-auth',token);setAuth(token)},[]);
-  function chooseAccount(account){const requested=new URLSearchParams(window.location.search).get('tab');setAccountType(account.id);setLastAccountType(account.id);setActiveTab(account.tabs.includes(requested)?requested:account.homeTab);setAuthRequired(false);try{localStorage.setItem('swarnabhoomi-account-role',account.id)}catch{}}
-  const load=async()=>{try{const r=await apiFetch(`${API}/entries`);if(r.status===401){setAuthRequired(accountType==='farmer');return}if(r.ok){setEntries(await r.json());setAuthRequired(false)}}catch{}};
-  useEffect(()=>{if(accountType)load()},[auth,accountType]);
+  function chooseAccount(account){const requested=new URLSearchParams(window.location.search).get('tab');setAccountType(account.id);setLastAccountType(account.id);setActiveTab(account.tabs.includes(requested)?requested:account.homeTab);setAuthRequired(false);if(account.id!=='farmer')setEntries([]);try{localStorage.setItem('swarnabhoomi-account-role',account.id)}catch{}}
+  const load=async()=>{try{const r=await apiFetch(`${API}/entries`);if(r.status===401){setAuthRequired(true);return}if(r.ok){setEntries(await r.json());setAuthRequired(false)}}catch{}};
+  useEffect(()=>{if(accountType==='farmer')load();else if(accountType){setEntries([]);setAuthRequired(false)}},[auth,accountType]);
   useEffect(()=>{const main=mainRef.current;if(!main)return;window.scrollTo({top:0,behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});main.classList.remove('tab-entering');void main.offsetWidth;main.classList.add('tab-entering')},[activeTab,accountType]);
   useEffect(()=>{const updateVisibility=()=>setShowBackToTop(window.scrollY>480);updateVisibility();window.addEventListener('scroll',updateVisibility,{passive:true});return()=>window.removeEventListener('scroll',updateVisibility)},[]);
   useEffect(()=>{if(!printing)return;const originalTitle=document.title;document.title='Swarnabhoomi-Dainik-Sheti-Nondi';const finish=()=>{document.title=originalTitle;setPrinting(false);setPrintPhotos(current=>{Object.values(current).forEach(URL.revokeObjectURL);return {}})};const timer=window.setTimeout(()=>window.print(),350);window.addEventListener('afterprint',finish);return()=>{window.clearTimeout(timer);window.removeEventListener('afterprint',finish);document.title=originalTitle}},[printing]);

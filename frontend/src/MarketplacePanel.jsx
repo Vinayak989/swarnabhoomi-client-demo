@@ -233,7 +233,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, onAuthenticat
   onUnauthorizedRef.current = onUnauthorized;
 
   useEffect(() => setAuthorization(auth), [auth]);
-  useEffect(() => setView('browse'), [accountType]);
+  useEffect(() => setView(accountType === 'seller' ? 'seller' : 'browse'), [accountType]);
   useEffect(() => {
     try {
       window.localStorage.setItem('swarnabhoomi-market-favorites', JSON.stringify([...favoriteIds]));
