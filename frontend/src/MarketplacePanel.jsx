@@ -580,7 +580,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, onUna
     <div className="market-actions" role="tablist" aria-label="शेतकरी बाजार विभाग">
       <button type="button" role="tab" aria-selected={view === 'browse'} className={view === 'browse' ? 'active' : ''} onClick={() => setView('browse')}><Search size={16}/> शेतमाल शोधा</button>
       {accountType !== 'buyer' && accountType !== 'admin' && <>
-        <button type="button" role="tab" aria-selected={view === 'register'} className={view === 'register' ? 'active' : ''} onClick={() => { setError(''); setView('register'); }}><PackagePlus size={16}/> माझा शेतमाल नोंदवा</button>
+        <button type="button" role="tab" aria-selected={view === 'register'} className={view === 'register' ? 'active' : ''} onClick={() => { setError(''); setView('register'); }}><PackagePlus size={16}/> शेतमाल विक्रीसाठी नोंदवा</button>
         <button type="button" role="tab" aria-selected={view === 'seller'} className={view === 'seller' ? 'active' : ''} onClick={() => { setError(''); setView('seller'); }}><ClipboardList size={16}/> माझे व्यवहार</button>
       </>}
     </div>

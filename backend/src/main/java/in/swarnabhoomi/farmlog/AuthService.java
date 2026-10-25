@@ -60,8 +60,17 @@ public class AuthService implements ApplicationRunner {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "सेंद्रिय सल्लागार प्रोफाइल प्रशासकाकडून जोडली जातात.");
         }
+        if ("seller".equals(role)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "विक्रेता खाते आता शेतकरी खात्यातून वापरा.");
+        }
         String mobile = normalizeMobile(mobileValue);
         validatePassword(password);
+        if ("farmer".equals(role) && !users.existsByMobileNumberAndRole(mobile, "farmer")
+                && users.existsByMobileNumberAndRole(mobile, "seller")) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "या क्रमांकाचे जुने विक्रेता खाते आहे. शेतकरी खात्यात प्रवेश करण्यासाठी जुना पासवर्ड वापरा.");
+        }
         if (users.existsByMobileNumberAndRole(mobile, role)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "या मोबाईल क्रमांकासाठी खाते आधीपासून आहे. लॉगिन करा.");
@@ -75,10 +84,16 @@ public class AuthService implements ApplicationRunner {
         String role = normalizeRole(roleValue);
         String mobile = normalizeMobile(mobileValue);
         if (password == null || password.isBlank()) throw badRequest("पासवर्ड आवश्यक आहे.");
-        AppUser user = users.findByMobileNumberAndRole(mobile, role)
-                .filter(candidate -> passwords.matches(password, candidate.getPasswordHash()))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-                        "मोबाईल क्रमांक, खाते प्रकार किंवा पासवर्ड तपासा."));
+        AppUser user = users.findByMobileNumberAndRole(mobile, role).orElse(null);
+        if ("farmer".equals(role) && (user == null || !passwords.matches(password, user.getPasswordHash()))) {
+            AppUser legacySeller = users.findByMobileNumberAndRole(mobile, "seller")
+                    .filter(candidate -> passwords.matches(password, candidate.getPasswordHash())).orElse(null);
+            if (legacySeller != null) user = legacySeller;
+        }
+        if (user == null || !passwords.matches(password, user.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "मोबाईल क्रमांक, खाते प्रकार किंवा पासवर्ड तपासा.");
+        }
         return createSession(user);
     }
 
@@ -96,6 +111,9 @@ public class AuthService implements ApplicationRunner {
                     "OTP login सुरू करण्यासाठी सर्व्हरवर SMS सेवा कॉन्फिगर करणे आवश्यक आहे.");
         }
         AppUser user = users.findByMobileNumberAndRole(mobile, role).orElse(null);
+        if (user == null && "farmer".equals(role)) {
+            user = users.findByMobileNumberAndRole(mobile, "seller").orElse(null);
+        }
         if (user == null) return new OtpRequestResponse("खाते असल्यास OTP पाठवला आहे.");
 
         String code = String.format(Locale.ROOT, "%06d", RANDOM.nextInt(1_000_000));
@@ -121,8 +139,13 @@ public class AuthService implements ApplicationRunner {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "OTP अवैध किंवा कालबाह्य आहे.");
         }
         challenge.setConsumed(true);
-        AppUser user = users.findByMobileNumberAndRole(mobile, role)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "OTP अवैध किंवा कालबाह्य आहे."));
+        AppUser user = users.findByMobileNumberAndRole(mobile, role).orElse(null);
+        if (user == null && "farmer".equals(role)) {
+            user = users.findByMobileNumberAndRole(mobile, "seller").orElse(null);
+        }
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "OTP अवैध किंवा कालबाह्य आहे.");
+        }
         return createSession(user);
     }
 

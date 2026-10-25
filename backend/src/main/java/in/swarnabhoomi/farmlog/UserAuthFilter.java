@@ -60,13 +60,15 @@ public class UserAuthFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         String method = request.getMethod();
         if ((path.equals("/api/marketplace/listings") || path.equals("/api/marketplace/photos"))
-                && "POST".equalsIgnoreCase(method) && !"seller".equals(user.getRole())
+                && "POST".equalsIgnoreCase(method)
+                && !("seller".equals(user.getRole()) || "farmer".equals(user.getRole()))
                 || MARKETPLACE_PURCHASE.matcher(path).matches() && "POST".equalsIgnoreCase(method)
                     && !"buyer".equals(user.getRole())
                 || MARKETPLACE_CONTACT.matcher(path).matches() && !"buyer".equals(user.getRole())
                 || MARKETPLACE_SELLER.matcher(path).matches()
                     && !("GET".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method))
-                || MARKETPLACE_SELLER.matcher(path).matches() && !"seller".equals(user.getRole())
+                || MARKETPLACE_SELLER.matcher(path).matches()
+                    && !("seller".equals(user.getRole()) || "farmer".equals(user.getRole()))
                 || path.equals("/api/consultants") && "POST".equalsIgnoreCase(method)
                     && !"admin".equals(user.getRole())) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);

@@ -38,15 +38,16 @@ const NAV_ITEMS = {
   consultants: { label: 'सेंद्रिय सल्लागार', icon: HandHelping },
   admin: { label: 'व्यवस्थापन', icon: Activity }
 };
+const accountTabLabel=(account,tab)=>account.id==='farmer'&&tab==='marketplace'?'शेतमाल विक्री':NAV_ITEMS[tab].label;
 const ACCOUNT_TYPES = [
-  { id: 'farmer', label: 'शेतकरी', initials: 'शे', homeTab: 'entries', tabs: ['entries', 'reminders', 'assistant', 'information', 'consultants'], description: 'दैनिक नोंद, शेतीसाठी AI मदत, स्मरणपत्रे आणि सेंद्रिय सल्लागार' },
+  { id: 'farmer', label: 'शेतकरी', initials: 'शे', homeTab: 'entries', tabs: ['entries', 'reminders', 'assistant', 'marketplace', 'information', 'consultants'], description: 'दैनिक नोंद, शेतीसाठी AI मदत, शेतमाल विक्री, स्मरणपत्रे आणि सेंद्रिय सल्लागार' },
   { id: 'seller', label: 'विक्रेता', initials: 'वि', homeTab: 'marketplace', tabs: ['marketplace', 'information'], description: 'शेतमालाची नोंद, उपलब्ध साठा आणि खरेदीदारांच्या विनंत्या सांभाळा' },
-  { id: 'buyer', label: 'खरेदीदार', initials: 'ख्रे', homeTab: 'marketplace', tabs: ['marketplace', 'consultants', 'information'], description: 'शेतमाल शोधा, विक्रेत्यांशी संपर्क करा आणि सल्लागार पाहा' },
+  { id: 'buyer', label: 'खरेदीदार', initials: 'ख्रे', homeTab: 'marketplace', tabs: ['marketplace', 'information'], description: 'शेतमाल शोधा आणि विक्रेत्यांशी संपर्क करा' },
   { id: 'consultant', label: 'सेंद्रिय सल्लागार', initials: 'स', homeTab: 'consultants', tabs: ['consultants', 'information'], description: 'सल्लागार प्रोफाइल प्रकाशित करा आणि शेती माहिती पहा' },
   { id: 'admin', label: 'प्रशासक', initials: 'प्र', homeTab: 'admin', tabs: ['admin', 'marketplace', 'information'], description: 'खाते, बाजार व्यवहार, शेतकरी नोंदी आणि सल्लागार प्रोफाइल व्यवस्थापन' }
 ];
 const ADMIN_ACCOUNT = ACCOUNT_TYPES.find(account => account.id === 'admin');
-const PUBLIC_ACCOUNT_TYPES = ACCOUNT_TYPES.filter(account => !['admin', 'consultant'].includes(account.id));
+const PUBLIC_ACCOUNT_TYPES = ACCOUNT_TYPES.filter(account => !['admin', 'consultant', 'seller'].includes(account.id));
 function readAccountType() {
   try {
     const saved = localStorage.getItem('swarnabhoomi-account-role');
@@ -89,13 +90,15 @@ function App(){
     return creatingEntry?request.then(response=>response.status>=500?queueFarmEntry(options.body,authUser?.id):response).catch(error=>{if(error instanceof TypeError)return queueFarmEntry(options.body,authUser?.id);throw error}):request;
   },[authToken,authUser,logout]);
   function chooseAccount(account){setSelectedAccount(account);setLastAccountType(account.id)}
-  function enterAccount(result){
+  function enterAccount(result,requestedAccount){
     if(!result?.token||!result?.user)return;
-    const account=ACCOUNT_TYPES.find(item=>item.id===result.user.role);
+    const legacySellerInFarmerAccount=requestedAccount?.id==='farmer'&&result.user.role==='seller';
+    const account=legacySellerInFarmerAccount?ACCOUNT_TYPES.find(item=>item.id==='farmer'):ACCOUNT_TYPES.find(item=>item.id===result.user.role);
     if(!account)return;
+    const sessionUser=legacySellerInFarmerAccount?{...result.user,role:'farmer'}:result.user;
     sessionStorage.setItem('swarnabhoomi-user-token',result.token);
-    sessionStorage.setItem('swarnabhoomi-user',JSON.stringify(result.user));
-    setAuthToken(result.token);setAuthUser(result.user);setAccountType(account.id);setSelectedAccount(null);
+    sessionStorage.setItem('swarnabhoomi-user',JSON.stringify(sessionUser));
+    setAuthToken(result.token);setAuthUser(sessionUser);setAccountType(account.id);setSelectedAccount(null);
     const requested=new URLSearchParams(window.location.search).get('tab');
     setActiveTab(account.tabs.includes(requested)?requested:account.homeTab);
     setAssistantMessages([]);
@@ -144,12 +147,12 @@ function App(){
   async function remove(id){if(!confirm('ही नोंद हटवायची आहे का?'))return;await apiFetch(`${API}/entries/${id}`,{method:'DELETE'});load()}
   if(!authUser||!authToken){
     if(!selectedAccount)return <AccountSelection lastAccountType={lastAccountType} onSelect={chooseAccount}/>;
-    return <AuthPanel account={selectedAccount} apiBase={API} onAuthenticated={enterAccount} onBack={()=>setSelectedAccount(null)}/>;
+    return <AuthPanel account={selectedAccount} apiBase={API} onAuthenticated={result=>enterAccount(result,selectedAccount)} onBack={()=>setSelectedAccount(null)}/>;
   }
   if(!accountType)return <AccountSelection lastAccountType={lastAccountType} onSelect={chooseAccount}/>;
   return <div className="app-shell">
-    <aside className="sidebar"><div className="brand"><img className="brand-logo" src={farmLogo} alt="स्वर्णभूमी सेंद्रिय शेतीचे चिन्ह"/></div><div className="nav-label">मुख्य मेनू</div>{currentAccount.tabs.map(tab=>{const item=NAV_ITEMS[tab],Icon=item.icon;return <button type="button" key={tab} className={`nav ${activeTab===tab?'active':''}`} onClick={()=>setActiveTab(tab)} aria-label={item.label} title={item.label}><Icon size={18}/>{item.label}</button>})}<div className="sidebar-tip"><Leaf size={19}/><b>आजची छोटी नोंद,<br/>उद्याची मोठी भरभराट.</b><span>तुमच्या शेताचा प्रत्येक दिवस जपून ठेवा.</span><div className="tip-leaves">✳　✳</div></div><button type="button" className="profile account-profile" onClick={logout} aria-label="लॉगआउट"><div className="avatar">{currentAccount.initials}</div><span><b>{currentAccount.label} खाते</b><small>{authUser.mobileNumber} · लॉगआउट</small></span><ChevronRight size={16}/></button></aside>
-    <main ref={mainRef} className="main"><header className="topbar"><div><span className="crumb">स्वर्णभूमी　/　</span><b>{NAV_ITEMS[activeTab]?.label||'स्वर्णभूमी'}</b></div><div className="today"><CalendarDays size={16}/>{new Date().toLocaleDateString('mr-IN',{weekday:'long',day:'numeric',month:'long'})}</div></header>
+    <aside className="sidebar"><div className="brand"><img className="brand-logo" src={farmLogo} alt="स्वर्णभूमी सेंद्रिय शेतीचे चिन्ह"/></div><div className="nav-label">मुख्य मेनू</div>{currentAccount.tabs.map(tab=>{const item=NAV_ITEMS[tab],Icon=item.icon,label=accountTabLabel(currentAccount,tab);return <button type="button" key={tab} className={`nav ${activeTab===tab?'active':''}`} onClick={()=>setActiveTab(tab)} aria-label={label} title={label}><Icon size={18}/>{label}</button>})}<div className="sidebar-tip"><Leaf size={19}/><b>आजची छोटी नोंद,<br/>उद्याची मोठी भरभराट.</b><span>तुमच्या शेताचा प्रत्येक दिवस जपून ठेवा.</span><div className="tip-leaves">✳　✳</div></div><button type="button" className="profile account-profile" onClick={logout} aria-label="लॉगआउट"><div className="avatar">{currentAccount.initials}</div><span><b>{currentAccount.label} खाते</b><small>{authUser.mobileNumber} · लॉगआउट</small></span><ChevronRight size={16}/></button></aside>
+    <main ref={mainRef} className="main"><header className="topbar"><div><span className="crumb">स्वर्णभूमी　/　</span><b>{accountTabLabel(currentAccount,activeTab)}</b></div><div className="today"><CalendarDays size={16}/>{new Date().toLocaleDateString('mr-IN',{weekday:'long',day:'numeric',month:'long'})}</div></header>
       {activeTab==='entries'?<>
       <section className="welcome"><div><span className="eyebrow"><span className="pulse"/> तुमच्या शेताची डायरी</span><h1>नमस्कार, शेतकरी मित्रा! <span>🌱</span></h1><p>आज शेतात काय घडलं? तुमची नोंद इथे जतन करा.</p></div><button className="primary" onClick={()=>{setForm(fresh());setOpen(true)}}><Plus size={19}/> आजची नोंद लिहा</button><div className="welcome-art"><span>☀️</span><div>〰️〰️</div></div></section>
       <section className="stats"><Stat icon={<Wallet/>} label="एकूण खर्च" value={<AnimatedMetric value={totals.cost} format="money"/>} tone="peach" analyticsKey="cost" onAnalytics={setAnalyticsMetric}/><Stat icon={<TrendingUp/>} label="एकूण उत्पन्न" value={<AnimatedMetric value={totals.income} format="money"/>} tone="green" analyticsKey="income" onAnalytics={setAnalyticsMetric}/><Stat icon={<Boxes/>} label="एकूण उत्पादन" value={<AnimatedMetric value={totals.production} format="quantity"/>} tone="blue" analyticsKey="production" onAnalytics={setAnalyticsMetric}/><div className="stat-card net"><div className="net-label">निव्वळ शिल्लक</div><strong><AnimatedMetric value={totals.income-totals.cost} format="money"/></strong><span>आतापर्यंतची कमाई</span><div className="net-icon">↗</div></div></section>
@@ -233,7 +236,7 @@ function ProtectedPhoto({src,auth,alt}){
   return <><button type="button" className="photo-thumb-trigger" title="मोठा फोटो पाहण्यासाठी hover करा किंवा टॅप करा" aria-label="शेताचा फोटो मोठा पाहा" aria-haspopup="dialog" onMouseEnter={()=>setExpanded(true)} onClick={event=>{event.stopPropagation();setExpanded(true)}}><img src={image} alt={alt}/></button>{expanded&&<div className="image-lightbox" onMouseDown={event=>{if(event.target===event.currentTarget)setExpanded(false)}}><section className="image-lightbox-dialog" role="dialog" aria-modal="true" aria-label="शेताचा मोठा फोटो"><header className="image-lightbox-header"><strong>{alt||'शेताचा फोटो'}</strong><div><a className="image-download" href={image} download={`swarnabhoomi-photo.${extension}`}><FileDown size={15}/> फोटो डाउनलोड</a><button type="button" className="close" onClick={()=>setExpanded(false)} aria-label="फोटो बंद करा"><X size={19}/></button></div></header><img className="image-lightbox-full" src={image} alt={alt}/></section></div>}</>;
 }
 function AccountSelection({lastAccountType,onSelect}){
-  return <main className="account-select-screen" lang="mr"><section className="account-select-content"><header className="account-select-header"><img src={farmLogo} alt="स्वर्णभूमी"/><div><span>स्वर्णभूमी · शेतकरी समुदाय</span><h1>कोणत्या खात्यातून पुढे जायचे?</h1><p>खाते निवडा. पुढे मोबाईल क्रमांक आणि पासवर्डने प्रवेश करा किंवा नवीन खाते नोंदवा.</p></div></header><div className="account-role-grid">{PUBLIC_ACCOUNT_TYPES.map(account=><button type="button" key={account.id} className={`account-role-card ${lastAccountType===account.id?'previous':''}`} onClick={()=>onSelect(account)}><span className={`account-role-avatar role-${account.id}`}>{account.initials}</span><span className="account-role-copy"><b>{account.label}</b>{lastAccountType===account.id&&<small className="account-last-used">मागील निवड</small>}<small>{account.description}</small><small><strong>प्रमुख टॅब:</strong> {account.tabs.map(tab=>NAV_ITEMS[tab].label).join(' · ')}</small></span></button>)}</div><p className="account-select-note">प्रत्येक खाते प्रकारासाठी मोबाईल क्रमांक आणि पासवर्ड स्वतंत्र आहेत. तुमच्या शेतीच्या नोंदी फक्त त्याच खात्यात लॉगिन केल्यावर दिसतील.</p></section><button type="button" className="admin-entry-symbol" onClick={()=>onSelect(ADMIN_ACCOUNT)} aria-label="प्रशासक लॉगिन" title="प्रशासक लॉगिन"><Shield size={17}/><span>प्रशासक</span></button></main>;
+  return <main className="account-select-screen" lang="mr"><section className="account-select-content"><header className="account-select-header"><img src={farmLogo} alt="स्वर्णभूमी"/><div><span>स्वर्णभूमी · शेतकरी समुदाय</span><h1>कोणत्या खात्यातून पुढे जायचे?</h1><p>खाते निवडा. पुढे मोबाईल क्रमांक आणि पासवर्डने प्रवेश करा किंवा नवीन खाते नोंदवा.</p></div></header><div className="account-role-grid">{PUBLIC_ACCOUNT_TYPES.map(account=><button type="button" key={account.id} className={`account-role-card ${lastAccountType===account.id?'previous':''}`} onClick={()=>onSelect(account)}><span className={`account-role-avatar role-${account.id}`}>{account.initials}</span><span className="account-role-copy"><b>{account.label}</b>{lastAccountType===account.id&&<small className="account-last-used">मागील निवड</small>}<small>{account.description}</small><small><strong>प्रमुख टॅब:</strong> {account.tabs.map(tab=>accountTabLabel(account,tab)).join(' · ')}</small></span></button>)}</div><p className="account-select-note">प्रत्येक खाते प्रकारासाठी मोबाईल क्रमांक आणि पासवर्ड स्वतंत्र आहेत. तुमच्या शेतीच्या नोंदी फक्त त्याच खात्यात लॉगिन केल्यावर दिसतील.</p></section><button type="button" className="admin-entry-symbol" onClick={()=>onSelect(ADMIN_ACCOUNT)} aria-label="प्रशासक लॉगिन" title="प्रशासक लॉगिन"><Shield size={17}/><span>प्रशासक</span></button></main>;
 }
 
 const ADMIN_SECTIONS = {

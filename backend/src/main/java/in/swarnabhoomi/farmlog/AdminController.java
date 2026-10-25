@@ -24,6 +24,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional(readOnly = true)
 public class AdminController {
     private static final Set<String> VIEWABLE_ACCOUNT_ROLES = Set.of("buyer", "seller");
+    private static final Set<String> FARM_ACCOUNT_ROLES = Set.of("farmer", "seller");
     private static final int MAX_PAGE_SIZE = 100;
 
     private final AppUserRepository users;
@@ -55,8 +56,8 @@ public class AdminController {
                 listings.countByAvailableTrue(),
                 purchaseRequests.count(),
                 purchaseRequests.countByStatus(MarketplacePurchaseRequest.Status.PENDING),
-                entries.countAllByOwnerRole("farmer"),
-                entries.countAllByOwnerRoleAndEntryDate("farmer", java.time.ZonedDateTime.now(
+                entries.countAllByOwnerRoles(FARM_ACCOUNT_ROLES),
+                entries.countAllByOwnerRolesAndEntryDate(FARM_ACCOUNT_ROLES, java.time.ZonedDateTime.now(
                         java.time.ZoneId.of("Asia/Kolkata")).toLocalDate()));
     }
 
@@ -85,7 +86,7 @@ public class AdminController {
             @RequestParam(defaultValue = "50") int size,
             @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
         requireAdmin(user);
-        return entries.findAllByOwnerRole("farmer", pageRequest(page, size)).map(AdminController::dailyRecord);
+        return entries.findAllByOwnerRoles(FARM_ACCOUNT_ROLES, pageRequest(page, size)).map(AdminController::dailyRecord);
     }
 
     @GetMapping("/listings")

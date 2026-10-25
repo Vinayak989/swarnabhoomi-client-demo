@@ -128,7 +128,7 @@ public class FarmEntryController {
     }
 
     private static void requireFarmer(AppUser user) {
-        if (!"farmer".equals(user.getRole())) {
+        if (!"farmer".equals(user.getRole()) && !"seller".equals(user.getRole())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "हे वैशिष्ट्य शेतकरी खात्यासाठी आहे.");
         }
     }
