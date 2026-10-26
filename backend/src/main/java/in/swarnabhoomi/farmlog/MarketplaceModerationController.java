@@ -1,6 +1,11 @@
 package in.swarnabhoomi.farmlog;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -25,12 +30,17 @@ public class MarketplaceModerationController {
     private final MarketplaceMessageReportRepository reports;
     private final MarketplaceOrderMessageRepository messages;
     private final MarketplaceOrderReviewRepository reviews;
+    private final AppUserRepository users;
+    private final AccountProfileRepository profiles;
 
     public MarketplaceModerationController(MarketplaceMessageReportRepository reports,
-            MarketplaceOrderMessageRepository messages, MarketplaceOrderReviewRepository reviews) {
+            MarketplaceOrderMessageRepository messages, MarketplaceOrderReviewRepository reviews,
+            AppUserRepository users, AccountProfileRepository profiles) {
         this.reports = reports;
         this.messages = messages;
         this.reviews = reviews;
+        this.users = users;
+        this.profiles = profiles;
     }
 
     @GetMapping("/message-reports")
@@ -38,14 +48,39 @@ public class MarketplaceModerationController {
             @RequestParam(defaultValue = "50") int size,
             @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
         requireAdmin(user);
-        return reports.findAllByStatusOrderByCreatedAtDesc(MarketplaceMessageReport.Status.PENDING,
-                pageRequest(page, size)).map(report -> {
-                    MarketplaceOrderMessage message = messages.findById(report.getMessageId()).orElse(null);
-                    return new MessageReportRecord(report.getId(), report.getRequestId(), report.getMessageId(),
-                            message == null ? "संदेश उपलब्ध नाही" : message.getBody(),
-                            message == null ? null : message.getSenderRole(), report.getReporterUserId(),
-                            report.getReason(), report.getCreatedAt());
-                });
+        Page<MarketplaceMessageReport> reportPage = reports.findAllByStatusOrderByCreatedAtDesc(
+                MarketplaceMessageReport.Status.PENDING, pageRequest(page, size));
+        List<Long> messageIds = reportPage.getContent().stream().map(MarketplaceMessageReport::getMessageId).distinct().toList();
+        Map<Long, MarketplaceOrderMessage> messagesById = new HashMap<>();
+        messages.findAllById(messageIds).forEach(message -> messagesById.put(message.getId(), message));
+
+        Set<Long> userIds = new HashSet<>();
+        reportPage.getContent().forEach(report -> {
+            userIds.add(report.getReporterUserId());
+            MarketplaceOrderMessage message = messagesById.get(report.getMessageId());
+            if (message != null) userIds.add(message.getSenderUserId());
+        });
+        Map<Long, AppUser> usersById = new HashMap<>();
+        users.findAllById(userIds).forEach(account -> usersById.put(account.getId(), account));
+        Map<Long, AccountProfile> profilesByUserId = new HashMap<>();
+        if (!userIds.isEmpty()) profiles.findAllByUserIds(userIds)
+                .forEach(profile -> profilesByUserId.put(profile.getUserId(), profile));
+
+        return reportPage.map(report -> {
+            MarketplaceOrderMessage message = messagesById.get(report.getMessageId());
+            AppUser reporter = usersById.get(report.getReporterUserId());
+            AppUser reported = message == null ? null : usersById.get(message.getSenderUserId());
+            return new MessageReportRecord(report.getId(), report.getRequestId(), report.getMessageId(),
+                    message == null ? "संदेश उपलब्ध नाही" : message.getBody(),
+                    message == null ? null : message.getSenderRole(), report.getReporterUserId(),
+                    reportPartyName(reporter, profilesByUserId.get(report.getReporterUserId())),
+                    reporter == null ? null : reporter.getRole(),
+                    reporter == null ? null : reporter.getMobileNumber(),
+                    message == null ? null : message.getSenderUserId(),
+                    reportPartyName(reported, reported == null ? null : profilesByUserId.get(reported.getId())),
+                    reported == null ? message == null ? null : message.getSenderRole() : reported.getRole(),
+                    reported == null ? null : reported.getMobileNumber(), report.getReason(), report.getCreatedAt());
+        });
     }
 
     @PatchMapping("/message-reports/{id}")
@@ -118,8 +153,21 @@ public class MarketplaceModerationController {
         }
     }
 
+    private static String reportPartyName(AppUser user, AccountProfile profile) {
+        if (user == null) return "खाते उपलब्ध नाही";
+        if (profile != null && profile.getFullName() != null && !profile.getFullName().isBlank()) {
+            return profile.getFullName();
+        }
+        if (profile != null && profile.getBusinessName() != null && !profile.getBusinessName().isBlank()) {
+            return profile.getBusinessName();
+        }
+        return "खाते #" + user.getId();
+    }
+
     public record MessageReportRecord(Long id, Long orderId, Long messageId, String message,
-            String senderRole, Long reporterUserId, String reason, Instant createdAt) {}
+            String senderRole, Long reporterUserId, String reporterName, String reporterRole,
+            String reporterMobileNumber, Long reportedUserId, String reportedName, String reportedRole,
+            String reportedMobileNumber, String reason, Instant createdAt) {}
     public record ReviewRecord(Long id, Long orderId, Long listingId, Long buyerUserId, Long sellerUserId,
             Integer rating, String comment, Instant createdAt) {}
     public record ModerationUpdate(String status, String note) {}
