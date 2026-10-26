@@ -36,6 +36,24 @@ const money = n => `₹${Number(n||0).toLocaleString('en-IN')}`;
 const day = s => s ? new Date(`${s}T00:00:00`).toLocaleDateString('mr-IN',{day:'numeric',month:'short',year:'numeric'}) : 'दिनांक नाही';
 const entryCost = e => Number(e.laborCost||0)+Number(e.materialsCost||0)+Number(e.otherCost||0);
 const weatherDetailText = raw => {if(!raw)return '';try{const d=typeof raw==='string'?JSON.parse(raw):raw;return [d.district,d.state,d.warning,d.note].filter(Boolean).join(' · ')}catch{return String(raw)}};
+const entryPrintPhotos = entry => {
+  const photos=[];
+  if(entry.photoUrl)photos.push({url:entry.photoUrl,label:'शेताचा फोटो'});
+  try{
+    const receipts=typeof entry.receiptPhotoUrls==='string'?JSON.parse(entry.receiptPhotoUrls||'[]'):entry.receiptPhotoUrls;
+    if(Array.isArray(receipts))receipts.filter(url=>typeof url==='string'&&url.trim()).forEach((url,index)=>photos.push({url,label:`खर्चाची पावती ${index+1}`}));
+  }catch{}
+  return photos;
+};
+const entryPhotoApiUrl = value => {
+  const source=String(value||'').trim();
+  if(!source)return '';
+  try{
+    const parsed=new URL(source,window.location.origin);
+    if(parsed.pathname.startsWith('/api/photos/'))return `${API}${parsed.pathname.slice('/api'.length)}${parsed.search}`;
+    return parsed.href;
+  }catch{return source}
+};
 const ANALYTICS={cost:{label:'एकूण खर्च',value:entryCost,format:money},income:{label:'एकूण उत्पन्न',value:e=>Number(e.saleIncome||0),format:money},production:{label:'एकूण उत्पादन',value:e=>Number(e.productionKg||0),format:v=>`${Number(v).toLocaleString('mr-IN',{maximumFractionDigits:1})} किलो`}};
 const NAV_ITEMS = {
   schemes: { label: 'सरकारी योजना', icon: Landmark },
@@ -155,7 +173,52 @@ function App(){
   },[accountType,authUser?.id,refreshSchemeFeed]);
   useEffect(()=>{const main=mainRef.current;if(!main)return;window.scrollTo({top:0,behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});main.classList.remove('tab-entering');void main.offsetWidth;main.classList.add('tab-entering')},[activeTab,accountType]);
   useEffect(()=>{const updateVisibility=()=>setShowBackToTop(window.scrollY>480);updateVisibility();window.addEventListener('scroll',updateVisibility,{passive:true});return()=>window.removeEventListener('scroll',updateVisibility)},[]);
-  useEffect(()=>{if(!printing)return;const originalTitle=document.title;document.title='Swarnabhoomi-Dainik-Sheti-Nondi';const finish=()=>{document.title=originalTitle;setPrinting(false);setPrintPhotos(current=>{Object.values(current).forEach(URL.revokeObjectURL);return {}})};const timer=window.setTimeout(()=>window.print(),350);window.addEventListener('afterprint',finish);return()=>{window.clearTimeout(timer);window.removeEventListener('afterprint',finish);document.title=originalTitle}},[printing]);
+  useEffect(()=>{
+    if(!printing)return;
+    const originalTitle=document.title;
+    let active=true;
+    document.title='Swarnabhoomi-Dainik-Sheti-Nondi';
+    const finish=()=>{
+      if(!active)return;
+      active=false;
+      document.title=originalTitle;
+      setPrinting(false);
+      setPrintPhotos(current=>{
+        Object.values(current).flat().forEach(photo=>{if(photo?.src)URL.revokeObjectURL(photo.src)});
+        return {};
+      });
+    };
+    const timer=window.setTimeout(async()=>{
+      const images=Array.from(document.querySelectorAll('#print-report img'));
+      await Promise.all(images.map(image=>new Promise(resolve=>{
+        let settled=false;
+        const timeout=window.setTimeout(done,8000);
+        function done(){
+          if(settled)return;
+          settled=true;
+          window.clearTimeout(timeout);
+          image.removeEventListener('load',done);
+          image.removeEventListener('error',done);
+          resolve();
+        }
+        if(image.complete){
+          if(typeof image.decode==='function')image.decode().catch(()=>{}).finally(done);
+          else done();
+        }else{
+          image.addEventListener('load',done,{once:true});
+          image.addEventListener('error',done,{once:true});
+        }
+      })));
+      if(active)window.print();
+    },80);
+    window.addEventListener('afterprint',finish);
+    return()=>{
+      active=false;
+      window.clearTimeout(timer);
+      window.removeEventListener('afterprint',finish);
+      document.title=originalTitle;
+    };
+  },[printing]);
   const totals=useMemo(()=>entries.reduce((a,e)=>({cost:a.cost+Number(e.laborCost||0)+Number(e.materialsCost||0)+Number(e.otherCost||0),income:a.income+Number(e.saleIncome||0),production:a.production+Number(e.productionKg||0)}),{cost:0,income:0,production:0}),[entries]);
   const assistantFarmData=useMemo(()=>{
     const recentEntries=[...entries].sort((a,b)=>String(b.entryDate||'').localeCompare(String(a.entryDate||''))).slice(0,5).map(entry=>{
@@ -187,7 +250,29 @@ function App(){
   const filtered=entries.filter(e=>`${e.farmSection||''} ${e.workDone||''} ${e.entryDate||''}`.toLowerCase().includes(search.toLowerCase()));
   const filteredTotals=filtered.reduce((a,e)=>({cost:a.cost+entryCost(e),income:a.income+Number(e.saleIncome||0),production:a.production+Number(e.productionKg||0)}),{cost:0,income:0,production:0});
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
-  async function downloadPdf(){if(!filtered.length)return;const exportEntries=[...filtered];setPdfBusy(true);setPrintEntries(exportEntries);try{const photos=await Promise.all(exportEntries.filter(e=>e.photoUrl).map(async e=>{const source=e.photoUrl.startsWith('http://localhost:8080/')?`/api/photos/${e.photoUrl.slice('http://localhost:8080/'.length)}`:e.photoUrl;try{const r=await apiFetch(source);if(!r.ok)return[e.id,null];return[e.id,URL.createObjectURL(await r.blob())]}catch{return[e.id,null]}}));setPrintPhotos(Object.fromEntries(photos.filter(([,url])=>url)))}finally{setPdfBusy(false);setPrinting(true)}}
+  async function downloadPdf(){
+    if(!filtered.length)return;
+    const exportEntries=[...filtered];
+    setPdfBusy(true);
+    setPrintEntries(exportEntries);
+    setPrintPhotos({});
+    try{
+      const photos=await Promise.all(exportEntries.map(async entry=>{
+        const loaded=await Promise.all(entryPrintPhotos(entry).map(async photo=>{
+          try{
+            const response=await apiFetch(entryPhotoApiUrl(photo.url));
+            if(!response.ok)return {...photo,src:''};
+            return {...photo,src:URL.createObjectURL(await response.blob())};
+          }catch{return {...photo,src:''}}
+        }));
+        return [entry.id,loaded];
+      }));
+      setPrintPhotos(Object.fromEntries(photos.filter(([,items])=>items.length)));
+    }finally{
+      setPdfBusy(false);
+      setPrinting(true);
+    }
+  }
   async function save(e){e.preventDefault();setLoading(true);try{const {cropName,cropCustom,plotName,...record}=form;const crop=cropName==='इतर'?(cropCustom||'').trim():cropName;record.farmSection=[crop,plotName].filter(Boolean).join(' — ')||null;const r=await apiFetch(`${API}/entries`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(Object.entries(record).map(([k,v])=>[k,v===''?null:v])))});if(!r.ok)throw Error();setForm(fresh());setOpen(false);setPreview('');await load()}catch{alert('नोंद जतन करता आली नाही. Java सर्व्हर सुरू आहे का ते तपासा.')}finally{setLoading(false)}}
   async function getWeather(){setWeatherBusy(true);setWeatherError('');try{const r=await apiFetch(`${API}/weather/${form.pincode}`);const contentType=r.headers.get('content-type')||'';if(!contentType.toLowerCase().includes('json'))throw Error('हवामान सर्व्हरकडून JSON प्रतिसाद मिळाला नाही. Java सर्व्हर सुरू आहे का ते तपासा.');let d;try{d=await r.json()}catch{throw Error('हवामान सर्व्हरकडून वाचता न येणारा प्रतिसाद मिळाला.')}if(!r.ok)throw Error(d.message||(r.status>=500?'IMD हवामान सेवा सध्या उपलब्ध नाही. हवामान हाताने निवडा.':'हवामान माहिती मिळाली नाही.'));set('weatherDetails',JSON.stringify(d));}catch(e){setWeatherError(e instanceof TypeError?'हवामान सर्व्हरशी संपर्क होऊ शकला नाही. Java सर्व्हर सुरू आहे का ते तपासा.':e.message)}finally{setWeatherBusy(false)}}
   async function upload(file){if(!file)return;setPreview(URL.createObjectURL(file));const data=new FormData();data.append('file',file);try{const r=await apiFetch(`${API}/photos`,{method:'POST',body:data});if(!r.ok)throw Error();const d=await r.json();set('photoUrl',d.url)}catch{setWeatherError('फोटो अपलोड झाला नाही. Java सर्व्हर तपासा.')}}
@@ -209,7 +294,7 @@ function App(){
       <OfflineQueueStatus ownerId={authUser.id}/>
       <section className="entries-head"><div><h2>शेतातील नोंदी</h2><p>तुमच्या रोजच्या कामांचा लेखाजोखा</p></div><div className="tools"><div className="search"><Search size={17}/><SpeechTextInput><input placeholder="नोंदी शोधा..." value={search} onChange={e=>setSearch(e.target.value)}/></SpeechTextInput></div><button className="outline pdf-export" onClick={downloadPdf} disabled={!filtered.length||pdfBusy} title="दिसणाऱ्या नोंदींची PDF तयार करा">{pdfBusy?<LoaderCircle className="spin" size={15}/>:<FileDown size={15}/>} PDF डाउनलोड</button><button type="button" className="outline csv-export" onClick={() => downloadEntriesCsv(filtered)} disabled={!filtered.length} title="दिसणाऱ्या नोंदी Excel किंवा CSV मध्ये डाउनलोड करा"><FileSpreadsheet size={15}/> CSV डाउनलोड</button><button className="filter">सर्व नोंदी⌄</button></div></section>
       {!filtered.length?<div className="empty"><div className="empty-icon">🌾</div><h3>{entries.length?'नोंद सापडली नाही':'तुमची पहिली नोंद लिहा'}</h3><p>शेतातल्या छोट्या-मोठ्या गोष्टी नोंदवा. त्या पुढच्या हंगामात उपयोगी पडतील.</p><button className="primary" onClick={()=>{setForm(fresh());setQuickTemplatesOpen(false);setWeatherOpen(false);setOpen(true)}}><Plus size={18}/> नवी नोंद</button></div>:<div className="entry-list">{filtered.map(e=><article className={`entry-card ${activeRecord===e.id?'details-open':''}`} key={e.id} tabIndex={0} aria-describedby={`record-details-${e.id}`} onClick={()=>{if(window.matchMedia?.('(hover: none)').matches)setActiveRecord(current=>current===e.id?null:e.id)}} onKeyDown={event=>{if(event.key==='Escape')setActiveRecord(null)}}><div className="entry-date"><div className="date-icon"><CalendarDays size={18}/></div><div><b>{day(e.entryDate)}</b><small>{e.weather||'हवामान नोंदले नाही'}</small></div></div><div className="entry-crop"><small>पीक / विभाग</small><b>{e.farmSection||'—'}</b></div><div className="entry-work"><small>आजची कामे</small><b>{e.workDone||'—'}</b></div><div className="entry-money"><small>खर्च　·　उत्पन्न</small><b>{money(entryCost(e))} <span>·</span> {money(e.saleIncome)}</b></div><div className="entry-actions">{e.photoUrl&&<ProtectedPhoto src={e.photoUrl} auth={authToken} alt="शेत फोटो"/>}<button className="delete" title="नोंद हटवा" onClick={event=>{event.stopPropagation();remove(e.id)}}><Trash2 size={16}/></button></div><div className="record-details-popup" id={`record-details-${e.id}`} role="tooltip" onClick={event=>event.stopPropagation()}><RecordDetails entry={e} apiFetch={apiFetch} userId={authUser.id}/></div></article>)}</div>}
-      {printing&&<section id="print-report" lang="mr"><header className="print-header"><div className="print-brand"><Sprout size={24}/> स्वर्णभूमी</div><h1>दैनिक शेती नोंदवही</h1><p>तयार केल्याची वेळ: {new Date().toLocaleString('mr-IN',{dateStyle:'medium',timeStyle:'short'})}{search&&<>　·　शोध: “{search}”</>}</p></header><div className="print-summary"><div><span>एकूण नोंदी</span><b>{printEntries.length.toLocaleString('mr-IN')}</b></div><div><span>एकूण खर्च</span><b>{money(printEntries.reduce((sum,e)=>sum+entryCost(e),0))}</b></div><div><span>एकूण उत्पन्न</span><b>{money(printEntries.reduce((sum,e)=>sum+Number(e.saleIncome||0),0))}</b></div><div><span>निव्वळ उत्पन्न</span><b>{money(printEntries.reduce((sum,e)=>sum+Number(e.saleIncome||0)-entryCost(e),0))}</b></div></div>{printEntries.map((e,index)=>{const cost=entryCost(e);return <article className="print-entry" key={e.id}><div className="print-entry-heading"><h2>नोंद {String(index+1).toLocaleString('mr-IN')}</h2><b>{day(e.entryDate)}</b></div><div className="print-grid"><PrintField label="पीक / शेताचा विभाग" value={e.farmSection}/><PrintField label="हंगाम" value={e.seasonName}/><PrintField label="क्षेत्र (एकर)" value={e.plotAreaAcres}/><PrintField label="हवामान" value={e.weather}/>{e.pincode&&<PrintField label="पिनकोड" value={e.pincode}/ >}{weatherDetailText(e.weatherDetails)&&<PrintField label="हवामान माहिती" value={weatherDetailText(e.weatherDetails)}/>}<PrintField label="आज केलेली कामे" value={e.workDone}/><PrintField label="वापरलेले साहित्य / खते" value={e.materials}/><PrintField label="पाणी (लिटर)" value={e.waterLitres}/><PrintField label="निविष्ठेचा प्रकार" value={e.applicationKind}/><PrintField label="निविष्ठा" value={e.applicationName}/><PrintField label="प्रमाण" value={e.applicationAmount ? e.applicationAmount + " " + (e.applicationUnit || "") : ""}/><PrintField label="मजूर संख्या" value={e.workerCount}/><PrintField label="मजुरी खर्च" value={money(e.laborCost)}/><PrintField label="खते / साहित्य खर्च" value={money(e.materialsCost)}/><PrintField label="इतर खर्च" value={money(e.otherCost)}/><PrintField label="एकूण खर्च" value={money(cost)}/><PrintField label="उत्पादन" value={e.productionKg?`${Number(e.productionKg).toLocaleString('mr-IN')} किलो`:''}/><PrintField label="विक्री" value={e.soldKg?`${Number(e.soldKg).toLocaleString('mr-IN')} किलो`:''}/><PrintField label="विक्रीतून मिळालेले पैसे" value={money(e.saleIncome)}/><PrintField label="निव्वळ उत्पन्न" value={money(Number(e.saleIncome||0)-cost)}/><PrintField label="पिकाची सद्यस्थिती" value={e.cropCondition}/><PrintField label="माती व सेंद्रिय शेती निरीक्षण" value={e.soilNotes}/><PrintField label="कीड / रोग" value={e.pestDisease}/><PrintField label="तीव्रता" value={e.issueSeverity}/><PrintField label="केलेला उपाय" value={e.intervention}/><PrintField label="पुढील पाहणी" value={e.followUpDate ? day(e.followUpDate) : ""}/><PrintField label="उद्याची नियोजित कामे" value={e.tomorrowPlan}/><PrintField label="विशेष नोंद" value={e.specialNote}/></div>{e.photoUrl&&(printPhotos[e.id]?<figure className="print-photo"><img src={printPhotos[e.id]} alt="शेताचा फोटो"/><figcaption>शेताचा फोटो</figcaption></figure>:<p className="print-photo-missing">शेताचा फोटो जोडला होता; तो PDF मध्ये उपलब्ध झाला नाही.</p>)}</article>})}<footer className="print-footer">स्वर्णभूमी · तुमच्या कष्टांची नोंद</footer></section>}
+      {printing&&<section id="print-report" lang="mr"><header className="print-header"><div className="print-brand"><Sprout size={24}/> स्वर्णभूमी</div><h1>दैनिक शेती नोंदवही</h1><p>तयार केल्याची वेळ: {new Date().toLocaleString('mr-IN',{dateStyle:'medium',timeStyle:'short'})}{search&&<>　·　शोध: “{search}”</>}</p></header><div className="print-summary"><div><span>एकूण नोंदी</span><b>{printEntries.length.toLocaleString('mr-IN')}</b></div><div><span>एकूण खर्च</span><b>{money(printEntries.reduce((sum,e)=>sum+entryCost(e),0))}</b></div><div><span>एकूण उत्पन्न</span><b>{money(printEntries.reduce((sum,e)=>sum+Number(e.saleIncome||0),0))}</b></div><div><span>निव्वळ उत्पन्न</span><b>{money(printEntries.reduce((sum,e)=>sum+Number(e.saleIncome||0)-entryCost(e),0))}</b></div></div>{printEntries.map((e,index)=>{const cost=entryCost(e);return <article className="print-entry" key={e.id}><div className="print-entry-heading"><h2>नोंद {String(index+1).toLocaleString('mr-IN')}</h2><b>{day(e.entryDate)}</b></div><div className="print-grid"><PrintField label="पीक / शेताचा विभाग" value={e.farmSection}/><PrintField label="हंगाम" value={e.seasonName}/><PrintField label="क्षेत्र (एकर)" value={e.plotAreaAcres}/><PrintField label="हवामान" value={e.weather}/>{e.pincode&&<PrintField label="पिनकोड" value={e.pincode}/ >}{weatherDetailText(e.weatherDetails)&&<PrintField label="हवामान माहिती" value={weatherDetailText(e.weatherDetails)}/>}<PrintField label="आज केलेली कामे" value={e.workDone}/><PrintField label="वापरलेले साहित्य / खते" value={e.materials}/><PrintField label="पाणी (लिटर)" value={e.waterLitres}/><PrintField label="निविष्ठेचा प्रकार" value={e.applicationKind}/><PrintField label="निविष्ठा" value={e.applicationName}/><PrintField label="प्रमाण" value={e.applicationAmount ? e.applicationAmount + " " + (e.applicationUnit || "") : ""}/><PrintField label="मजूर संख्या" value={e.workerCount}/><PrintField label="मजुरी खर्च" value={money(e.laborCost)}/><PrintField label="खते / साहित्य खर्च" value={money(e.materialsCost)}/><PrintField label="इतर खर्च" value={money(e.otherCost)}/><PrintField label="एकूण खर्च" value={money(cost)}/><PrintField label="उत्पादन" value={e.productionKg?`${Number(e.productionKg).toLocaleString('mr-IN')} किलो`:''}/><PrintField label="विक्री" value={e.soldKg?`${Number(e.soldKg).toLocaleString('mr-IN')} किलो`:''}/><PrintField label="विक्रीतून मिळालेले पैसे" value={money(e.saleIncome)}/><PrintField label="निव्वळ उत्पन्न" value={money(Number(e.saleIncome||0)-cost)}/><PrintField label="पिकाची सद्यस्थिती" value={e.cropCondition}/><PrintField label="माती व सेंद्रिय शेती निरीक्षण" value={e.soilNotes}/><PrintField label="कीड / रोग" value={e.pestDisease}/><PrintField label="तीव्रता" value={e.issueSeverity}/><PrintField label="केलेला उपाय" value={e.intervention}/><PrintField label="पुढील पाहणी" value={e.followUpDate ? day(e.followUpDate) : ""}/><PrintField label="उद्याची नियोजित कामे" value={e.tomorrowPlan}/><PrintField label="विशेष नोंद" value={e.specialNote}/></div>{entryPrintPhotos(e).map((photo,photoIndex)=>{const loadedPhoto=printPhotos[e.id]?.[photoIndex];return loadedPhoto?.src?<figure className="print-photo" key={`${e.id}-photo-${photoIndex}`}><img src={loadedPhoto.src} alt={photo.label}/><figcaption>{photo.label}</figcaption></figure>:<p className="print-photo-missing" key={`${e.id}-photo-${photoIndex}`}>{photo.label} PDF मध्ये लोड झाला नाही.</p>})}</article>})}<footer className="print-footer">स्वर्णभूमी · तुमच्या कष्टांची नोंद</footer></section>}
       <footer>🌿　तुमच्या कष्टांना योग्य नोंद — स्वर्णभूमी</footer></>:activeTab==='entries'&&entrySubTab==='profits'?<FarmProfitPanel entries={entries}/>:activeTab==='reminders'?<ReminderPanel apiFetch={apiFetch} apiBase={API} entries={entries} userId={authUser.id} onUnauthorized={logout}/>:null}
       <div hidden={activeTab!=='assistant'}><AssistantPanel apiFetch={apiFetch} apiBase={API} messages={assistantMessages} setMessages={setAssistantMessages} farmData={assistantFarmData} onUnauthorized={logout}/></div>
       {activeTab==='information'&&<InformationPanel/>}
