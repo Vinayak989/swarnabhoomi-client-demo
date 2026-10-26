@@ -388,4 +388,19 @@
 .market-delivery-address>svg{flex:none;margin-top:2px;color:#5f8b5c}
 .market-delivery-address>span{display:grid;gap:3px;white-space:pre-wrap;overflow-wrap:anywhere}
 .market-delivery-address b{color:#657e64;font-size:8px}
+.market-seller-view-switch{display:flex;gap:6px;padding:5px;border:1px solid #e4ebe2;border-radius:12px;background:#fff}
+.market-seller-view-switch button{min-height:39px;display:inline-flex;flex:1;align-items:center;justify-content:center;gap:7px;padding:0 12px;border:0;border-radius:8px;background:transparent;color:#718174;font:700 10px inherit;cursor:pointer}
+.market-seller-view-switch button.active{background:#edf5e9;color:#3d7548;box-shadow:inset 0 0 0 1px #dce9d8}
+.market-seller-view-switch button b{min-width:21px;padding:3px 6px;border-radius:99px;background:#f2f5f0;color:#68806a;font-size:8px;text-align:center}
+.market-seller-orders-list{display:grid;gap:10px}
+.market-seller-order-card{min-width:0;padding:14px;border:1px solid #e5ebe3;border-radius:12px;background:#fff;box-shadow:0 5px 18px rgba(37,74,40,.035)}
+.market-seller-order-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.market-seller-order-heading>div{display:grid;gap:4px;min-width:0}
+.market-seller-order-heading small{overflow:hidden;color:#899589;font-size:8px;text-overflow:ellipsis;white-space:nowrap}
+.market-seller-order-heading b{overflow:hidden;color:#355b3e;font-size:12px;text-overflow:ellipsis;white-space:nowrap}
+.market-seller-order-card>p{margin:8px 0;color:#718174;font-size:9px;line-height:1.6}
+.market-seller-order-card .market-request-actions{flex-wrap:wrap}
+.market-chat-closed{margin:9px 0 0;padding:9px 10px;border:1px solid #e5ebe2;border-radius:8px;background:#f6f8f4;color:#728174;font-size:9px;line-height:1.6}
+.market-chat-body[data-order-closed="true"] .market-chat-top>div>button:not([aria-label]){display:none}
+@media(max-width:560px){.market-seller-view-switch button{padding:0 7px;font-size:9px}.market-seller-order-card{padding:11px}}
 @media(max-width:800px){.market-farmer-listings .market-listing-scroll{grid-template-columns:1fr}}

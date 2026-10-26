@@ -210,6 +210,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     }
   });
   const [sellerListings, setSellerListings] = useState([]);
+  const [sellerDashboardView, setSellerDashboardView] = useState('orders');
   const [sellerLoading, setSellerLoading] = useState(false);
   const [sellerSavingId, setSellerSavingId] = useState(null);
   const [sellerStockAdds, setSellerStockAdds] = useState({});
@@ -409,6 +410,8 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     [listings]);
   const pendingSellerRequests = useMemo(() => sellerListings.reduce((sum, row) =>
     sum + row.requests.filter(purchaseRequest => purchaseRequest.status === 'PENDING').length, 0), [sellerListings]);
+  const sellerOrders = useMemo(() => sellerListings.flatMap(row => row.requests.map(purchaseRequest => ({ row, purchaseRequest })))
+    .sort((left, right) => (Date.parse(right.purchaseRequest.createdAt) || 0) - (Date.parse(left.purchaseRequest.createdAt) || 0)), [sellerListings]);
   const unreadMessageTotal = useMemo(() => Object.values(unreadMessages).reduce((total, count) => total + count, 0), [unreadMessages]);
   const activeSellerListings = useMemo(() => sellerListings.filter(row => row.listing.available && Number(row.listing.quantity) > 0).length,
     [sellerListings]);
@@ -1006,7 +1009,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
         {accountType === 'seller' || accountType === 'farmer' ? <>
           <div className="market-hero-stat"><span><PackageCheck size={17}/> माझा शेतमाल</span><strong>{sellerListings.length.toLocaleString('mr-IN')}</strong><small>एकूण नोंदी</small></div>
           <div className="market-hero-stat"><span><Store size={17}/> विक्री सुरू</span><strong>{activeSellerListings.toLocaleString('mr-IN')}</strong><small>उपलब्ध नोंदी</small></div>
-          <div className="market-hero-stat"><span><ClipboardList size={17}/> नवीन विनंत्या</span><strong>{pendingSellerRequests.toLocaleString('mr-IN')}</strong><small>उत्तराची प्रतीक्षा</small></div>
+          <div className="market-hero-stat"><span><ClipboardList size={17}/> प्रलंबित ऑर्डर</span><strong>{pendingSellerRequests.toLocaleString('mr-IN')}</strong><small>उत्तराची प्रतीक्षा</small></div>
         </> : <>
           <div className="market-hero-stat"><span><Wheat size={17}/> उपलब्ध शेतमाल</span><strong>{availableListingCount.toLocaleString('mr-IN')}</strong><small>ताज्या विक्री नोंदी</small></div>
           <div className="market-hero-stat"><span><UserRound size={17}/> स्थानिक विक्रेते</span><strong>{sellerCount.toLocaleString('mr-IN')}</strong><small>थेट शेतकऱ्यांकडून</small></div>
@@ -1153,7 +1156,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
             {order.totalAmount != null && <b className="market-buyer-order-total">₹{Number(order.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>}
             <time dateTime={order.createdAt}>{new Date(order.createdAt).toLocaleString('mr-IN', { dateStyle: 'medium', timeStyle: 'short' })}</time>
             <button type="button" className="market-receipt-button" onClick={() => downloadOrderReceipt(order)} disabled={receiptBusyId === order.id}><FileDown size={15}/>{receiptBusyId === order.id ? 'पावती तयार होत आहे…' : 'PDF पावती डाउनलोड करा'}</button>
-            <MarketplaceConversation orderId={order.id} userId={userId} request={request} unreadCount={unreadMessages[order.id] || 0} onRead={loadUnreadMessages}/>
+            <MarketplaceConversation orderId={order.id} userId={userId} request={request} orderStatus={order.status} unreadCount={unreadMessages[order.id] || 0} onRead={loadUnreadMessages}/>
             <SellerReviewForm order={order} request={request} onSubmitted={() => setBuyerOrders(current => current.map(item => item.id === order.id ? { ...item, reviewSubmitted: true } : item))}/>
           </article>)}</div>}
     </section> : view === 'register' ? <section className="market-form-card">
@@ -1206,18 +1209,33 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     </section> : <section className="market-seller-dashboard">
       <div className="market-form-card market-seller-intro">
         <div className="market-card-heading"><div><span>विक्रेता विभाग</span><h2>माझे व्यवहार</h2></div><button type="button" className="market-location-button" onClick={loadSellerListings}><ArrowDownWideNarrow size={15}/> ताजे करा</button></div>
-        <p>दर आणि साठा पाहा. बदल किंवा खरेदीच्या विनंत्यांसाठी नोंद उघडा.</p>
+        <p>खरेदी ऑर्डर एका यादीत पाहा. तुमचा शेतमाल आणि साठा स्वतंत्रपणे सांभाळा.</p>
       </div>
       {sellerError && <div className="market-message market-error" role="alert">{sellerError}</div>}
       {sellerNotice && <div className="market-message market-success" role="status"><Check size={15}/>{sellerNotice}</div>}
+      {!sellerLoading && sellerListings.length > 0 && <div className="market-seller-view-switch" role="tablist" aria-label="माझे व्यवहार विभाग"><button type="button" role="tab" aria-selected={sellerDashboardView === 'orders'} className={sellerDashboardView === 'orders' ? 'active' : ''} onClick={() => setSellerDashboardView('orders')}><ClipboardList size={15}/> खरेदी ऑर्डर <b>{sellerOrders.length.toLocaleString('mr-IN')}</b></button><button type="button" role="tab" aria-selected={sellerDashboardView === 'listings'} className={sellerDashboardView === 'listings' ? 'active' : ''} onClick={() => setSellerDashboardView('listings')}><Store size={15}/> माझा शेतमाल <b>{sellerListings.length.toLocaleString('mr-IN')}</b></button></div>}
       {sellerLoading ? <div className="market-empty">विक्रेता माहिती लोड होत आहे…</div>
         : sellerListings.length === 0 ? <div className="market-empty market-seller-empty"><ClipboardList size={30}/><b>या ब्राउझरमध्ये विक्रीची नोंद नाही</b><span>नोंदणी केल्यानंतर तुमचा शेतमाल आणि खरेदीच्या विनंत्या येथे दिसतील. जुनी नोंद असल्यास तिचे नियंत्रण तपशील या ब्राउझरमध्ये उपलब्ध नसू शकतात.</span><button type="button" className="market-submit-button" onClick={() => setView('register')}><PackagePlus size={16}/> शेतमाल नोंदवा</button></div>
+          : sellerDashboardView === 'orders' ? <div className="market-seller-orders-list">{sellerOrders.length === 0 ? <div className="market-empty market-seller-empty"><ClipboardList size={28}/><b>अजून खरेदी ऑर्डर नाहीत</b><span>नवीन ऑर्डर आल्यावर ती इथे दिसेल.</span></div> : sellerOrders.map(({ row, purchaseRequest }) => <article className="market-seller-order-card" key={purchaseRequest.id}>
+            <div className="market-seller-order-heading"><div><small>ऑर्डर #{Number(purchaseRequest.id).toLocaleString('mr-IN')} · {purchaseRequest.productName || row.listing.productName}</small><b>{purchaseRequest.buyerName}</b></div><span className={`market-request-status status-${purchaseRequest.status.toLowerCase()}`}>{requestStatusLabel(purchaseRequest.status)}</span></div>
+            <p>{Number(purchaseRequest.quantity).toLocaleString('mr-IN')} {UNITS.find(([value]) => value === purchaseRequest.unit)?.[1] || purchaseRequest.unit} · {purchaseRequest.fulfillment === 'DELIVERY' ? 'पोहोचवून हवे' : 'स्वतः घेऊन जाणार'}{purchaseRequest.totalAmount != null ? ` · ₹${Number(purchaseRequest.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}</p>
+            {purchaseRequest.fulfillment === 'DELIVERY' && purchaseRequest.deliveryAddress && <div className="market-delivery-address"><MapPin size={15}/><span><b>वितरणाचा पत्ता</b>{purchaseRequest.deliveryAddress}</span></div>}
+            <div className="market-payment-summary"><span>{paymentMethodLabel(purchaseRequest.paymentMethod)}</span><b className={`payment-${String(purchaseRequest.paymentStatus || '').toLowerCase()}`}>{paymentStatusLabel(purchaseRequest.paymentStatus)}</b></div>
+            <OrderProgress order={purchaseRequest}/>
+            {purchaseRequest.note && <p className="market-request-note">“{purchaseRequest.note}”</p>}
+            <div className="market-request-actions">
+              {purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus === 'PENDING' && purchaseRequest.status !== 'DECLINED' && <button type="button" onClick={() => updatePaymentStatus(row, purchaseRequest, 'PAID')}>रोख पेमेंट मिळाले</button>}
+              {purchaseRequest.status === 'PENDING' && <><button type="button" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'ACCEPTED')}>स्वीकारा</button><button type="button" className="decline" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'DECLINED')}>नाकारा</button></>}
+              {purchaseRequest.status === 'ACCEPTED' && nextSellerStage(purchaseRequest) && <div className="market-request-stage-action"><button type="button" disabled={purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus !== 'PAID' && nextSellerStage(purchaseRequest) === 'COMPLETED'} onClick={() => updateFulfillmentStage(row, purchaseRequest, nextSellerStage(purchaseRequest))}><PackageCheck size={13}/>{stageLabel(nextSellerStage(purchaseRequest))} म्हणून नोंदवा</button>{purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus !== 'PAID' && nextSellerStage(purchaseRequest) === 'COMPLETED' && <small>पूर्ण करण्यापूर्वी रोख पेमेंट नोंदवा.</small>}</div>}
+            </div>
+            <MarketplaceConversation orderId={purchaseRequest.id} userId={userId} request={request} orderStatus={purchaseRequest.status} unreadCount={unreadMessages[purchaseRequest.id] || 0} onRead={loadUnreadMessages}/>
+          </article>)}</div>
           : <div className="market-seller-list">{sellerListings.map(row => <article className="market-seller-card" key={row.listing.id}>
             <div className="market-card-heading"><div><span>{row.listing.category}</span><h2>{row.listing.productName}</h2></div><span className={`market-availability ${row.listing.available ? 'available' : ''}`}>{row.listing.available ? 'विक्री सुरू' : 'बंद'}</span></div>
             <div className="market-seller-quick-facts">
               <span><small>विक्री दर</small><b>{formatPrice(row.listing.pricePerUnit, row.listing.unit)}</b></span>
               <span><small>उपलब्ध साठा</small><b>{formatQuantity(row.listing)}</b></span>
-              <span><small>नवीन विनंत्या</small><b>{row.requests.filter(item => item.status === 'PENDING').length.toLocaleString('mr-IN')}</b></span>
+              <span><small>प्रलंबित ऑर्डर</small><b>{row.requests.filter(item => item.status === 'PENDING').length.toLocaleString('mr-IN')}</b></span>
             </div>
             <details className="market-seller-details">
               <summary>किंमत, साठा आणि उपलब्धता बदला</summary>
@@ -1230,23 +1248,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
                 <button type="button" className="market-submit-button" disabled={sellerSavingId === row.listing.id} onClick={() => saveSellerListing(row)}>{sellerSavingId === row.listing.id ? 'जतन होत आहे…' : 'बदल जतन करा'}</button>
               </div>
             </details>
-            <details className="market-seller-details market-seller-requests">
-              <summary>खरेदीच्या विनंत्या ({row.requests.length.toLocaleString('mr-IN')})</summary>
-              {!row.requests.length ? <p className="market-no-requests">अजून खरेदीची विनंती आलेली नाही.</p> : <div className="market-request-list">{row.requests.map(purchaseRequest => <div className="market-request-card" key={purchaseRequest.id}>
-                <div className="market-request-top"><b>{purchaseRequest.buyerName}</b><span className={`market-request-status status-${purchaseRequest.status.toLowerCase()}`}>{requestStatusLabel(purchaseRequest.status)}</span></div>
-                <p>{Number(purchaseRequest.quantity).toLocaleString('mr-IN')} {UNITS.find(([value]) => value === purchaseRequest.unit)?.[1] || purchaseRequest.unit} · {purchaseRequest.fulfillment === 'DELIVERY' ? 'पोहोचवणे हवे' : 'स्वतः घेऊन जाणार'}{purchaseRequest.totalAmount != null ? ` · ₹${Number(purchaseRequest.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}</p>
-                {purchaseRequest.fulfillment === 'DELIVERY' && purchaseRequest.deliveryAddress && <div className="market-delivery-address"><MapPin size={15}/><span><b>वितरणाचा पत्ता</b>{purchaseRequest.deliveryAddress}</span></div>}
-                <div className="market-payment-summary"><span>{paymentMethodLabel(purchaseRequest.paymentMethod)}</span><b className={`payment-${String(purchaseRequest.paymentStatus || '').toLowerCase()}`}>{paymentStatusLabel(purchaseRequest.paymentStatus)}</b></div>
-                <OrderProgress order={purchaseRequest}/>
-                {purchaseRequest.note && <p className="market-request-note">“{purchaseRequest.note}”</p>}
-                <div className="market-request-actions">
-                  {purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus === 'PENDING' && purchaseRequest.status !== 'DECLINED' && <button type="button" onClick={() => updatePaymentStatus(row, purchaseRequest, 'PAID')}>रोख पेमेंट मिळाले</button>}
-                  {purchaseRequest.status === 'PENDING' && <><button type="button" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'ACCEPTED')}>स्वीकारा</button><button type="button" className="decline" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'DECLINED')}>नाकारा</button></>}
-                  {purchaseRequest.status === 'ACCEPTED' && nextSellerStage(purchaseRequest) && <div className="market-request-stage-action"><button type="button" disabled={purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus !== 'PAID' && nextSellerStage(purchaseRequest) === 'COMPLETED'} onClick={() => updateFulfillmentStage(row, purchaseRequest, nextSellerStage(purchaseRequest))}><PackageCheck size={13}/>{stageLabel(nextSellerStage(purchaseRequest))} म्हणून नोंदवा</button>{purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus !== 'PAID' && nextSellerStage(purchaseRequest) === 'COMPLETED'&&<small>पूर्ण करण्यापूर्वी रोख पेमेंट नोंदवा.</small>}</div>}
-                </div>
-                <MarketplaceConversation orderId={purchaseRequest.id} userId={userId} request={request} unreadCount={unreadMessages[purchaseRequest.id] || 0} onRead={loadUnreadMessages}/>
-              </div>)}</div>}
-            </details>
+
           </article>)}</div>}
     </section>}
 

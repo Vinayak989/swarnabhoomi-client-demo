@@ -109,8 +109,9 @@ public class MarketplaceEngagementController {
             if (user.getId().equals(order.getBuyerUserId())) orders.markBuyerMessagesRead(orderId, latestMessageId);
             else orders.markSellerMessagesRead(orderId, latestMessageId);
         }
-        return new ConversationResponse(conversationMessages.stream().map(MessageResponse::from).toList(), blockedByMe, blockedByOther, !blockedByMe && !blockedByOther
-                    && order.getStatus() != MarketplacePurchaseRequest.Status.DECLINED);
+        boolean orderClosed = isClosedOrder(order);
+        return new ConversationResponse(conversationMessages.stream().map(MessageResponse::from).toList(), blockedByMe,
+                blockedByOther, !orderClosed && !blockedByMe && !blockedByOther, orderClosed);
     }
 
     @PostMapping("/orders/{orderId}/messages")
@@ -118,6 +119,9 @@ public class MarketplaceEngagementController {
     public MessageResponse sendMessage(@PathVariable Long orderId, @RequestBody MessageCreate request,
             @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
         MarketplacePurchaseRequest order = requireParticipant(orderId, user);
+        if (isClosedOrder(order)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "हा ऑर्डर बंद झाला आहे. नवीन संदेश पाठवता येणार नाही.");
+        }
         if (blocks.existsByRequestIdAndUserId(orderId, user.getId())
                 || blocks.findAllByRequestId(orderId).stream().anyMatch(block -> !block.getUserId().equals(user.getId()))) {
             throw new ResponseStatusException(HttpStatus.LOCKED, "या ऑर्डरची चर्चा थांबवली आहे.");
@@ -278,6 +282,11 @@ public class MarketplaceEngagementController {
         return order;
     }
 
+    private static boolean isClosedOrder(MarketplacePurchaseRequest order) {
+        return order.getStatus() == MarketplacePurchaseRequest.Status.COMPLETED
+                || order.getStatus() == MarketplacePurchaseRequest.Status.DECLINED;
+    }
+
     private Long sellerUserId(MarketplacePurchaseRequest order) {
         return listings.findById(order.getListingId()).map(FarmProductListing::getOwner)
                 .map(AppUser::getId).orElse(null);
@@ -328,7 +337,7 @@ public class MarketplaceEngagementController {
         }
     }
     public record ConversationResponse(List<MessageResponse> messages, boolean blockedByMe,
-            boolean blockedByOther, boolean canMessage) {}
+            boolean blockedByOther, boolean canMessage, boolean orderClosed) {}
     public record ConversationBlockResponse(boolean blockedByMe, boolean blockedByOther) {}
     public record ReportCreate(String reason) {}
     public record MessageReportReceipt(String message) {}

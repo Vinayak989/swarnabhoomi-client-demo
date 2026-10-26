@@ -19,7 +19,7 @@ export function OrderProgress({ order }) {
   return <div className="order-progress" aria-label={`ऑर्डरची स्थिती: ${stageNames[current] || current}`}><div className="order-progress-track">{flow.map((stage, index) => <div className={`order-progress-step ${index <= currentIndex ? 'done' : ''} ${index === currentIndex ? 'current' : ''}`} key={stage}><span>{index < currentIndex ? <Check size={11}/> : index + 1}</span><small>{stageNames[stage]}</small></div>)}</div></div>;
 }
 
-export function MarketplaceConversation({ orderId, userId, request, unreadCount = 0, onRead }) {
+export function MarketplaceConversation({ orderId, userId, request, orderStatus, unreadCount = 0, onRead }) {
   const [open, setOpen] = useState(false);
   const [conversation, setConversation] = useState(null);
   const [body, setBody] = useState('');
@@ -27,6 +27,7 @@ export function MarketplaceConversation({ orderId, userId, request, unreadCount 
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const orderClosed = orderStatus === 'COMPLETED' || orderStatus === 'DECLINED' || conversation?.orderClosed;
   const load = useCallback(async () => {
     try {
       const response = await request(`/marketplace/orders/${orderId}/messages`);
@@ -36,7 +37,7 @@ export function MarketplaceConversation({ orderId, userId, request, unreadCount 
     } catch (exception) { setError(exception.message || 'संदेश मिळाले नाहीत.'); }
     finally { setLoading(false); }
   }, [orderId, request]);
-  useEffect(() => { if (open) { setLoading(true); void load().then(() => onRead?.()); const timer = window.setInterval(load, 10000); return () => window.clearInterval(timer); } return undefined; }, [open, load, onRead]);
+  useEffect(() => { if (open) { setLoading(true); void load().then(() => onRead?.()); if (orderClosed) return undefined; const timer = window.setInterval(load, 10000); return () => window.clearInterval(timer); } return undefined; }, [open, load, onRead, orderClosed]);
   async function send(event) {
     event.preventDefault(); if (!body.trim()) return;
     setSending(true); setError(''); setNotice('');
@@ -69,11 +70,11 @@ export function MarketplaceConversation({ orderId, userId, request, unreadCount 
   }
   return <section className="market-private-chat">
     <button type="button" className="market-chat-toggle" onClick={() => setOpen(value => !value)} aria-expanded={open}><MessageCircle size={15}/><span>खाजगी ऑर्डर चर्चा</span>{unreadCount > 0 && <b className="market-unread-badge market-chat-unread" aria-label={`${unreadCount.toLocaleString('mr-IN')} न वाचलेले संदेश`}>{unreadCount.toLocaleString('mr-IN')}</b>}<small>संपर्क तपशील शेअर करता येत नाहीत</small><ChevronDown size={15} className={open ? 'expanded' : ''}/></button>
-    {open && <div className="market-chat-body"><div className="market-chat-top"><span><ShieldCheck size={14}/> फक्त या ऑर्डरमधील खरेदीदार आणि विक्रेता</span><div>{conversation?.blockedByMe ? <button type="button" onClick={() => setBlock(false)}><Undo2 size={13}/> चर्चा सुरू करा</button> : <button type="button" onClick={() => setBlock(true)}><Ban size={13}/> चर्चा थांबवा</button>}<button type="button" onClick={() => { setLoading(true); void load().then(() => onRead?.()); }} aria-label="संदेश रिफ्रेश करा"><LoaderCircle size={13} className={loading ? 'spin' : ''}/></button></div></div>
+    {open && <div className="market-chat-body" data-order-closed={orderClosed}><div className="market-chat-top"><span><ShieldCheck size={14}/> फक्त या ऑर्डरमधील खरेदीदार आणि विक्रेता</span><div>{conversation?.blockedByMe ? <button type="button" onClick={() => setBlock(false)}><Undo2 size={13}/> चर्चा सुरू करा</button> : <button type="button" onClick={() => setBlock(true)}><Ban size={13}/> चर्चा थांबवा</button>}<button type="button" onClick={() => { setLoading(true); void load().then(() => onRead?.()); }} aria-label="संदेश रिफ्रेश करा"><LoaderCircle size={13} className={loading ? 'spin' : ''}/></button></div></div>
       {error && <p className="market-chat-error" role="alert">{error}</p>}{notice && <p className="market-chat-notice" role="status">{notice}</p>}
       <div className="market-chat-messages">{loading && !conversation ? <span>संदेश लोड होत आहेत…</span> : !conversation?.messages?.length ? <span>ऑर्डरची वेळ, मालाची तयारी किंवा वितरणाबद्दल येथे बोला.</span> : conversation.messages.map(message => <article className={`market-chat-message ${message.senderUserId === userId ? 'mine' : ''}`} key={message.id}><div><b>{message.senderUserId === userId ? 'तुम्ही' : message.senderRole === 'buyer' ? 'खरेदीदार' : 'विक्रेता'}</b><time>{new Date(message.createdAt).toLocaleString('mr-IN', { dateStyle: 'short', timeStyle: 'short' })}</time></div><p>{message.body}</p>{message.senderUserId !== userId && <button type="button" onClick={() => void report(message.id)}>तक्रार करा</button>}</article>)}</div>
       {conversation?.blockedByOther && <p className="market-chat-error">समोरच्या व्यक्तीने ही चर्चा थांबवली आहे.</p>}
-      <form className="market-chat-form" onSubmit={send}><SpeechTextInput><textarea maxLength={1000} rows="2" value={body} onChange={event => setBody(event.target.value)} placeholder="ऑर्डरबद्दल संदेश लिहा…" disabled={!conversation?.canMessage || sending}/></SpeechTextInput><button type="submit" disabled={!conversation?.canMessage || !body.trim() || sending}><Send size={15}/>{sending ? 'पाठवत आहे…' : 'पाठवा'}</button></form><small className="market-chat-privacy">फोन नंबर, ईमेल, पत्ता किंवा बाहेरील दुवे पाठवता येणार नाहीत.</small>
+      {orderClosed ? <p className="market-chat-closed" role="status">ऑर्डर बंद झाली आहे. जुने संदेश पाहू शकता; आता नवीन संदेश पाठवता येणार नाहीत.</p> : <><form className="market-chat-form" onSubmit={send}><SpeechTextInput><textarea maxLength={1000} rows="2" value={body} onChange={event => setBody(event.target.value)} placeholder="ऑर्डरबद्दल संदेश लिहा…" disabled={!conversation?.canMessage || sending}/></SpeechTextInput><button type="submit" disabled={!conversation?.canMessage || !body.trim() || sending}><Send size={15}/>{sending ? 'पाठवत आहे…' : 'पाठवा'}</button></form><small className="market-chat-privacy">फोन नंबर, ईमेल, पत्ता किंवा बाहेरील दुवे पाठवता येणार नाहीत.</small></>}
     </div>}
   </section>;
 }
