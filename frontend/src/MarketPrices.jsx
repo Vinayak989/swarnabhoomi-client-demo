@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowDownWideNarrow, CalendarDays, ChartNoAxesCombined, CircleAlert, MapPin, RefreshCw, Search, Wheat } from 'lucide-react';
+import { ArrowDownWideNarrow, Bell, BellRing, CalendarDays, ChartNoAxesCombined, CircleAlert, MapPin, Plus, RefreshCw, Search, Trash2, Wheat } from 'lucide-react';
 import SpeechTextInput from './SpeechTextInput.jsx';
+import { enableBrowserPush, getBrowserPushSubscriptionId } from './reminderNotifications.js';
 import './marketPrices.css';
 
 const SOURCE_URL = 'https://www.data.gov.in/catalog/current-daily-price-various-commodities-various-markets-mandi';
@@ -155,7 +156,7 @@ async function fetchOfficialPricesUncached() {
   return { prices, checkedAt: new Date().toISOString(), dataUpdatedAt, available: true, state: 'Maharashtra', source: 'Data.gov.in / AGMARKNET', sourceUrl: SOURCE_URL, error: null };
 }
 
-export default function MarketPricesPanel() {
+export default function MarketPricesPanel({ apiFetch, apiBase, userId, onUnauthorized }) {
   const [feed, setFeed] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -166,11 +167,21 @@ export default function MarketPricesPanel() {
   const [sort, setSort] = useState('recent');
   const [priceUnit, setPriceUnit] = useState('quintal');
   const [visibleCount, setVisibleCount] = useState(40);
+  const [alerts, setAlerts] = useState([]);
+  const [alertCommodity, setAlertCommodity] = useState('');
+  const [alertDistrict, setAlertDistrict] = useState('');
+  const [alertThreshold, setAlertThreshold] = useState('');
+  const [alertDirection, setAlertDirection] = useState('BELOW');
+  const [alertUnit, setAlertUnit] = useState('KG');
+  const [alertBusy, setAlertBusy] = useState(false);
+  const [alertError, setAlertError] = useState('');
+  const [alertNotice, setAlertNotice] = useState('');
+  const [pushEnabled, setPushEnabled] = useState(() => Boolean(getBrowserPushSubscriptionId(userId)));
 
   const load = useCallback(async (force = false) => {
     if (force) setRefreshing(true); else setLoading(true);
     try {
-      setFeed(await fetchOfficialPrices());
+      setFeed(await fetchOfficialPrices(force));
       setError('');
     } catch (exception) {
       setError(exception.message || 'बाजारभाव आणता आले नाहीत. इंटरनेट जोडून पुन्हा प्रयत्न करा.');
@@ -179,6 +190,22 @@ export default function MarketPricesPanel() {
       setRefreshing(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (!userId || !apiFetch || !apiBase) return undefined;
+    let active = true;
+    const loadAlerts = async () => {
+      try {
+        const response = await apiFetch(`${apiBase}/marketplace/price-alerts`);
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw Error(result.message || 'भाव सूचनांची यादी मिळाली नाही.');
+        if (active) { setAlerts(result); setAlertError(''); }
+      } catch (exception) { if (active) setAlertError(exception.message || 'भाव सूचनांची यादी मिळाली नाही.'); }
+    };
+    void loadAlerts();
+    const timer = window.setInterval(() => void loadAlerts(), 15 * 60 * 1000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [apiBase, apiFetch, userId]);
 
   useEffect(() => {
     void load();
@@ -214,6 +241,37 @@ export default function MarketPricesPanel() {
 
   useEffect(() => { setVisibleCount(40); }, [search, crop, district, sort]);
 
+  async function createAlert(event) {
+    event.preventDefault(); if (!alertCommodity || !alertThreshold || Number(alertThreshold) <= 0) return;
+    setAlertBusy(true); setAlertError(''); setAlertNotice('');
+    try {
+      const response = await apiFetch(`${apiBase}/marketplace/price-alerts`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commodity: alertCommodity, district: alertDistrict || null, threshold: Number(alertThreshold), direction: alertDirection, unit: alertUnit })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw Error(result.message || 'भाव सूचना जतन झाली नाही.');
+      setAlerts(current => [result, ...current]); setAlertThreshold(''); setAlertNotice('भाव सूचना जतन केली. बाजारभाव तपासल्यावर अट जुळल्यास डिव्हाइसवर सूचना येईल.');
+    } catch (exception) { setAlertError(exception.message || 'भाव सूचना जतन झाली नाही.'); }
+    finally { setAlertBusy(false); }
+  }
+
+  async function deleteAlert(alertId) {
+    setAlertError('');
+    try {
+      const response = await apiFetch(`${apiBase}/marketplace/price-alerts/${alertId}`, { method: 'DELETE' });
+      if (!response.ok) { const result = await response.json().catch(() => ({})); throw Error(result.message || 'सूचना हटवता आली नाही.'); }
+      setAlerts(current => current.filter(alert => alert.id !== alertId));
+    } catch (exception) { setAlertError(exception.message || 'सूचना हटवता आली नाही.'); }
+  }
+
+  async function enablePricePush() {
+    try {
+      await enableBrowserPush(apiFetch, apiBase, onUnauthorized, userId); setPushEnabled(true);
+      setAlertError(''); setAlertNotice('डिव्हाइस सूचना सुरू केल्या.');
+    } catch (exception) { setAlertError(exception.message || 'डिव्हाइस सूचना सुरू करता आल्या नाहीत.'); }
+  }
+
   return <section className="market-prices" lang="mr">
     <header className="market-prices-hero">
       <div className="market-prices-hero-copy">
@@ -235,6 +293,13 @@ export default function MarketPricesPanel() {
     </div>
 
     {error && <div className="market-prices-error" role="status"><CircleAlert size={17}/><span>{error}{feed?.prices?.length ? ' शेवटची मिळालेली माहिती खाली दाखवली आहे.' : ''}</span></div>}
+
+    {apiFetch && userId && <section className="market-price-alerts"><div className="market-alert-heading"><div><span><BellRing size={15}/> वैयक्तिक भाव सूचना</span><h2>दर बदलला की कळवा</h2><p>निवडलेल्या पिकाचा सरकारी मोडल दर तुमच्या मर्यादेपर्यंत आल्यावर सूचना मिळवा.</p></div>{pushEnabled ? <span className="market-alert-push-on"><Bell size={14}/> डिव्हाइस सूचना सुरू</span> : <button type="button" className="market-alert-enable" onClick={enablePricePush}><Bell size={14}/> डिव्हाइस सूचना सुरू करा</button>}</div>
+      <form className="market-alert-form" onSubmit={createAlert}><label><span>पीक</span><select required value={alertCommodity} onChange={event => setAlertCommodity(event.target.value)}><option value="">पीक निवडा</option>{crops.map(name => <option key={name} value={name}>{cropNameInMarathi(name)}</option>)}</select></label><label><span>जिल्हा</span><select value={alertDistrict} onChange={event => setAlertDistrict(event.target.value)}><option value="">सर्व जिल्हे</option>{districts.map(name => <option key={name}>{name}</option>)}</select></label><label><span>मर्यादा ₹</span><input required type="number" min="0.01" step="0.01" value={alertThreshold} onChange={event => setAlertThreshold(event.target.value)} placeholder="उदा. 25"/></label><label><span>अट</span><select value={alertDirection} onChange={event => setAlertDirection(event.target.value)}><option value="BELOW">या दरापेक्षा कमी</option><option value="ABOVE">या दरापेक्षा जास्त</option></select></label><label><span>एकक</span><select value={alertUnit} onChange={event => setAlertUnit(event.target.value)}><option value="KG">किलो</option><option value="QUINTAL">क्विंटल</option></select></label><button type="submit" disabled={alertBusy || !prices.length}><Plus size={15}/>{alertBusy ? 'जतन…' : 'सूचना जोडा'}</button></form>
+      {alertError && <p className="market-alert-error" role="alert">{alertError}</p>}{alertNotice && <p className="market-alert-notice" role="status">{alertNotice}</p>}
+      {!!alerts.length && <div className="market-alert-list">{alerts.map(alert => <article key={alert.id}><span className="market-alert-crop"><Wheat size={14}/><b>{cropNameInMarathi(alert.commodity)}</b><small>{alert.district || 'सर्व जिल्हे'}</small></span><span>{alert.direction === 'BELOW' ? 'दर कमी झाल्यास' : 'दर वाढल्यास'} {money(alert.threshold)} / {alert.unit === 'KG' ? 'किलो' : 'क्विंटल'}</span><span className={alert.currentlyMatched ? 'matched' : ''}>{alert.lastPrice == null ? 'भाव तपासण्याची प्रतीक्षा' : `शेवटचा भाव ${money(alert.lastPrice)}`}</span><button type="button" onClick={() => void deleteAlert(alert.id)} aria-label={`${cropNameInMarathi(alert.commodity)} भाव सूचना हटवा`}><Trash2 size={14}/></button></article>)}</div>}
+      <small className="market-alert-footnote">सर्व्हर सरकारी मंडई दर दर १५ मिनिटांनी तपासतो. Chrome/HTTPS डिव्हाइस सूचना सुरू केल्यास अट पूर्ण होताच ब्राउझर पुश मिळेल.</small>
+    </section>}
 
     <div className="market-prices-controls">
       <label className="market-prices-search"><Search size={17}/><SpeechTextInput><input value={search} onChange={event => setSearch(event.target.value)} placeholder="पीक, बाजार किंवा जिल्हा शोधा" aria-label="पीक, बाजार किंवा जिल्हा शोधा"/></SpeechTextInput><span>{filtered.length.toLocaleString('mr-IN')} नोंदी</span></label>

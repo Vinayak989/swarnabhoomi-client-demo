@@ -18,6 +18,7 @@ import java.time.Instant;
 public class MarketplacePurchaseRequest {
     public enum Status { PENDING, ACCEPTED, DECLINED, COMPLETED }
     public enum Fulfillment { PICKUP, DELIVERY }
+    public enum FulfillmentStage { REQUESTED, ACCEPTED, PREPARING, READY_FOR_PICKUP, OUT_FOR_DELIVERY, COMPLETED, DECLINED }
     public enum PaymentMethod { CASH, UPI }
     public enum PaymentStatus { PENDING, PAID, FAILED }
 
@@ -67,6 +68,10 @@ public class MarketplacePurchaseRequest {
     private Status status = Status.PENDING;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "fulfillment_stage", length = 24)
+    private FulfillmentStage fulfillmentStage = FulfillmentStage.REQUESTED;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", length = 12)
     private PaymentMethod paymentMethod;
 
@@ -110,6 +115,8 @@ public class MarketplacePurchaseRequest {
     public void setNote(String value) { note = value; }
     public Status getStatus() { return status; }
     public void setStatus(Status value) { status = value; }
+    public FulfillmentStage getFulfillmentStage() { return fulfillmentStage; }
+    public void setFulfillmentStage(FulfillmentStage value) { fulfillmentStage = value; }
     public PaymentMethod getPaymentMethod() { return paymentMethod; }
     public void setPaymentMethod(PaymentMethod value) { paymentMethod = value; }
     public PaymentStatus getPaymentStatus() { return paymentStatus; }

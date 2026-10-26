@@ -25,6 +25,9 @@ public class AccessFilter extends OncePerRequestFilter {
     private static final Pattern PURCHASE_REQUEST = Pattern.compile("^/api/marketplace/listings/[0-9]+/purchase-requests$");
     private static final String MARKETPLACE_ORDERS = "/api/marketplace/orders";
     private static final String MARKETPLACE_BUYER_ORDERS = "/api/marketplace/buyer/orders";
+    private static final Pattern MARKETPLACE_USER_FEATURE = Pattern.compile(
+            "^/api/marketplace/(?:orders/[0-9]+/(?:messages|block|review)|messages/[0-9]+/report|price-alerts(?:/[0-9]+)?)$");
+    private static final Pattern MARKETPLACE_PUBLIC_REVIEWS = Pattern.compile("^/api/marketplace/listings/[0-9]+/reviews$");
     @Value("${app.access.enabled:false}") private boolean enabled;
     @Value("${app.access.username:demo}") private String expectedUsername;
     @Value("${app.access.password:}") private String expectedPassword;
@@ -77,12 +80,14 @@ public class AccessFilter extends OncePerRequestFilter {
                 || (path.startsWith("/api/marketplace/")
                     && ("GET".equalsIgnoreCase(method) && path.equals("/api/marketplace/listings")
                         || "GET".equalsIgnoreCase(method) && path.equals("/api/marketplace/payment-options")
+                        || "GET".equalsIgnoreCase(method) && MARKETPLACE_PUBLIC_REVIEWS.matcher(path).matches()
                         || "POST".equalsIgnoreCase(method) && path.equals("/api/marketplace/listings")
                         || "POST".equalsIgnoreCase(method) && path.equals("/api/marketplace/photos")
                         || "GET".equalsIgnoreCase(method) && MARKETPLACE_PHOTO.matcher(path).matches()
                         || "POST".equalsIgnoreCase(method) && PURCHASE_REQUEST.matcher(path).matches()
                         || "POST".equalsIgnoreCase(method) && MARKETPLACE_ORDERS.equals(path)
                         || "GET".equalsIgnoreCase(method) && MARKETPLACE_BUYER_ORDERS.equals(path)
+                        || MARKETPLACE_USER_FEATURE.matcher(path).matches()
                         || ("GET".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method))
                             && SELLER_MANAGEMENT.matcher(path).matches()));
     }

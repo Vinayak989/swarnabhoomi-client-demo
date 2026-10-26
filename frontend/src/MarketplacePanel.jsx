@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDownRight, ArrowDownWideNarrow, ArrowRight, ArrowUpRight, Check, ClipboardList, FileDown, Heart, LocateFixed, MapPin, Minus, PackageCheck, PackagePlus, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, ShoppingCart, Store, Trash2, Upload, UserRound, Wheat } from 'lucide-react';
+import { ArrowDownRight, ArrowDownWideNarrow, ArrowRight, ArrowUpRight, Check, ClipboardList, FileDown, Heart, LocateFixed, MapPin, Minus, PackageCheck, PackagePlus, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, Upload, UserRound, Wheat } from 'lucide-react';
 import { fetchOfficialPrices, findLatestCommodityPrice, MARKET_CROP_OPTIONS } from './MarketPrices.jsx';
 import SpeechTextInput from './SpeechTextInput.jsx';
+import { MarketplaceConversation, OrderProgress, SellerReviewForm, SellerReviews, nextSellerStage, stageLabel } from './MarketplaceEngagement.jsx';
 import './marketplace.css';
 
 const EMPTY_FORM = {
@@ -648,6 +649,24 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     }
   }
 
+  async function updateFulfillmentStage(row, purchaseRequest, fulfillmentStage) {
+    setSellerError(''); setSellerNotice('');
+    try {
+      const response = await request(`/marketplace/seller/listings/${row.listing.id}/purchase-requests/${purchaseRequest.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-Seller-Token': row.sellerToken },
+        body: JSON.stringify({ fulfillmentStage })
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.message || 'ऑर्डरची प्रगती जतन करता आली नाही.');
+      setSellerListings(current => current.map(item => item.listing.id === row.listing.id
+        ? { ...item, requests: item.requests.map(requestItem => requestItem.id === body.id ? body : requestItem) }
+        : item));
+      setSellerNotice(`ऑर्डरची स्थिती: ${stageLabel(fulfillmentStage)}.`);
+      await loadSellerListings();
+    } catch (exception) { setSellerError(exception.message || 'ऑर्डरची प्रगती जतन करता आली नाही.'); }
+  }
+
   async function updatePaymentStatus(row, purchaseRequest, paymentStatus) {
     setSellerError('');
     setSellerNotice('');
@@ -1020,7 +1039,8 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
                   <p className={`market-stock ${listing.available === false ? 'unavailable' : ''}`}>{listing.available === false ? 'सध्या उपलब्ध नाही' : `${formatQuantity(listing)} उपलब्ध`}</p>
                   {accountType === 'farmer' ? farmerPriceComparison(listing) : priceDisplay(listing)}
                   {accountType !== 'farmer' && <>
-                    <div className="market-seller"><UserRound size={13}/><b>{listing.sellerName}</b></div>
+                    <div className="market-seller"><UserRound size={13}/><b>{listing.sellerName}</b>{listing.sellerVerified&&<span className="market-seller-verification" title={`सेंद्रिय प्रमाणपत्र ${listing.sellerCertificateValidUntil ? `वैध: ${listing.sellerCertificateValidUntil}` : 'पडताळलेले'}`}><ShieldCheck size={11}/> पडताळलेले</span>}{Number(listing.sellerReviewCount)>0&&<span className="market-seller-rating"><Star size={11} fill="currentColor"/>{Number(listing.sellerRating).toFixed(1)} ({Number(listing.sellerReviewCount).toLocaleString('mr-IN')})</span>}</div>
+                    <SellerReviews listing={listing} request={request}/>
                     <div className="market-listing-actions">
                       {accountType === 'admin'
                         ? <button type="button" className="market-admin-delete-button" onClick={event => deleteMarketplaceListing(listing, event)} disabled={deletingListingId !== null}><Trash2 size={14}/>{deletingListingId === listing.id ? 'हटवत आहे…' : 'नोंद हटवा'}</button>
@@ -1095,10 +1115,13 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
           : <div className="market-buyer-order-list">{buyerOrders.map(order => <article className="market-buyer-order-card" key={order.id}>
             <div className="market-buyer-order-main"><div><span>ऑर्डर #{order.id.toLocaleString('mr-IN')}</span><h3>{order.productName || `शेतमाल #${order.listingId}`}</h3></div><span className={`market-request-status status-${order.status.toLowerCase()}`}>{requestStatusLabel(order.status)}</span></div>
             <p>{order.sellerName || 'शेतकरी'} · {Number(order.quantity).toLocaleString('mr-IN')} {UNITS.find(([value]) => value === order.unit)?.[1] || order.unit}</p>
+            <OrderProgress order={order}/>
             <div className="market-payment-summary"><span>{paymentMethodLabel(order.paymentMethod)}</span><b className={`payment-${String(order.paymentStatus || '').toLowerCase()}`}>{paymentStatusLabel(order.paymentStatus)}</b></div>
             {order.totalAmount != null && <b className="market-buyer-order-total">₹{Number(order.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>}
             <time dateTime={order.createdAt}>{new Date(order.createdAt).toLocaleString('mr-IN', { dateStyle: 'medium', timeStyle: 'short' })}</time>
             <button type="button" className="market-receipt-button" onClick={() => downloadOrderReceipt(order)} disabled={receiptBusyId === order.id}><FileDown size={15}/>{receiptBusyId === order.id ? 'पावती तयार होत आहे…' : 'PDF पावती डाउनलोड करा'}</button>
+            <MarketplaceConversation orderId={order.id} userId={userId} request={request}/>
+            <SellerReviewForm order={order} request={request} onSubmitted={() => setBuyerOrders(current => current.map(item => item.id === order.id ? { ...item, reviewSubmitted: true } : item))}/>
           </article>)}</div>}
     </section> : view === 'register' ? <section className="market-form-card">
       <div className="market-card-heading"><div><span>विक्रेत्याची माहिती</span><h2>तुमचा उपलब्ध शेतमाल जोडा</h2></div><div className="market-private-badge"><ShieldCheck size={14}/> संपर्क माहिती सुरक्षित</div></div>
@@ -1180,12 +1203,14 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
                 <div className="market-request-top"><b>{purchaseRequest.buyerName}</b><span className={`market-request-status status-${purchaseRequest.status.toLowerCase()}`}>{requestStatusLabel(purchaseRequest.status)}</span></div>
                 <p>{Number(purchaseRequest.quantity).toLocaleString('mr-IN')} {UNITS.find(([value]) => value === purchaseRequest.unit)?.[1] || purchaseRequest.unit} · {purchaseRequest.fulfillment === 'DELIVERY' ? 'पोहोचवणे हवे' : 'स्वतः घेऊन जाणार'}{purchaseRequest.totalAmount != null ? ` · ₹${Number(purchaseRequest.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}</p>
                 <div className="market-payment-summary"><span>{paymentMethodLabel(purchaseRequest.paymentMethod)}</span><b className={`payment-${String(purchaseRequest.paymentStatus || '').toLowerCase()}`}>{paymentStatusLabel(purchaseRequest.paymentStatus)}</b></div>
+                <OrderProgress order={purchaseRequest}/>
                 {purchaseRequest.note && <p className="market-request-note">“{purchaseRequest.note}”</p>}
                 <div className="market-request-actions">
                   {purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus === 'PENDING' && purchaseRequest.status !== 'DECLINED' && <button type="button" onClick={() => updatePaymentStatus(row, purchaseRequest, 'PAID')}>रोख पेमेंट मिळाले</button>}
                   {purchaseRequest.status === 'PENDING' && <><button type="button" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'ACCEPTED')}>स्वीकारा</button><button type="button" className="decline" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'DECLINED')}>नाकारा</button></>}
-                  {purchaseRequest.status === 'ACCEPTED' && <button type="button" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'COMPLETED')}>व्यवहार पूर्ण करा</button>}
+                  {purchaseRequest.status === 'ACCEPTED' && nextSellerStage(purchaseRequest) && <div className="market-request-stage-action"><button type="button" disabled={purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus !== 'PAID' && nextSellerStage(purchaseRequest) === 'COMPLETED'} onClick={() => updateFulfillmentStage(row, purchaseRequest, nextSellerStage(purchaseRequest))}><PackageCheck size={13}/>{stageLabel(nextSellerStage(purchaseRequest))} म्हणून नोंदवा</button>{purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus !== 'PAID' && nextSellerStage(purchaseRequest) === 'COMPLETED'&&<small>पूर्ण करण्यापूर्वी रोख पेमेंट नोंदवा.</small>}</div>}
                 </div>
+                <MarketplaceConversation orderId={purchaseRequest.id} userId={userId} request={request}/>
               </div>)}</div>}
             </details>
           </article>)}</div>}
