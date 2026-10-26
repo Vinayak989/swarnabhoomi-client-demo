@@ -51,6 +51,12 @@
 .consultant-contact-actions a:last-child{border-color:#cfe5d3;background:#eef8ef;color:#39834b}
 .consultant-request-button{width:100%;min-height:34px;display:inline-flex;align-items:center;justify-content:center;gap:6px;margin-top:9px;border:1px solid #dce8d9;border-radius:7px;background:#f5f9f2;color:#47764b;font:700 9px 'DM Sans','Noto Sans Devanagari',sans-serif;cursor:pointer}
 .consultant-request-button:hover{border-color:#b8d0b4;background:#eaf4e7}
+.consultant-paywall{margin-top:12px;padding:11px;border:1px solid #eadbb7;border-radius:9px;background:linear-gradient(135deg,#fffaf0,#fffdf7)}
+.consultant-paywall p{margin:0;color:#756139;font-size:9px;line-height:1.65}
+.consultant-paywall .consultant-request-button{margin-top:8px;border-color:#d7a846;background:#e5ad3d;color:#3e321b}
+.consultant-paywall .consultant-request-button:hover{border-color:#bd8c2c;background:#dca130}
+.consultant-paywall .consultant-request-button:disabled{opacity:.65;cursor:not-allowed}
+.consultant-paywall small{display:block;margin-top:7px;color:#8d7953;font-size:8px}
 .consultant-request-backdrop{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:16px;background:#17251bcc;backdrop-filter:blur(3px)}
 .consultant-request-modal{position:relative;width:min(560px,100%);max-height:min(90vh,820px);overflow:auto;margin:0;padding:22px;border-color:#e5ebe2;box-shadow:0 20px 70px #111b154d}
 .consultant-request-modal .consultant-section-heading{padding-right:30px}

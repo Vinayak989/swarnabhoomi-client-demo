@@ -46,7 +46,6 @@ public class UserAuthFilter extends OncePerRequestFilter {
                 || path.equals("/api/health")
                 || path.startsWith("/api/auth/") && !path.equals("/api/auth/me") && !path.equals("/api/auth/logout")
                 || path.startsWith("/api/weather/")
-                || path.startsWith("/api/consultants") && !"POST".equalsIgnoreCase(method)
                 || path.startsWith("/api/marketplace/") && !userMarketplaceRoute
                 || path.equals("/api/push/subscriptions/public-key");
     }

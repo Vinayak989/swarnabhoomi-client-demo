@@ -52,7 +52,7 @@ const NAV_ITEMS = {
 const accountTabLabel=(account,tab)=>account.id==='farmer'&&tab==='marketplace'?'शेतमाल विक्री':NAV_ITEMS[tab].label;
 const ACCOUNT_TYPES = [
   { id: 'farmer', label: 'शेतकरी', initials: 'शे', homeTab: 'entries', tabs: ['entries', 'reminders', 'assistant', 'marketplace', 'prices', 'consultants', 'schemes', 'profile'], description: 'दैनिक नोंद, नफा-खर्चाचा हिशेब, शेतीसाठी AI मदत, शेतमाल विक्री आणि स्मरणपत्रे' },
-  { id: 'seller', label: 'विक्रेता', initials: 'वि', homeTab: 'marketplace', tabs: ['marketplace', 'prices', 'profile', 'information'], description: 'शेतमालाची नोंद, बाजारभाव आणि खरेदीदारांच्या विनंत्या सांभाळा' },
+  { id: 'seller', label: 'विक्रेता', initials: 'वि', homeTab: 'marketplace', tabs: ['marketplace', 'prices', 'consultants', 'profile', 'information'], description: 'शेतमालाची नोंद, बाजारभाव, सेंद्रिय सल्ला आणि खरेदीदारांच्या विनंत्या सांभाळा' },
   { id: 'buyer', label: 'खरेदीदार', initials: 'ख्रे', homeTab: 'marketplace', tabs: ['marketplace', 'profile'], description: 'शेतमाल शोधा आणि खरेदीदाराचे प्रोफाइल व्यवस्थापित करा' },
   { id: 'consultant', label: 'सेंद्रिय सल्लागार', initials: 'स', homeTab: 'consultants', tabs: ['consultants', 'information'], description: 'सल्लागार प्रोफाइल प्रकाशित करा आणि शेती माहिती पहा' },
   { id: 'admin', label: 'प्रशासक', initials: 'प्र', homeTab: 'admin', tabs: ['admin', 'marketplace', 'information'], description: 'खाते, बाजार व्यवहार, शेतकरी नोंदी आणि सल्लागार प्रोफाइल व्यवस्थापन' }
@@ -213,7 +213,7 @@ function App(){
       {activeTab==='prices'&&<MarketPricesPanel apiFetch={apiFetch} apiBase={API} userId={authUser.id} onUnauthorized={logout}/>}
       {activeTab==='admin'&&<AdminOverview apiBase={API} apiFetch={apiFetch}/>}
       {activeTab==='marketplace'&&<MarketplacePanel key={authUser.id} accountType={accountType} apiBase={API} auth={authToken} userId={authUser.id} buyerPhone={authUser.mobileNumber} onUnauthorized={logout}/>}
-      {activeTab==='consultants'&&<ConsultantPanel apiBase={API}/>}
+      {activeTab==='consultants'&&<ConsultantPanel apiBase={API} apiFetch={apiFetch} mobileNumber={authUser.mobileNumber}/>}
     </main>
     {showBackToTop&&!open&&!analyticsMetric&&<button type="button" className="back-to-top" onClick={()=>window.scrollTo({top:0,behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})} aria-label="पृष्ठाच्या वर जा"><ArrowUp size={17}/><span>वर जा</span></button>}
     {analyticsMetric&&<AnalyticsDialog metric={analyticsMetric} entries={entries} onClose={()=>setAnalyticsMetric(null)}/>}

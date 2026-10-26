@@ -22,6 +22,8 @@ The AI farmer assistant uses Google's Gemini API through a LangGraph4j workflow.
 
 The weather lookup reads active district alerts from the India Meteorological Department (IMD) public nowcast RSS feed. PIN codes are mapped to a district through `api.postalpincode.in` (a non-government postal lookup service); set `POSTAL_API_URL` to use another compatible PIN lookup endpoint. The IMD feed provides district-level alerts, not exact farm conditions, so users can select the observed weather manually and save the entry. The app handles unavailable or non-JSON API responses with a Marathi error message.
 
+Seller accounts can open a consultant's call, SMS, and WhatsApp details after a one-time ₹99 payment for that consultant. The backend creates Razorpay orders and unlocks contact only after verifying the checkout signature and confirming that Razorpay reports the ₹99 payment as captured. Set `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` in the backend environment (or the Render service environment) to enable checkout, and enable automatic payment capture in the Razorpay account. Without both keys, the payment button stays disabled and contact details remain private for sellers. Keep the secret server-side and use Razorpay test credentials while validating the payment flow.
+
 By default, the app uses H2 for both diary entries and photo bytes. New photos are stored in the `farm_photo` table as binary large objects (up to 10 MB) and served by the `/api/photos/{id}` endpoint. When an S3 bucket is configured, new photos are stored in S3 while the database keeps their object key. Existing filesystem photos remain readable as a legacy fallback when their files are available.
 
 ## AWS PostgreSQL and S3 storage
