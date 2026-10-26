@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
-import { ArrowDownWideNarrow, Check, ClipboardList, FileDown, Heart, LocateFixed, MapPin, Minus, PackagePlus, Phone, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, ShoppingCart, Trash2, Upload, UserRound, Wheat, X } from 'lucide-react';
+import { ArrowDownWideNarrow, ArrowRight, Check, ClipboardList, FileDown, Heart, LocateFixed, MapPin, Minus, PackageCheck, PackagePlus, Phone, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, ShoppingCart, Store, Trash2, Upload, UserRound, Wheat, X } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import './marketplace.css';
 
@@ -450,6 +450,14 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
 
   const favoriteCount = useMemo(() => listings.filter(listing => favoriteIds.has(String(listing.id))).length,
     [listings, favoriteIds]);
+  const availableListingCount = useMemo(() => listings.filter(listing => listing.available !== false && Number(listing.quantity) > 0).length,
+    [listings]);
+  const sellerCount = useMemo(() => new Set(listings.map(listing => listing.sellerName).filter(Boolean)).size,
+    [listings]);
+  const pendingSellerRequests = useMemo(() => sellerListings.reduce((sum, row) =>
+    sum + row.requests.filter(purchaseRequest => purchaseRequest.status === 'PENDING').length, 0), [sellerListings]);
+  const activeSellerListings = useMemo(() => sellerListings.filter(row => row.listing.available && Number(row.listing.quantity) > 0).length,
+    [sellerListings]);
 
   const cartRows = useMemo(() => cart.map(item => ({
     ...item,
@@ -946,13 +954,32 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   const phoneDigits = contact?.phone.replace(/\D/g, '') || '';
 
   return <div className="market-page" lang="mr">
-    <section className="market-hero">
-      <div>
+    <section className={`market-hero market-hero-${accountType}`}>
+      <div className="market-hero-copy">
         <span className="market-eyebrow"><Wheat size={15}/> शेतमाल थेट शेतकऱ्याकडून</span>
-        <h1>शेतकरी बाजार</h1>
-        <p>उपलब्ध शेतमाल शोधा, जवळचे विक्रेते नकाशावर पाहा किंवा तुमची विक्रीची नोंद जोडा.</p>
+        <h1>{accountType === 'buyer' ? 'ताज्या शेतमालाची खरेदी' : accountType === 'seller' || accountType === 'farmer' ? 'तुमचा शेतमाल, थेट बाजारात' : 'शेतकरी बाजार'}</h1>
+        <p>{accountType === 'buyer' ? 'आजूबाजूच्या शेतकऱ्यांकडून ताजा माल शोधा, भाव पहा आणि थेट ऑर्डर द्या.' : accountType === 'seller' || accountType === 'farmer' ? 'तुमचा माल नोंदवा, साठा सांभाळा आणि खरेदीदारांच्या विनंत्या एका ठिकाणी हाताळा.' : 'उपलब्ध शेतमाल शोधा किंवा विक्रीची नोंद आणि व्यवहार व्यवस्थापित करा.'}</p>
+        <div className="market-hero-actions">
+          {accountType === 'buyer' ? <>
+            <button type="button" className="market-hero-cta primary" onClick={() => setView('browse')}><Search size={16}/> शेतमाल शोधा <ArrowRight size={15}/></button>
+            <button type="button" className="market-hero-cta" onClick={() => setView('cart')}><ShoppingCart size={16}/> कार्ट पहा</button>
+          </> : accountType === 'seller' || accountType === 'farmer' ? <>
+            <button type="button" className="market-hero-cta primary" onClick={() => { setError(''); setView('register'); }}><PackagePlus size={16}/> विक्री नोंदवा <ArrowRight size={15}/></button>
+            <button type="button" className="market-hero-cta" onClick={() => { setError(''); setView('seller'); }}><ClipboardList size={16}/> माझे व्यवहार</button>
+          </> : null}
+        </div>
       </div>
-      <div className="market-hero-icon"><MapPin size={26}/><span>{listings.length.toLocaleString('mr-IN')} नोंदी</span></div>
+      <div className="market-hero-stats" aria-label="बाजाराची माहिती">
+        {accountType === 'seller' || accountType === 'farmer' ? <>
+          <div className="market-hero-stat"><span><PackageCheck size={17}/> माझा शेतमाल</span><strong>{sellerListings.length.toLocaleString('mr-IN')}</strong><small>एकूण नोंदी</small></div>
+          <div className="market-hero-stat"><span><Store size={17}/> विक्री सुरू</span><strong>{activeSellerListings.toLocaleString('mr-IN')}</strong><small>उपलब्ध नोंदी</small></div>
+          <div className="market-hero-stat"><span><ClipboardList size={17}/> नवीन विनंत्या</span><strong>{pendingSellerRequests.toLocaleString('mr-IN')}</strong><small>उत्तराची प्रतीक्षा</small></div>
+        </> : <>
+          <div className="market-hero-stat"><span><Wheat size={17}/> उपलब्ध शेतमाल</span><strong>{availableListingCount.toLocaleString('mr-IN')}</strong><small>ताज्या विक्री नोंदी</small></div>
+          <div className="market-hero-stat"><span><UserRound size={17}/> स्थानिक विक्रेते</span><strong>{sellerCount.toLocaleString('mr-IN')}</strong><small>थेट शेतकऱ्यांकडून</small></div>
+          <div className="market-hero-stat"><span><ShoppingBag size={17}/> तुमच्या कार्टमध्ये</span><strong>{cart.length.toLocaleString('mr-IN')}</strong><small>निवडलेले प्रकार</small></div>
+        </>}
+      </div>
     </section>
 
     <div className="market-actions" role="tablist" aria-label="शेतकरी बाजार विभाग">
@@ -971,6 +998,11 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     {cartNotice && view === 'browse' && <div className="market-message market-success" role="status"><Check size={15}/>{cartNotice}</div>}
 
     {view === 'browse' ? <>
+      <section className="market-category-shortcuts" aria-label="शेतमालाच्या प्रकारानुसार शोधा">
+        <span className="market-category-label">जलद शोध</span>
+        <button type="button" className={categoryFilter === 'all' ? 'selected' : ''} aria-pressed={categoryFilter === 'all'} onClick={() => setCategoryFilter('all')}>सर्व शेतमाल</button>
+        {availableCategories.map(category => <button type="button" key={category} className={categoryFilter === category ? 'selected' : ''} aria-pressed={categoryFilter === category} onClick={() => setCategoryFilter(category)}>{category}</button>)}
+      </section>
       <section className="market-search-panel">
         <label className="market-search-field"><Search size={17}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="पीक, शेतमाल, विक्रेता किंवा पत्ता शोधा"/></label>
         <button className="market-location-button" type="button" onClick={() => askForLocation(false)}><LocateFixed size={16}/> जवळचे विक्रेते</button>
