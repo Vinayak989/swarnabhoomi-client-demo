@@ -53,6 +53,9 @@ public class MarketplacePurchaseRequest {
     @Column(nullable = false, length = 20)
     private String buyerPhone;
 
+    @Column(name = "delivery_address", length = 500)
+    private String deliveryAddress;
+
     @Column(nullable = false, precision = 13, scale = 3)
     private BigDecimal quantity;
 
@@ -113,6 +116,8 @@ public class MarketplacePurchaseRequest {
     public void setSellerPhone(String value) { sellerPhone = value; }
     public String getBuyerPhone() { return buyerPhone; }
     public void setBuyerPhone(String value) { buyerPhone = value; }
+    public String getDeliveryAddress() { return deliveryAddress; }
+    public void setDeliveryAddress(String value) { deliveryAddress = value; }
     public BigDecimal getQuantity() { return quantity; }
     public void setQuantity(BigDecimal value) { quantity = value; }
     public String getUnit() { return unit; }

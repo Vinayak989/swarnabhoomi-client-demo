@@ -186,6 +186,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   const [cartNotice, setCartNotice] = useState('');
   const [buyerName, setBuyerName] = useState('');
   const [buyerFulfillment, setBuyerFulfillment] = useState('PICKUP');
+  const [buyerDeliveryAddress, setBuyerDeliveryAddress] = useState('');
   const [buyerNote, setBuyerNote] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [paymentOptions, setPaymentOptions] = useState({
@@ -574,6 +575,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
         body: JSON.stringify({
           buyerName,
           fulfillment: buyerFulfillment,
+          deliveryAddress: buyerFulfillment === 'DELIVERY' ? buyerDeliveryAddress.trim() : null,
           note: buyerNote,
           paymentMethod,
           items: cartRows.map(item => ({ listingId: item.listingId, quantity: Number(item.quantity) }))
@@ -589,6 +591,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       setBuyerOrders(body.orders || []);
       setBuyerOrdersNotice(body.message || 'ऑर्डर विक्रेत्यांकडे पाठवला आहे.');
       setBuyerName('');
+      setBuyerDeliveryAddress('');
       setBuyerNote('');
       setView('orders');
       await loadListings();
@@ -1111,7 +1114,8 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
             <div className="market-card-heading"><div><span>ऑर्डर</span><h2>खरेदी ऑर्डर</h2></div><ShoppingBag size={19}/></div>
             <label className="market-field"><span>तुमचे नाव *</span><SpeechTextInput><input value={buyerName} onChange={event => setBuyerName(event.target.value)} maxLength={100} required autoComplete="name"/></SpeechTextInput></label>
             <label className="market-field"><span>नोंदणीकृत मोबाईल</span><input value={buyerPhone} readOnly/><small>तुमचा संपर्क क्रमांक फक्त प्रशासक पाहू शकतो.</small></label>
-            <label className="market-field"><span>माल कसा हवा?</span><select value={buyerFulfillment} onChange={event => setBuyerFulfillment(event.target.value)}><option value="PICKUP">मी घेऊन जाईन</option><option value="DELIVERY">पोहोचवून हवा</option></select></label>
+            <label className="market-field"><span>माल कसा हवा?</span><select value={buyerFulfillment} onChange={event => { setBuyerFulfillment(event.target.value); if (event.target.value !== 'DELIVERY') setBuyerDeliveryAddress(''); }}><option value="PICKUP">मी घेऊन जाईन</option><option value="DELIVERY">पोहोचवून हवा</option></select></label>
+            {buyerFulfillment === 'DELIVERY' && <label className="market-field"><span>वितरणाचा पूर्ण पत्ता *</span><SpeechTextInput><textarea value={buyerDeliveryAddress} onChange={event => setBuyerDeliveryAddress(event.target.value)} maxLength={500} rows="3" required autoComplete="street-address" placeholder="घर / शेत क्रमांक, रस्ता, गाव, तालुका, जिल्हा आणि पिनकोड"/></SpeechTextInput><small>हा पत्ता या ऑर्डरच्या विक्रेत्याला फक्त वितरणासाठी दिसेल.</small></label>}
             <label className="market-field"><span>विक्रेत्यांसाठी संदेश <small>ऐच्छिक</small></span><SpeechTextInput><textarea maxLength={500} value={buyerNote} onChange={event => setBuyerNote(event.target.value)} placeholder="सोयीची वेळ किंवा इतर माहिती"/></SpeechTextInput></label>
             <fieldset className="market-payment-options">
               <legend>पेमेंट पद्धत</legend>
@@ -1126,7 +1130,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
             </fieldset>
             <div className="market-checkout-total"><span>अंदाजे एकूण</span><b>₹{cartTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></div>
             {buyerOrdersError && <div className="market-message market-error" role="alert">{buyerOrdersError}</div>}
-            <p className="market-purchase-privacy"><ShieldCheck size={14}/> ऑर्डरची स्थिती दोघांना दिसेल. खरेदीदार आणि विक्रेत्यांचे संपर्क तपशील फक्त प्रशासकाला दिसतात.</p>
+            <p className="market-purchase-privacy"><ShieldCheck size={14}/> मोबाईल आणि इतर संपर्क तपशील फक्त प्रशासकाला दिसतात. वितरण निवडल्यास दिलेला पत्ता त्या ऑर्डरच्या विक्रेत्याला दिसेल.</p>
             <button type="submit" className="market-submit-button" disabled={buyerOrdersLoading || cartRows.some(item => item.listing.available === false || Number(item.quantity) > Number(item.listing.quantity))}><ShoppingBag size={16}/>{buyerOrdersLoading ? 'ऑर्डर पाठवत आहे…' : 'ऑर्डर निश्चित करा'}</button>
           </form>
         </div>}
@@ -1143,6 +1147,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
           : <div className="market-buyer-order-list">{buyerOrders.map(order => <article className="market-buyer-order-card" key={order.id}>
             <div className="market-buyer-order-main"><div><span>ऑर्डर #{order.id.toLocaleString('mr-IN')}</span><h3>{order.productName || `शेतमाल #${order.listingId}`}</h3></div><span className={`market-request-status status-${order.status.toLowerCase()}`}>{requestStatusLabel(order.status)}</span></div>
             <p>{order.sellerName || 'शेतकरी'} · {Number(order.quantity).toLocaleString('mr-IN')} {UNITS.find(([value]) => value === order.unit)?.[1] || order.unit}</p>
+            {order.fulfillment === 'DELIVERY' && order.deliveryAddress && <div className="market-delivery-address"><MapPin size={15}/><span><b>या ऑर्डरसाठी वितरणाचा पत्ता</b>{order.deliveryAddress}</span></div>}
             <OrderProgress order={order}/>
             <div className="market-payment-summary"><span>{paymentMethodLabel(order.paymentMethod)}</span><b className={`payment-${String(order.paymentStatus || '').toLowerCase()}`}>{paymentStatusLabel(order.paymentStatus)}</b></div>
             {order.totalAmount != null && <b className="market-buyer-order-total">₹{Number(order.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>}
@@ -1230,6 +1235,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
               {!row.requests.length ? <p className="market-no-requests">अजून खरेदीची विनंती आलेली नाही.</p> : <div className="market-request-list">{row.requests.map(purchaseRequest => <div className="market-request-card" key={purchaseRequest.id}>
                 <div className="market-request-top"><b>{purchaseRequest.buyerName}</b><span className={`market-request-status status-${purchaseRequest.status.toLowerCase()}`}>{requestStatusLabel(purchaseRequest.status)}</span></div>
                 <p>{Number(purchaseRequest.quantity).toLocaleString('mr-IN')} {UNITS.find(([value]) => value === purchaseRequest.unit)?.[1] || purchaseRequest.unit} · {purchaseRequest.fulfillment === 'DELIVERY' ? 'पोहोचवणे हवे' : 'स्वतः घेऊन जाणार'}{purchaseRequest.totalAmount != null ? ` · ₹${Number(purchaseRequest.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}</p>
+                {purchaseRequest.fulfillment === 'DELIVERY' && purchaseRequest.deliveryAddress && <div className="market-delivery-address"><MapPin size={15}/><span><b>वितरणाचा पत्ता</b>{purchaseRequest.deliveryAddress}</span></div>}
                 <div className="market-payment-summary"><span>{paymentMethodLabel(purchaseRequest.paymentMethod)}</span><b className={`payment-${String(purchaseRequest.paymentStatus || '').toLowerCase()}`}>{paymentStatusLabel(purchaseRequest.paymentStatus)}</b></div>
                 <OrderProgress order={purchaseRequest}/>
                 {purchaseRequest.note && <p className="market-request-note">“{purchaseRequest.note}”</p>}

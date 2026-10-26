@@ -191,6 +191,8 @@ public class FarmMarketplaceController {
 
         MarketplacePurchaseRequest purchaseRequest = newPurchaseRequest(id, listing, buyer,
                 request.buyerName(), request.quantity(), request.fulfillment(), request.note());
+        purchaseRequest.setDeliveryAddress(request.fulfillment() == MarketplacePurchaseRequest.Fulfillment.DELIVERY
+                ? trimToNull(request.deliveryAddress()) : null);
         reserveStock(listing, request.quantity());
         repository.save(listing);
         purchaseRequestRepository.save(purchaseRequest);
@@ -236,6 +238,8 @@ public class FarmMarketplaceController {
             BigDecimal quantity = item.getValue();
             MarketplacePurchaseRequest order = newPurchaseRequest(item.getKey(), listing, buyer,
                     request.buyerName(), quantity, request.fulfillment(), request.note());
+            order.setDeliveryAddress(request.fulfillment() == MarketplacePurchaseRequest.Fulfillment.DELIVERY
+                    ? trimToNull(request.deliveryAddress()) : null);
             order.setPaymentMethod(MarketplacePurchaseRequest.PaymentMethod.CASH);
             order.setPaymentStatus(MarketplacePurchaseRequest.PaymentStatus.PENDING);
             orders.add(order);
@@ -537,13 +541,16 @@ public class FarmMarketplaceController {
                 && request.quantity().compareTo(new BigDecimal("1000000000")) <= 0
                 && request.quantity().stripTrailingZeros().scale() <= 3
                 && request.fulfillment() != null
+                && validDeliveryAddress(request.fulfillment(), request.deliveryAddress())
                 && !tooLong(request.note(), 500) && !containsContactDetails(request.note());
     }
 
     private static boolean validCheckoutRequest(CheckoutRequest request) {
         return request != null && !blankOrLong(request.buyerName(), 100)
                 && !containsContactDetails(request.buyerName())
-                && request.fulfillment() != null && !tooLong(request.note(), 500)
+                && request.fulfillment() != null
+                && validDeliveryAddress(request.fulfillment(), request.deliveryAddress())
+                && !tooLong(request.note(), 500)
                 && !containsContactDetails(request.note())
                 && request.items() != null && !request.items().isEmpty() && request.items().size() <= 50
                 && request.paymentMethod() != null
@@ -555,6 +562,11 @@ public class FarmMarketplaceController {
         return quantity != null && quantity.signum() > 0
                 && quantity.compareTo(new BigDecimal("1000000000")) <= 0
                 && quantity.stripTrailingZeros().scale() <= 3;
+    }
+
+    private static boolean validDeliveryAddress(MarketplacePurchaseRequest.Fulfillment fulfillment, String address) {
+        return fulfillment != MarketplacePurchaseRequest.Fulfillment.DELIVERY
+                || !blankOrLong(address, 500) && !containsContactDetails(address);
     }
 
     private static boolean validPrice(BigDecimal price) {
@@ -657,12 +669,13 @@ public class FarmMarketplaceController {
     public record CreateListingResponse(ListingResponse listing, String sellerManagementToken) {}
 
     public record PurchaseRequestCreate(String buyerName, String buyerPhone, BigDecimal quantity,
-            MarketplacePurchaseRequest.Fulfillment fulfillment, String note) {}
+            MarketplacePurchaseRequest.Fulfillment fulfillment, String note, String deliveryAddress) {}
 
     public record CheckoutLine(Long listingId, BigDecimal quantity) {}
 
     public record CheckoutRequest(String buyerName, MarketplacePurchaseRequest.Fulfillment fulfillment,
-            String note, List<CheckoutLine> items, MarketplacePurchaseRequest.PaymentMethod paymentMethod) {}
+            String note, List<CheckoutLine> items, MarketplacePurchaseRequest.PaymentMethod paymentMethod,
+            String deliveryAddress) {}
 
     public record CheckoutResponse(String message, List<PurchaseRequestResponse> orders, BigDecimal totalAmount) {}
 
@@ -680,7 +693,7 @@ public class FarmMarketplaceController {
             MarketplacePurchaseRequest.Status status, MarketplacePurchaseRequest.PaymentMethod paymentMethod,
             MarketplacePurchaseRequest.PaymentStatus paymentStatus,
             MarketplacePurchaseRequest.FulfillmentStage fulfillmentStage, boolean reviewSubmitted,
-            java.time.Instant createdAt) {
+            java.time.Instant createdAt, String deliveryAddress) {
         static PurchaseRequestResponse from(MarketplacePurchaseRequest request) {
             return from(request, false);
         }
@@ -693,7 +706,9 @@ public class FarmMarketplaceController {
                     request.getUnit(), request.getPricePerUnit(), request.getPricePerUnit() == null ? null
                         : request.getPricePerUnit().multiply(request.getQuantity()), request.getFulfillment(),
                     safeNote(request.getNote()), request.getStatus(), request.getPaymentMethod(),
-                    request.getPaymentStatus(), FarmMarketplaceController.fulfillmentStage(request), reviewSubmitted, request.getCreatedAt());
+                    request.getPaymentStatus(), FarmMarketplaceController.fulfillmentStage(request), reviewSubmitted,
+                    request.getCreatedAt(), request.getFulfillment() == MarketplacePurchaseRequest.Fulfillment.DELIVERY
+                        ? trimToNull(request.getDeliveryAddress()) : null);
         }
     }
 

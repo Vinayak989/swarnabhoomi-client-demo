@@ -384,4 +384,8 @@
 @media(max-width:560px){.market-seller-quick-facts{grid-template-columns:1fr}.market-seller-quick-facts>span{grid-template-columns:minmax(90px,.55fr) minmax(0,1fr);align-items:center}.market-seller-details summary{min-height:46px}.market-seller-details .market-seller-controls{margin:8px;padding:10px}}
 .market-farmer-listings{max-height:none}
 .market-farmer-listings .market-listing-scroll{grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
+.market-delivery-address{display:flex;align-items:flex-start;gap:8px;margin:9px 0;padding:10px 11px;border:1px solid #dfeadd;border-radius:9px;background:#f6faf4;color:#48634b;font-size:10px;line-height:1.55}
+.market-delivery-address>svg{flex:none;margin-top:2px;color:#5f8b5c}
+.market-delivery-address>span{display:grid;gap:3px;white-space:pre-wrap;overflow-wrap:anywhere}
+.market-delivery-address b{color:#657e64;font-size:8px}
 @media(max-width:800px){.market-farmer-listings .market-listing-scroll{grid-template-columns:1fr}}
