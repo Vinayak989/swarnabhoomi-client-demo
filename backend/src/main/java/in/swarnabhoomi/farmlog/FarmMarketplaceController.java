@@ -566,7 +566,16 @@ public class FarmMarketplaceController {
 
     private static boolean validDeliveryAddress(MarketplacePurchaseRequest.Fulfillment fulfillment, String address) {
         return fulfillment != MarketplacePurchaseRequest.Fulfillment.DELIVERY
-                || !blankOrLong(address, 500) && !containsContactDetails(address);
+                || !blankOrLong(address, 500) && !containsDeliveryContactDetails(address);
+    }
+
+    private static boolean containsDeliveryContactDetails(String address) {
+        if (CONTACT_PHONE.matcher(address).find()) return true;
+        String digits = address.replaceAll("\\D", "");
+        for (int index = 0; index + 10 <= digits.length(); index++) {
+            if (digits.charAt(index) >= '6' && digits.charAt(index) <= '9') return true;
+        }
+        return CONTACT_EMAIL_OR_URL.matcher(address).find();
     }
 
     private static boolean validPrice(BigDecimal price) {

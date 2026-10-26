@@ -185,7 +185,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   const [cart, setCart] = useState(() => readCart(userId));
   const [cartNotice, setCartNotice] = useState('');
   const [buyerName, setBuyerName] = useState('');
-  const [buyerFulfillment, setBuyerFulfillment] = useState('PICKUP');
+  const [buyerFulfillment, setBuyerFulfillment] = useState('DELIVERY');
   const [buyerDeliveryAddress, setBuyerDeliveryAddress] = useState('');
   const [buyerNote, setBuyerNote] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
@@ -995,7 +995,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
         <div className="market-hero-actions">
           {accountType === 'buyer' ? <>
             <button type="button" className="market-hero-cta primary" onClick={() => setView('browse')}><Search size={16}/> शेतमाल शोधा <ArrowRight size={15}/></button>
-            <button type="button" className="market-hero-cta" onClick={() => setView('cart')}><ShoppingCart size={16}/> कार्ट पहा</button>
+            <button type="button" className="market-hero-cta" onClick={() => { setBuyerFulfillment('DELIVERY'); setView('cart'); }}><ShoppingCart size={16}/> कार्ट पहा</button>
           </> : accountType === 'seller' || accountType === 'farmer' ? <>
             <button type="button" className="market-hero-cta primary" onClick={() => { setError(''); setView('register'); }}><PackagePlus size={16}/> विक्री नोंदवा <ArrowRight size={15}/></button>
             <button type="button" className="market-hero-cta" onClick={() => { setError(''); setView('seller'); }}><ClipboardList size={16}/> माझे व्यवहार</button>
@@ -1018,7 +1018,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     <div className="market-actions" role="tablist" aria-label="शेतकरी बाजार विभाग">
       <button type="button" role="tab" aria-selected={view === 'browse'} className={view === 'browse' ? 'active' : ''} onClick={() => setView('browse')}><Search size={16}/> शेतमाल शोधा</button>
       {accountType === 'buyer' && <>
-        <button type="button" role="tab" aria-selected={view === 'cart'} className={view === 'cart' ? 'active' : ''} onClick={() => { setCartNotice(''); setView('cart'); }}><ShoppingCart size={16}/> कार्ट <span className="market-tab-count">{cart.length.toLocaleString('mr-IN')}</span></button>
+        <button type="button" role="tab" aria-selected={view === 'cart'} className={view === 'cart' ? 'active' : ''} onClick={() => { setCartNotice(''); setBuyerFulfillment('DELIVERY'); setView('cart'); }}><ShoppingCart size={16}/> कार्ट <span className="market-tab-count">{cart.length.toLocaleString('mr-IN')}</span></button>
         <button type="button" role="tab" aria-selected={view === 'orders'} className={view === 'orders' ? 'active' : ''} onClick={() => { setBuyerOrdersNotice(''); setView('orders'); }}><ClipboardList size={16}/> माझ्या ऑर्डर{unreadMessageTotal > 0 && <span className="market-unread-badge" aria-label={`${unreadMessageTotal.toLocaleString('mr-IN')} न वाचलेले संदेश`}>{unreadMessageTotal.toLocaleString('mr-IN')}</span>}</button>
       </>}
       {accountType !== 'buyer' && accountType !== 'admin' && <>
