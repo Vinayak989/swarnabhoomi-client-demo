@@ -32,7 +32,7 @@ body{background:#f4f6ec}
 .entry-subtab svg{width:16px;height:16px}
 
 .pdf-export{height:36px;padding:0 11px;font-size:10px}
-.print-report{display:none}
+#print-report.print-report{display:none}
 @media(max-width:700px){.entry-subtabs{display:flex;width:100%;margin:15px 0 -15px}.entry-subtab{flex:1;padding:0 8px;font-size:10px}.tools{display:grid;grid-template-columns:minmax(0,1fr) auto}.tools .search{grid-column:1/-1}.tools .pdf-export{min-height:36px}}
 .entry-card{position:relative;transition:border-color .16s,box-shadow .16s}
 .entry-card:hover,.entry-card:focus,.entry-card:focus-within,.entry-card.details-open{z-index:12;border-color:#a9c8a8;box-shadow:0 7px 22px rgba(41,84,47,.12)}
@@ -61,7 +61,7 @@ body{background:#f4f6ec}
   .print-summary>div{padding:8px;border:1px solid #dce8d9;border-radius:6px;background:#f5f8f1}
   .print-summary span{display:block;color:#6d806f;font-size:7.5pt}
   .print-summary b{display:block;margin-top:3px;color:#315b3a;font-size:10pt}
-  .print-entry{break-inside:avoid;page-break-inside:avoid;border:1px solid #dce6d9;border-radius:7px;padding:10px;margin:0 0 11px}
+  .print-entry{break-inside:auto;page-break-inside:auto;border:1px solid #dce6d9;border-radius:7px;padding:10px;margin:0 0 11px}
   .print-entry-heading{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e4ece1;padding-bottom:6px;margin-bottom:8px}
   .print-entry-heading h2{margin:0;color:#347447;font-size:11pt}
   .print-entry-heading b{color:#516956;font-size:9pt}
@@ -69,7 +69,7 @@ body{background:#f4f6ec}
   .print-field{min-width:0}
   .print-field dt{color:#738474;font-size:7.5pt;font-weight:700}
   .print-field dd{margin:1px 0 0;color:#263b2c;font-size:8.5pt;white-space:pre-wrap;overflow-wrap:anywhere}
-  .print-photo{margin:10px 0 0;break-inside:avoid}
+  .print-photo{margin:10px 0 0;break-inside:avoid;page-break-inside:avoid}
   .print-photo img{display:block;max-width:100%;max-height:125mm;object-fit:contain;border-radius:5px}
   .print-photo figcaption,.print-photo-missing{color:#718477;font-size:7.5pt}
   .print-footer{margin-top:14px;padding-top:7px;border-top:1px solid #dce6d9;text-align:center;color:#718477;font-size:8pt}
