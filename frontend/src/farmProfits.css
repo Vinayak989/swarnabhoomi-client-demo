@@ -1,1 +1,210 @@
-.farm-profit-page{display:grid;gap:18px;padding:26px 0 40px;color:#26382c}.farm-profit-hero{position:relative;display:flex;align-items:center;justify-content:space-between;gap:20px;overflow:hidden;padding:28px 32px;border:1px solid #e4ebdf;border-radius:22px;background:radial-gradient(circle at 91% 18%,#e7f3dc 0 12%,transparent 12.5%),linear-gradient(120deg,#fbfdf9,#f2f7ee)}.farm-profit-hero>div{max-width:660px}.farm-profit-hero>div>span{display:inline-flex;align-items:center;gap:7px;color:#4c8050;font-size:11px;font-weight:800}.farm-profit-hero h1{margin:9px 0;color:#243b29;font-size:clamp(23px,3vw,34px);letter-spacing:-.7px}.farm-profit-hero p{margin:0;color:#708071;font-size:13px;line-height:1.7}.farm-profit-export{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 15px;border:1px solid #cdddc8;border-radius:10px;background:white;color:#456d48;font:700 11px inherit;cursor:pointer}.farm-profit-export:disabled{opacity:.5;cursor:not-allowed}.farm-profit-filters{display:flex;align-items:end;gap:12px;padding:15px 18px;border:1px solid #e7ece3;border-radius:14px;background:#fff}.farm-profit-filters label{display:grid;gap:6px;color:#738173;font-size:10px;font-weight:750}.farm-profit-filters select{min-width:160px;min-height:38px;padding:0 12px;border:1px solid #e0e7dc;border-radius:9px;background:#fbfcfa;color:#304536;font:600 11px inherit}.farm-profit-filters>span{margin:0 0 11px auto;color:#849084;font-size:10px}.farm-profit-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.farm-profit-metrics article{min-width:0;display:grid;gap:8px;padding:18px 20px;border:1px solid #e7ece4;border-radius:15px;background:#fff;box-shadow:0 6px 18px #1c392108}.farm-profit-metrics article>span{display:flex;align-items:center;gap:7px;color:#778478;font-size:10px;font-weight:750}.farm-profit-metrics article>strong{overflow-wrap:anywhere;color:#2b4732;font-size:clamp(18px,2vw,25px);font-variant-numeric:tabular-nums}.farm-profit-metrics article>small{color:#96a096;font-size:9px}.farm-profit-metrics article.income>span,.farm-profit-metrics article.income>strong{color:#478451}.farm-profit-metrics article.cost>span,.farm-profit-metrics article.cost>strong{color:#a46c49}.farm-profit-metrics article.net-negative>span,.farm-profit-metrics article.net-negative>strong{color:#b25147}.farm-profit-metrics article.production>strong small{font-size:11px}.farm-profit-content{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);gap:14px}.farm-profit-chart,.farm-profit-crops{min-width:0;padding:20px;border:1px solid #e7ece4;border-radius:16px;background:#fff}.farm-profit-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}.farm-profit-section-head>div:first-child>span{color:#8a978b;font-size:9px;font-weight:750}.farm-profit-section-head h2{margin:4px 0 0;color:#2a4030;font-size:16px}.farm-profit-legend{display:flex;gap:12px;color:#778478;font-size:9px}.farm-profit-legend span{display:flex;align-items:center;gap:5px}.farm-profit-legend i{width:8px;height:8px;border-radius:3px}.income-dot{background:#65a86e}.cost-dot{background:#e9b587}.farm-profit-bars{height:210px;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));align-items:end;gap:8px;padding:0 4px 2px;border-bottom:1px solid #e9eee7}.farm-profit-month{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:end;gap:8px;color:#8a9589;font-size:9px}.farm-profit-bar-pair{width:100%;height:calc(100% - 23px);display:flex;align-items:end;justify-content:center;gap:3px}.farm-profit-bar-pair i{width:min(35%,14px);min-height:0;border-radius:5px 5px 1px 1px;transition:height .3s ease}.farm-profit-bar-pair .income-bar{background:linear-gradient(#83c68a,#52945d)}.farm-profit-bar-pair .cost-bar{background:linear-gradient(#f1c69d,#d99a66)}.farm-profit-note{margin:12px 0 0;color:#949e93;font-size:9px;line-height:1.6}.farm-profit-crop-list{display:grid;gap:8px;max-height:270px;overflow:auto}.farm-profit-crop-list article{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:11px 12px;border:1px solid #edf0ea;border-radius:10px;background:#fcfdfb}.farm-profit-crop-list article>div:first-child{display:grid;gap:4px}.farm-profit-crop-list article>div:first-child b{color:#344c38;font-size:11px}.farm-profit-crop-list article>div:first-child small,.farm-profit-crop-list article>div:not(:first-child)>small{color:#8a968a;font-size:9px}.farm-profit-crop-list article>div:nth-child(2){display:grid;justify-items:end;gap:3px}.farm-profit-crop-list article>div:nth-child(2)>span,.farm-profit-crop-list article>div:nth-child(3)>span{color:#99a198;font-size:8px}.farm-profit-crop-list article>div:nth-child(2) strong{font-size:11px}.farm-profit-crop-list article .positive{color:#478451}.farm-profit-crop-list article .negative{color:#b25147}.farm-profit-crop-list article>div:nth-child(3){grid-column:1/-1;display:flex;justify-content:space-between;gap:10px;padding-top:7px;border-top:1px solid #eef1eb}.farm-profit-empty{min-height:140px;display:grid;place-content:center;justify-items:center;gap:8px;color:#8a968a;text-align:center}.farm-profit-empty b{color:#526554;font-size:12px}.farm-profit-empty span{font-size:10px}@media(max-width:900px){.farm-profit-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.farm-profit-content{grid-template-columns:1fr}}@media(max-width:560px){.farm-profit-page{gap:12px;padding:16px 0 28px}.farm-profit-hero{align-items:flex-start;flex-direction:column;padding:21px}.farm-profit-hero h1{font-size:24px}.farm-profit-filters{align-items:stretch;flex-direction:column}.farm-profit-filters select{width:100%}.farm-profit-filters>span{margin:0}.farm-profit-metrics{gap:8px}.farm-profit-metrics article{padding:13px}.farm-profit-metrics article>span{font-size:9px}.farm-profit-metrics article>strong{font-size:18px}.farm-profit-chart,.farm-profit-crops{padding:14px}.farm-profit-bars{gap:3px}.farm-profit-month{font-size:8px}.farm-profit-legend{gap:7px;font-size:8px}}
+.farm-profit-page {
+  --profit-green: #347948;
+  --profit-green-dark: #204e31;
+  --profit-ink: #263c2d;
+  --profit-muted: #7a897c;
+  --profit-line: #e5ece2;
+  display: grid;
+  gap: 17px;
+  padding: 24px 0 42px;
+  color: var(--profit-ink);
+}
+
+.farm-profit-page * { box-sizing: border-box; }
+.farm-profit-page button, .farm-profit-page select { font: inherit; }
+
+.farm-profit-hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  min-height: 236px;
+  overflow: hidden;
+  padding: 28px 34px;
+  border: 1px solid #dce9d8;
+  border-radius: 24px;
+  background: linear-gradient(112deg, #fbfdf8 0%, #f0f7ec 53%, #e9f3e4 100%);
+  box-shadow: 0 12px 30px #28472a0a;
+}
+
+.farm-profit-hero-copy { position: relative; z-index: 2; max-width: 570px; }
+.farm-profit-eyebrow { display: inline-flex; align-items: center; gap: 7px; color: #4f8a57; font-size: 12px; font-weight: 800; }
+.farm-profit-hero h1 { max-width: 530px; margin: 11px 0 8px; color: #24442d; font-size: clamp(25px, 3.1vw, 37px); letter-spacing: -.8px; line-height: 1.2; }
+.farm-profit-hero p { max-width: 510px; margin: 0; color: #708174; font-size: 13px; line-height: 1.75; }
+.farm-profit-hero-points { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 17px; color: #6e8171; font-size: 10px; font-weight: 650; }
+.farm-profit-hero-points span { display: inline-flex; align-items: center; gap: 6px; }
+.farm-profit-hero-points i { width: 6px; height: 6px; border-radius: 50%; background: #76ad76; }
+
+.farm-profit-hero-art { position: absolute; top: 0; right: 0; width: 43%; height: 100%; overflow: hidden; }
+.farm-profit-sun { position: absolute; top: 26px; right: 25%; width: 80px; height: 80px; border-radius: 50%; background: #f5d896; box-shadow: 0 0 0 16px #f4dfb533; }
+.farm-profit-hill { position: absolute; right: -10%; bottom: -80px; width: 110%; height: 165px; border-radius: 50% 50% 0 0; transform: rotate(-8deg); }
+.farm-profit-hill.hill-back { right: -26%; bottom: -67px; background: #c7dfbf; transform: rotate(10deg); }
+.farm-profit-hill.hill-front { background: linear-gradient(160deg, #94c18e, #72a977); }
+.farm-profit-art-card { position: absolute; top: 43px; right: 19%; z-index: 1; display: grid; gap: 3px; min-width: 154px; padding: 12px 15px; border: 1px solid #ffffffbd; border-radius: 14px; background: #ffffffd9; box-shadow: 0 9px 25px #31533c18; backdrop-filter: blur(8px); transform: rotate(2deg); }
+.farm-profit-art-card span, .farm-profit-art-card small { color: #819181; font-size: 9px; }
+.farm-profit-art-card strong { color: #347948; font-size: 20px; }
+.farm-profit-art-sprout { position: absolute; right: 12%; bottom: 24px; color: #f0f7e7; transform: rotate(-13deg); }
+.farm-profit-export { position: absolute; top: 20px; right: 22px; z-index: 3; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 14px; border: 1px solid #d4e2d0; border-radius: 11px; background: #ffffffeb; color: #456f4c; font-size: 11px; font-weight: 750; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease, background .18s ease; }
+.farm-profit-export:hover:not(:disabled) { background: #fff; box-shadow: 0 6px 16px #31533c15; transform: translateY(-2px); }
+.farm-profit-export:disabled { opacity: .5; cursor: not-allowed; }
+
+.farm-profit-filters { display: flex; align-items: end; gap: 12px; padding: 13px 16px; border: 1px solid var(--profit-line); border-radius: 16px; background: #fff; box-shadow: 0 5px 16px #263c2d05; }
+.farm-profit-filter-title { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 170px; margin-right: auto; }
+.farm-profit-filter-icon { display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border-radius: 11px; background: #eff6ec; color: #56865a; }
+.farm-profit-filter-title div { display: grid; gap: 3px; }
+.farm-profit-filter-title b { color: #405943; font-size: 11px; }
+.farm-profit-filter-title small { color: #8a978a; font-size: 9px; }
+.farm-profit-filters label { display: grid; gap: 5px; color: #78877a; font-size: 9px; font-weight: 750; }
+.farm-profit-filters select { min-width: 135px; min-height: 38px; padding: 0 30px 0 11px; border: 1px solid #e1e9de; border-radius: 10px; outline: none; background: #fbfcfa; color: #304936; font-size: 11px; font-weight: 650; cursor: pointer; }
+.farm-profit-filters select:focus { border-color: #79a67b; box-shadow: 0 0 0 3px #7dad791f; }
+.farm-profit-reset, .farm-profit-clear-crop { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 36px; padding: 0 9px; border: 1px solid #e3ebe0; border-radius: 9px; background: #fff; color: #6c856d; font-size: 9px !important; font-weight: 700; cursor: pointer; }
+.farm-profit-reset:hover, .farm-profit-clear-crop:hover { border-color: #bdd3b9; background: #f7fbf5; }
+.farm-profit-record-count { margin: 0 1px 10px auto; color: #89958a; font-size: 10px; white-space: nowrap; }
+.farm-profit-record-count b { color: #54775a; font-size: 12px; }
+
+.farm-profit-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.farm-profit-metrics article { position: relative; min-width: 0; display: grid; align-content: start; gap: 8px; min-height: 137px; padding: 16px 17px 13px; overflow: hidden; border: 1px solid #e6ece4; border-radius: 17px; background: #fff; box-shadow: 0 7px 20px #1c392107; transition: transform .18s ease, box-shadow .18s ease; }
+.farm-profit-metrics article:hover { box-shadow: 0 11px 24px #1c39210d; transform: translateY(-2px); }
+.farm-profit-metrics article::after { position: absolute; top: -26px; right: -25px; width: 84px; height: 84px; border-radius: 50%; background: #eff7ed; content: ''; opacity: .7; }
+.farm-profit-metrics article.cost::after { background: #fbf2e9; }
+.farm-profit-metrics article.net-negative::after { background: #fcf0ed; }
+.farm-profit-metrics article.production::after { background: #edf4ed; }
+.farm-profit-metrics article>span { position: relative; z-index: 1; display: flex; align-items: center; gap: 7px; color: #748276; font-size: 10px; font-weight: 750; }
+.farm-profit-metric-icon { display: grid; width: 29px; height: 29px; place-items: center; border-radius: 9px; background: #eff7ed; color: #57905f; font-style: normal; }
+.farm-profit-metrics article.cost .farm-profit-metric-icon { background: #fbf2e9; color: #b58050; }
+.farm-profit-metrics article.net-negative .farm-profit-metric-icon { background: #fcf0ed; color: #b85f54; }
+.farm-profit-metrics article.production .farm-profit-metric-icon { background: #edf4ed; color: #678b65; }
+.farm-profit-metrics article>strong { position: relative; z-index: 1; overflow-wrap: anywhere; color: #2d5035; font-size: clamp(18px, 2.1vw, 25px); font-variant-numeric: tabular-nums; }
+.farm-profit-metrics article>small { position: relative; z-index: 1; color: #929d92; font-size: 9px; }
+.farm-profit-metrics article.income>strong { color: #347948; }
+.farm-profit-metrics article.cost>strong { color: #a77149; }
+.farm-profit-metrics article.net-negative>strong { color: #b25147; }
+.farm-profit-metrics article.production>strong small { color: #66826a; font-size: 10px; }
+.farm-profit-metric-compare { position: relative; z-index: 1; display: flex; align-items: center; gap: 7px; margin-top: 1px; color: #97a197; font-size: 8px; }
+.farm-profit-delta { display: inline-flex; align-items: center; gap: 2px; font-size: 9px; font-weight: 800; }
+.farm-profit-delta.favorable { color: #39814a; }
+.farm-profit-delta.unfavorable { color: #b35b4f; }
+.farm-profit-production-track { position: relative; z-index: 1; height: 5px; overflow: hidden; border-radius: 10px; background: #edf1ea; }
+.farm-profit-production-track i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #9bc58d, #4f935e); transition: width .35s ease; }
+.farm-profit-comparison-note { display: flex; align-items: center; gap: 7px; padding: 9px 12px; border: 1px solid #e1ebde; border-radius: 11px; background: #f7fbf5; color: #7b8d7c; font-size: 9px; }
+.farm-profit-comparison-note svg { flex: 0 0 auto; color: #5a9061; }
+.farm-profit-comparison-note b { color: #527559; }
+
+.farm-profit-content { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(310px, .85fr); gap: 14px; }
+.farm-profit-chart, .farm-profit-crops { min-width: 0; padding: 19px; border: 1px solid var(--profit-line); border-radius: 18px; background: #fff; box-shadow: 0 6px 20px #263c2d05; }
+.farm-profit-section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 15px; }
+.farm-profit-section-head h2 { margin: 5px 0 0; color: #2a4331; font-size: 17px; letter-spacing: -.2px; }
+.farm-profit-section-head p { margin: 5px 0 0; color: #8a978b; font-size: 9px; line-height: 1.5; }
+.farm-profit-section-kicker { display: inline-flex; align-items: center; gap: 5px; color: #69816b; font-size: 9px; font-weight: 800; }
+.farm-profit-chart-modes { display: inline-flex; flex: 0 0 auto; gap: 2px; padding: 3px; border: 1px solid #e8eee5; border-radius: 10px; background: #f7f9f5; }
+.farm-profit-chart-modes button { min-height: 29px; padding: 0 9px; border: 0; border-radius: 7px; background: transparent; color: #829083; font-size: 9px; font-weight: 750; cursor: pointer; transition: color .18s ease, background .18s ease, box-shadow .18s ease; }
+.farm-profit-chart-modes button:hover { color: #476e4e; }
+.farm-profit-chart-modes button.active { background: #fff; color: #367648; box-shadow: 0 2px 6px #263c2d14; }
+.farm-profit-chart-modes button:focus-visible, .farm-profit-month:focus-visible, .farm-profit-crop-card:focus-visible { outline: 3px solid #91bd8b; outline-offset: 2px; }
+.farm-profit-legend { display: flex; justify-content: flex-end; gap: 13px; margin: -3px 3px 7px; color: #829083; font-size: 8px; }
+.farm-profit-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.farm-profit-legend i { width: 7px; height: 7px; border-radius: 50%; }
+.income-dot, .net-dot { background: #65a86e; }
+.cost-dot { background: #e9b587; }
+.farm-profit-chart-scroll { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: #dce7d9 transparent; }
+.farm-profit-bars { min-width: 495px; height: 191px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); align-items: stretch; gap: 5px; padding: 0 2px 2px; border-bottom: 1px solid #e9eee7; }
+.farm-profit-month { position: relative; display: flex; min-width: 0; flex-direction: column; align-items: center; justify-content: flex-end; gap: 7px; padding: 5px 2px 6px; border: 0; border-radius: 9px 9px 0 0; background: transparent; color: #8a9589; cursor: pointer; transition: background .18s ease; }
+.farm-profit-month:hover, .farm-profit-month.selected { background: #f3f8f1; }
+.farm-profit-month-label { font-size: 9px; white-space: nowrap; }
+.farm-profit-month.selected .farm-profit-month-label { color: #367648; font-weight: 800; }
+.farm-profit-bar-area { display: flex; width: 100%; height: calc(100% - 27px); align-items: end; justify-content: center; gap: 3px; }
+.farm-profit-bar-area i { width: min(35%, 15px); min-height: 0; border-radius: 5px 5px 1px 1px; transition: height .35s ease, filter .2s ease; }
+.farm-profit-month:hover .farm-profit-bar-area i { filter: saturate(1.22); }
+.farm-profit-bar-area .income-bar { background: linear-gradient(180deg, #91cb91, #52945d); }
+.farm-profit-bar-area .cost-bar { background: linear-gradient(180deg, #f2c99f, #d69a67); }
+.farm-profit-bars.mode-cost .farm-profit-bar-area .cost-bar { width: 48%; background: linear-gradient(180deg, #f2c99f, #d69a67); }
+.farm-profit-bars.mode-net .farm-profit-bar-area .net-bar { width: 48%; background: linear-gradient(180deg, #91cb91, #52945d); }
+.farm-profit-bars.mode-net .farm-profit-bar-area .net-bar.negative { background: linear-gradient(180deg, #e9a29a, #bd655a); }
+.farm-profit-month-marker { position: absolute; bottom: 1px; width: 3px; height: 3px; border-radius: 50%; background: #70a875; }
+.farm-profit-month-detail { margin-top: 13px; padding: 11px 12px; border: 1px solid #e7eee3; border-radius: 12px; background: linear-gradient(100deg, #f8fbf6, #fff); animation: farm-profit-appear .2s ease-out; }
+.farm-profit-month-detail-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
+.farm-profit-month-detail-title span { display: inline-flex; align-items: center; gap: 6px; color: #496d4e; font-size: 10px; font-weight: 800; }
+.farm-profit-month-detail-title button { padding: 3px 6px; border: 0; border-radius: 5px; background: transparent; color: #859287; font-size: 8px; cursor: pointer; }
+.farm-profit-month-detail-values { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.farm-profit-month-detail-values span { display: grid; gap: 4px; }
+.farm-profit-month-detail-values small { color: #919c91; font-size: 8px; }
+.farm-profit-month-detail-values b { color: #3c5a40; font-size: 10px; overflow-wrap: anywhere; }
+.farm-profit-month-detail-values .positive { color: #3d8a4c; }
+.farm-profit-month-detail-values .negative { color: #b25147; }
+.farm-profit-note { margin: 11px 0 0; color: #929d92; font-size: 8px; line-height: 1.6; }
+
+.farm-profit-crop-list { display: grid; gap: 8px; max-height: 340px; overflow: auto; padding: 1px 3px 2px 1px; scrollbar-width: thin; scrollbar-color: #dce7d9 transparent; }
+.farm-profit-crop-card { width: 100%; display: grid; gap: 9px; padding: 12px; border: 1px solid #e9eee7; border-radius: 13px; background: #fcfdfb; text-align: left; cursor: pointer; transition: border .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease; }
+.farm-profit-crop-card:hover { border-color: #cbdcc7; background: #fbfdf9; box-shadow: 0 5px 13px #27462a0c; transform: translateY(-1px); }
+.farm-profit-crop-card.selected { border-color: #91b98a; background: #f5faf2; box-shadow: inset 3px 0 #68a06c; }
+.farm-profit-crop-top { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.farm-profit-crop-avatar { display: grid; width: 32px; height: 32px; flex: 0 0 32px; place-items: center; border-radius: 10px; background: #edf5ea; color: #57875a; }
+.farm-profit-crop-name { display: grid; flex: 1; gap: 3px; min-width: 0; }
+.farm-profit-crop-name b { overflow: hidden; color: #344d38; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.farm-profit-crop-name small { overflow: hidden; color: #8a968a; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.farm-profit-best { padding: 4px 6px; border: 1px solid #d6e8d2; border-radius: 20px; background: #edf7e9; color: #568658; font-size: 8px; font-weight: 800; }
+.farm-profit-crop-profit { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-top: 8px; border-top: 1px solid #edf1e9; }
+.farm-profit-crop-profit span { color: #8b978b; font-size: 8px; }
+.farm-profit-crop-profit b { font-size: 13px; }
+.farm-profit-crop-profit .positive { color: #43844c; }
+.farm-profit-crop-profit .negative { color: #b25147; }
+.farm-profit-crop-track { height: 5px; overflow: hidden; border-radius: 8px; background: #e8eee5; }
+.farm-profit-crop-track i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #efc49a, #d49361); }
+.farm-profit-crop-breakdown { display: flex; justify-content: space-between; gap: 8px; color: #929e92; font-size: 8px; }
+.farm-profit-crop-breakdown span { display: flex; gap: 4px; }
+.farm-profit-crop-breakdown b { color: #617463; font-weight: 700; }
+.farm-profit-empty { min-height: 180px; display: grid; place-content: center; justify-items: center; gap: 8px; padding: 18px; color: #7f967e; text-align: center; }
+.farm-profit-empty svg { color: #7fa77a; }
+.farm-profit-empty b { color: #526554; font-size: 12px; }
+.farm-profit-empty span { max-width: 255px; color: #909b90; font-size: 9px; line-height: 1.6; }
+
+@keyframes farm-profit-appear { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 980px) {
+  .farm-profit-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .farm-profit-content { grid-template-columns: 1fr; }
+  .farm-profit-crop-list { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 400px; }
+}
+
+@media (max-width: 680px) {
+  .farm-profit-page { gap: 12px; padding: 15px 0 28px; }
+  .farm-profit-hero { align-items: flex-start; min-height: 260px; flex-direction: column; padding: 22px 20px; }
+  .farm-profit-hero-copy { max-width: 100%; padding-top: 22px; }
+  .farm-profit-hero h1 { max-width: 400px; font-size: 25px; }
+  .farm-profit-hero p { max-width: 390px; font-size: 11px; }
+  .farm-profit-hero-points { max-width: 230px; flex-direction: column; gap: 7px; margin-top: 13px; }
+  .farm-profit-hero-art { width: 57%; opacity: .72; }
+  .farm-profit-sun { top: 50px; right: 12%; width: 62px; height: 62px; }
+  .farm-profit-art-card { top: auto; right: 8%; bottom: 53px; min-width: 119px; padding: 9px 11px; }
+  .farm-profit-art-card strong { font-size: 16px; }
+  .farm-profit-export { top: 12px; right: 12px; min-height: 35px; padding: 0 10px; font-size: 9px; }
+  .farm-profit-filters { align-items: stretch; flex-wrap: wrap; gap: 10px; padding: 12px; }
+  .farm-profit-filter-title { flex-basis: 100%; margin: 0 0 2px; }
+  .farm-profit-filters label { flex: 1; min-width: 120px; }
+  .farm-profit-filters select { width: 100%; min-width: 0; }
+  .farm-profit-record-count { align-self: center; margin: 0 0 0 auto; }
+  .farm-profit-reset { align-self: center; }
+  .farm-profit-metrics { gap: 8px; }
+  .farm-profit-metrics article { min-height: 128px; gap: 6px; padding: 12px; }
+  .farm-profit-metrics article>span { gap: 5px; font-size: 9px; }
+  .farm-profit-metric-icon { width: 25px; height: 25px; }
+  .farm-profit-metric-icon svg { width: 14px; height: 14px; }
+  .farm-profit-metrics article>strong { font-size: 17px; }
+  .farm-profit-metrics article>small { font-size: 8px; }
+  .farm-profit-metric-compare { font-size: 7px; }
+  .farm-profit-content { gap: 11px; }
+  .farm-profit-chart, .farm-profit-crops { padding: 14px; border-radius: 15px; }
+  .farm-profit-section-head { flex-wrap: wrap; margin-bottom: 12px; }
+  .farm-profit-section-head h2 { font-size: 15px; }
+  .farm-profit-chart-modes { margin-left: auto; }
+  .farm-profit-chart-modes button { min-height: 27px; padding: 0 7px; font-size: 8px; }
+  .farm-profit-bars { min-width: 480px; height: 170px; gap: 3px; }
+  .farm-profit-month-label { font-size: 8px; }
+  .farm-profit-crop-list { grid-template-columns: 1fr; max-height: 390px; }
+  .farm-profit-month-detail-values { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 11px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .farm-profit-page *, .farm-profit-page *::before, .farm-profit-page *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
