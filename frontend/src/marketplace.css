@@ -365,3 +365,18 @@
 .market-price-comparison-error{border:1px solid #f0d6a8;background:#fff9ed;color:#86662e}
 @media(max-width:800px){.market-farmer-list-layout .market-listing-scroll{grid-template-columns:1fr}}
 @media(max-width:560px){.market-farmer-listing-card{grid-template-columns:86px minmax(0,1fr);gap:9px;padding:9px}.market-farmer-listing-card .market-product-photo{min-height:145px}.market-farmer-listing-card .market-listing-content h3{font-size:14px}.market-farmer-price-comparison{padding:8px}.market-farmer-price-pair{grid-template-columns:1fr;gap:6px}.market-farmer-price-vs{justify-self:start}.market-farmer-price-value>strong{font-size:16px}.market-farmer-price-value>span{font-size:8px}.market-farmer-price-value>small{font-size:7px}}
+
+.market-seller-quick-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:0 0 12px}
+.market-seller-quick-facts>span{min-width:0;display:grid;align-content:center;gap:4px;padding:10px 12px;border:1px solid #e7ece5;border-radius:10px;background:#fafcf9}
+.market-seller-quick-facts small{color:#829083;font-size:9px}
+.market-seller-quick-facts b{overflow-wrap:anywhere;color:#355b3e;font-size:12px}
+.market-seller-details{margin-top:8px;border:1px solid #e5ebe3;border-radius:11px;background:#fff}
+.market-seller-details summary{min-height:43px;display:flex;align-items:center;padding:0 13px;color:#436749;font-size:10px;font-weight:750;cursor:pointer;list-style-position:inside}
+.market-seller-details summary:hover{background:#f8fbf7}
+.market-seller-details[open] summary{border-bottom:1px solid #e8eee6;background:#f8fbf7}
+.market-seller-details .market-seller-controls{margin:11px;padding:13px;background:#fbfcfa}
+.market-seller-requests .market-request-list,.market-seller-requests .market-no-requests{margin:11px}
+.market-admin-delete-button{min-height:34px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 11px;border:1px solid #eed2cf;border-radius:8px;background:#fff6f4;color:#a34d46;font:700 9px inherit;cursor:pointer}
+.market-admin-delete-button:hover:not(:disabled){border-color:#dba8a3;background:#ffefec}
+.market-admin-delete-button:disabled{opacity:.65;cursor:wait}
+@media(max-width:560px){.market-seller-quick-facts{grid-template-columns:1fr}.market-seller-quick-facts>span{grid-template-columns:minmax(90px,.55fr) minmax(0,1fr);align-items:center}.market-seller-details summary{min-height:46px}.market-seller-details .market-seller-controls{margin:8px;padding:10px}}

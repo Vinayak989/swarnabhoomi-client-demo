@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet';
 import { ArrowDownRight, ArrowDownWideNarrow, ArrowRight, ArrowUpRight, Check, ClipboardList, FileDown, Heart, LocateFixed, MapPin, Minus, PackageCheck, PackagePlus, Phone, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, ShoppingCart, Store, Trash2, Upload, UserRound, Wheat, X } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
-import { fetchOfficialPrices, findLatestCommodityPrice, MARKET_CROP_OPTIONS, MARKET_CROP_TYPE_OPTIONS } from './MarketPrices.jsx';
+import { fetchOfficialPrices, findLatestCommodityPrice, MARKET_CROP_OPTIONS } from './MarketPrices.jsx';
 import './marketplace.css';
 
 const EMPTY_FORM = {
@@ -255,7 +255,6 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   const [marketPriceError, setMarketPriceError] = useState('');
   const [form, setForm] = useState(EMPTY_FORM);
   const [customProductName, setCustomProductName] = useState(false);
-  const [customCropType, setCustomCropType] = useState(false);
   const [photo, setPhoto] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [authorization, setAuthorization] = useState(auth);
@@ -278,6 +277,8 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [adminListingNotice, setAdminListingNotice] = useState('');
+  const [deletingListingId, setDeletingListingId] = useState(null);
   const [cart, setCart] = useState(() => readCart(userId));
   const [cartNotice, setCartNotice] = useState('');
   const [buyerName, setBuyerName] = useState('');
@@ -529,14 +530,18 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
 
   function updateField(event) {
     const { name, value } = event.target;
-    setForm(current => ({ ...current, [name]: value }));
+    setForm(current => ({ ...current, [name]: value, ...(name === 'productName' ? { cropType: value } : {}) }));
   }
 
   function updateChoice(event, setCustom) {
     const { name, value } = event.target;
     const isCustom = value === '__other__';
     setCustom(isCustom);
-    setForm(current => ({ ...current, [name]: isCustom ? '' : value }));
+    setForm(current => ({
+      ...current,
+      [name]: isCustom ? '' : value,
+      ...(name === 'productName' ? { cropType: isCustom ? '' : value } : {})
+    }));
   }
 
   function askForLocation(useForListing = false) {
@@ -615,7 +620,6 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       setForm(EMPTY_FORM);
       formRef.current = EMPTY_FORM;
       setCustomProductName(false);
-      setCustomCropType(false);
       setPhoto(null);
       photoRef.current = null;
       setView('seller');
@@ -825,6 +829,40 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   function formatPrice(price, unit) {
     const unitLabel = UNITS.find(([value]) => value === unit)?.[1] || unit;
     return `₹${Number(price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / ${unitLabel}`;
+  }
+
+  async function deleteMarketplaceListing(listing, event) {
+    event.stopPropagation();
+    if (accountType !== 'admin' || !window.confirm(`“${listing.productName}” ही विक्रीची नोंद कायमची हटवायची आहे का?`)) return;
+
+    setDeletingListingId(listing.id);
+    setError('');
+    setAdminListingNotice('');
+    try {
+      const response = await request(`/admin/listings/${listing.id}`, { method: 'DELETE' });
+      if (response.status === 401) {
+        onUnauthorizedRef.current?.();
+        return;
+      }
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.message || 'विक्रीची नोंद हटवता आली नाही.');
+      }
+
+      setListings(current => current.filter(item => item.id !== listing.id));
+      setFavoriteIds(current => {
+        const next = new Set(current);
+        next.delete(String(listing.id));
+        return next;
+      });
+      setCart(current => current.filter(item => item.listingId !== listing.id));
+      setActiveListing(current => current === listing.id ? null : current);
+      setAdminListingNotice(`${listing.productName} ची विक्रीची नोंद हटवली.`);
+    } catch (deleteError) {
+      setError(deleteError.message || 'विक्रीची नोंद हटवता आली नाही.');
+    } finally {
+      setDeletingListingId(null);
+    }
   }
 
   function effectivePrice(listing) {
@@ -1082,6 +1120,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
 
     {error && <div className="market-message market-error" role="alert">{error}</div>}
     {cartNotice && view === 'browse' && <div className="market-message market-success" role="status"><Check size={15}/>{cartNotice}</div>}
+    {adminListingNotice && view === 'browse' && <div className="market-message market-success" role="status"><Check size={15}/>{adminListingNotice}</div>}
 
     {view === 'browse' ? <>
       <section className="market-category-shortcuts" aria-label="शेतमालाच्या प्रकारानुसार शोधा">
@@ -1143,10 +1182,14 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
                     <div className="market-seller"><UserRound size={13}/><b>{listing.sellerName}</b></div>
                     <p className="market-address"><MapPin size={13}/>{listing.address}</p>
                     <div className="market-listing-actions">
-                      {accountType === 'buyer' && listing.pricePerUnit != null && listing.available !== false && Number(listing.quantity) > 0
-                        ? <button type="button" className="market-buy-button" onClick={event => addToCart(listing, event)}><ShoppingCart size={14}/>{cart.some(item => item.listingId === listing.id) ? 'आणखी जोडा' : 'कार्टमध्ये जोडा'}</button>
-                        : <button type="button" className="market-buy-button" disabled><ShoppingBag size={14}/>{listing.available === false || Number(listing.quantity) <= 0 ? 'साठा संपला' : 'खरेदीदारांसाठी'}</button>}
-                      <button type="button" className="market-contact-button" onClick={event => { event.stopPropagation(); fetchContact(listing.id); }}><Phone size={14}/> संपर्क मिळवा</button>
+                      {accountType === 'admin'
+                        ? <button type="button" className="market-admin-delete-button" onClick={event => deleteMarketplaceListing(listing, event)} disabled={deletingListingId !== null}><Trash2 size={14}/>{deletingListingId === listing.id ? 'हटवत आहे…' : 'नोंद हटवा'}</button>
+                        : <>
+                          {accountType === 'buyer' && listing.pricePerUnit != null && listing.available !== false && Number(listing.quantity) > 0
+                            ? <button type="button" className="market-buy-button" onClick={event => addToCart(listing, event)}><ShoppingCart size={14}/>{cart.some(item => item.listingId === listing.id) ? 'आणखी जोडा' : 'कार्टमध्ये जोडा'}</button>
+                            : <button type="button" className="market-buy-button" disabled><ShoppingBag size={14}/>{listing.available === false || Number(listing.quantity) <= 0 ? 'साठा संपला' : 'खरेदीदारांसाठी'}</button>}
+                          <button type="button" className="market-contact-button" onClick={event => { event.stopPropagation(); fetchContact(listing.id); }}><Phone size={14}/> संपर्क मिळवा</button>
+                        </>}
                     </div>
                   </>}
                 </div>
@@ -1249,14 +1292,6 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
             </select>
             {customProductName && <input name="productName" value={form.productName} onChange={updateField} maxLength={120} required placeholder="शेतमालाचे नाव लिहा"/>}
           </label>
-          <label className="market-field"><span>पीक / प्रकार *</span>
-            <select name="cropType" value={customCropType ? '__other__' : form.cropType} onChange={event => updateChoice(event, setCustomCropType)} required>
-              <option value="" disabled>पीक / प्रकार निवडा</option>
-              {MARKET_CROP_TYPE_OPTIONS.map(name => <option value={name} key={name}>{name}</option>)}
-              <option value="__other__">इतर पीक / प्रकार लिहा</option>
-            </select>
-            {customCropType && <input name="cropType" value={form.cropType} onChange={updateField} maxLength={80} required placeholder="पीक किंवा प्रकार लिहा"/>}
-          </label>
           <label className="market-field"><span>शेतमालाचा प्रकार *</span><select name="category" value={form.category} onChange={updateField}>{CATEGORIES.map(category=><option key={category}>{category}</option>)}</select></label>
           <div className="market-quantity-field">
             <label className="market-field"><span>उपलब्ध प्रमाण *</span><input name="quantity" type="number" min="0.01" max="1000000000" step="any" value={form.quantity} onChange={updateField} required placeholder="उदा. ५०"/></label>
@@ -1277,35 +1312,45 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     </section> : <section className="market-seller-dashboard">
       <div className="market-form-card market-seller-intro">
         <div className="market-card-heading"><div><span>विक्रेता विभाग</span><h2>माझे व्यवहार</h2></div><button type="button" className="market-location-button" onClick={loadSellerListings}><ArrowDownWideNarrow size={15}/> ताजे करा</button></div>
-        <p>तुमचा साठा आणि खरेदीदारांच्या विनंत्या येथे व्यवस्थापित करा. विक्रीची नोंद करताना नियंत्रण माहिती या ब्राउझरमध्ये सुरक्षितपणे जतन होते.</p>
+        <p>दर आणि साठा पाहा. बदल किंवा खरेदीच्या विनंत्यांसाठी नोंद उघडा.</p>
       </div>
       {sellerError && <div className="market-message market-error" role="alert">{sellerError}</div>}
       {sellerNotice && <div className="market-message market-success" role="status"><Check size={15}/>{sellerNotice}</div>}
       {sellerLoading ? <div className="market-empty">विक्रेता माहिती लोड होत आहे…</div>
         : sellerListings.length === 0 ? <div className="market-empty market-seller-empty"><ClipboardList size={30}/><b>या ब्राउझरमध्ये विक्रीची नोंद नाही</b><span>नोंदणी केल्यानंतर तुमचा शेतमाल आणि खरेदीच्या विनंत्या येथे दिसतील. जुनी नोंद असल्यास तिचे नियंत्रण तपशील या ब्राउझरमध्ये उपलब्ध नसू शकतात.</span><button type="button" className="market-submit-button" onClick={() => setView('register')}><PackagePlus size={16}/> शेतमाल नोंदवा</button></div>
           : <div className="market-seller-list">{sellerListings.map(row => <article className="market-seller-card" key={row.listing.id}>
-            <div className="market-card-heading"><div><span>{row.listing.category}</span><h2>{row.listing.productName} · {row.listing.cropType}</h2></div><span className={`market-availability ${row.listing.available ? 'available' : ''}`}>{row.listing.available ? 'विक्री सुरू' : 'बंद'}</span></div>
-            <div className="market-seller-controls">
-              <label className="market-field"><span>किंमत (₹ / {UNITS.find(([value]) => value === row.listing.unit)?.[1] || row.listing.unit})</span><input type="number" min="0.01" max="9999999999.99" step="0.01" value={row.listing.pricePerUnit ?? ''} onChange={event => updateSellerListing(row.listing.id, 'pricePerUnit', event.target.value)}/></label>
-              <label className="market-field"><span>ऑफर सवलत (%)</span><input type="number" min="0" max="99.99" step="0.01" value={row.listing.discountPercent ?? ''} onChange={event => updateSellerListing(row.listing.id, 'discountPercent', event.target.value)} placeholder="ऐच्छिक"/><small>रिकामे ठेवल्यास ऑफर काढली जाईल.</small></label>
-              <label className="market-field"><span>उपलब्ध प्रमाण ({UNITS.find(([value]) => value === row.listing.unit)?.[1] || row.listing.unit})</span><input type="number" min="0" max="1000000000" step="any" value={row.listing.quantity} onChange={event => updateSellerListing(row.listing.id, 'quantity', event.target.value)}/></label>
-              <div className="market-stock-add"><label className="market-field"><span>साठ्यात वाढवा</span><input type="number" min="0.001" max="1000000000" step="any" value={sellerStockAdds[row.listing.id] ?? ''} onChange={event => setSellerStockAdds(current => ({ ...current, [row.listing.id]: event.target.value }))} placeholder="प्रमाण"/></label><button type="button" className="market-stock-add-button" onClick={() => addSellerStock(row)} disabled={sellerSavingId === row.listing.id || !sellerStockAdds[row.listing.id]}><Plus size={13}/> साठ्यात जोडा</button></div>
-              <label className="market-availability-toggle"><input type="checkbox" checked={Boolean(row.listing.available)} onChange={event => updateSellerListing(row.listing.id, 'available', event.target.checked)}/> खरेदीसाठी उपलब्ध</label>
-              <button type="button" className="market-submit-button" disabled={sellerSavingId === row.listing.id} onClick={() => saveSellerListing(row)}>{sellerSavingId === row.listing.id ? 'जतन होत आहे…' : 'बदल जतन करा'}</button>
+            <div className="market-card-heading"><div><span>{row.listing.category}</span><h2>{row.listing.productName}</h2></div><span className={`market-availability ${row.listing.available ? 'available' : ''}`}>{row.listing.available ? 'विक्री सुरू' : 'बंद'}</span></div>
+            <div className="market-seller-quick-facts">
+              <span><small>विक्री दर</small><b>{formatPrice(row.listing.pricePerUnit, row.listing.unit)}</b></span>
+              <span><small>उपलब्ध साठा</small><b>{formatQuantity(row.listing)}</b></span>
+              <span><small>नवीन विनंत्या</small><b>{row.requests.filter(item => item.status === 'PENDING').length.toLocaleString('mr-IN')}</b></span>
             </div>
-            <div className="market-request-heading"><div><ClipboardList size={16}/><h3>खरेदीच्या विनंत्या</h3></div><span>{row.requests.length.toLocaleString('mr-IN')}</span></div>
-            {!row.requests.length ? <p className="market-no-requests">अजून खरेदीची विनंती आलेली नाही.</p> : <div className="market-request-list">{row.requests.map(purchaseRequest => <div className="market-request-card" key={purchaseRequest.id}>
-              <div className="market-request-top"><b>{purchaseRequest.buyerName}</b><span className={`market-request-status status-${purchaseRequest.status.toLowerCase()}`}>{requestStatusLabel(purchaseRequest.status)}</span></div>
-              <p>{Number(purchaseRequest.quantity).toLocaleString('mr-IN')} {UNITS.find(([value]) => value === purchaseRequest.unit)?.[1] || purchaseRequest.unit} · {purchaseRequest.fulfillment === 'DELIVERY' ? 'पोहोचवणे हवे' : 'स्वतः घेऊन जाणार'}{purchaseRequest.totalAmount != null ? ` · ₹${Number(purchaseRequest.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}</p>
-              <div className="market-payment-summary"><span>{paymentMethodLabel(purchaseRequest.paymentMethod)}</span><b className={`payment-${String(purchaseRequest.paymentStatus || '').toLowerCase()}`}>{paymentStatusLabel(purchaseRequest.paymentStatus)}</b></div>
-              <a href={`tel:${purchaseRequest.buyerPhone}`} className="market-request-phone"><Phone size={13}/>{purchaseRequest.buyerPhone}</a>
-              {purchaseRequest.note && <p className="market-request-note">“{purchaseRequest.note}”</p>}
-              <div className="market-request-actions">
-                {purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus === 'PENDING' && purchaseRequest.status !== 'DECLINED' && <button type="button" onClick={() => updatePaymentStatus(row, purchaseRequest, 'PAID')}>रोख पेमेंट मिळाले</button>}
-                {purchaseRequest.status === 'PENDING' && <><button type="button" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'ACCEPTED')}>स्वीकारा</button><button type="button" className="decline" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'DECLINED')}>नाकारा</button></>}
-                {purchaseRequest.status === 'ACCEPTED' && <button type="button" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'COMPLETED')}>व्यवहार पूर्ण करा</button>}
+            <details className="market-seller-details">
+              <summary>किंमत, साठा आणि उपलब्धता बदला</summary>
+              <div className="market-seller-controls">
+                <label className="market-field"><span>किंमत (₹ / {UNITS.find(([value]) => value === row.listing.unit)?.[1] || row.listing.unit})</span><input type="number" min="0.01" max="9999999999.99" step="0.01" value={row.listing.pricePerUnit ?? ''} onChange={event => updateSellerListing(row.listing.id, 'pricePerUnit', event.target.value)}/></label>
+                <label className="market-field"><span>ऑफर सवलत (%)</span><input type="number" min="0" max="99.99" step="0.01" value={row.listing.discountPercent ?? ''} onChange={event => updateSellerListing(row.listing.id, 'discountPercent', event.target.value)} placeholder="ऐच्छिक"/><small>रिकामे ठेवल्यास ऑफर काढली जाईल.</small></label>
+                <label className="market-field"><span>उपलब्ध प्रमाण ({UNITS.find(([value]) => value === row.listing.unit)?.[1] || row.listing.unit})</span><input type="number" min="0" max="1000000000" step="any" value={row.listing.quantity} onChange={event => updateSellerListing(row.listing.id, 'quantity', event.target.value)}/></label>
+                <div className="market-stock-add"><label className="market-field"><span>साठ्यात वाढवा</span><input type="number" min="0.001" max="1000000000" step="any" value={sellerStockAdds[row.listing.id] ?? ''} onChange={event => setSellerStockAdds(current => ({ ...current, [row.listing.id]: event.target.value }))} placeholder="प्रमाण"/></label><button type="button" className="market-stock-add-button" onClick={() => addSellerStock(row)} disabled={sellerSavingId === row.listing.id || !sellerStockAdds[row.listing.id]}><Plus size={13}/> साठ्यात जोडा</button></div>
+                <label className="market-availability-toggle"><input type="checkbox" checked={Boolean(row.listing.available)} onChange={event => updateSellerListing(row.listing.id, 'available', event.target.checked)}/> खरेदीसाठी उपलब्ध</label>
+                <button type="button" className="market-submit-button" disabled={sellerSavingId === row.listing.id} onClick={() => saveSellerListing(row)}>{sellerSavingId === row.listing.id ? 'जतन होत आहे…' : 'बदल जतन करा'}</button>
               </div>
-            </div>)}</div>}
+            </details>
+            <details className="market-seller-details market-seller-requests">
+              <summary>खरेदीच्या विनंत्या ({row.requests.length.toLocaleString('mr-IN')})</summary>
+              {!row.requests.length ? <p className="market-no-requests">अजून खरेदीची विनंती आलेली नाही.</p> : <div className="market-request-list">{row.requests.map(purchaseRequest => <div className="market-request-card" key={purchaseRequest.id}>
+                <div className="market-request-top"><b>{purchaseRequest.buyerName}</b><span className={`market-request-status status-${purchaseRequest.status.toLowerCase()}`}>{requestStatusLabel(purchaseRequest.status)}</span></div>
+                <p>{Number(purchaseRequest.quantity).toLocaleString('mr-IN')} {UNITS.find(([value]) => value === purchaseRequest.unit)?.[1] || purchaseRequest.unit} · {purchaseRequest.fulfillment === 'DELIVERY' ? 'पोहोचवणे हवे' : 'स्वतः घेऊन जाणार'}{purchaseRequest.totalAmount != null ? ` · ₹${Number(purchaseRequest.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}</p>
+                <div className="market-payment-summary"><span>{paymentMethodLabel(purchaseRequest.paymentMethod)}</span><b className={`payment-${String(purchaseRequest.paymentStatus || '').toLowerCase()}`}>{paymentStatusLabel(purchaseRequest.paymentStatus)}</b></div>
+                <a href={`tel:${purchaseRequest.buyerPhone}`} className="market-request-phone"><Phone size={13}/>{purchaseRequest.buyerPhone}</a>
+                {purchaseRequest.note && <p className="market-request-note">“{purchaseRequest.note}”</p>}
+                <div className="market-request-actions">
+                  {purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus === 'PENDING' && purchaseRequest.status !== 'DECLINED' && <button type="button" onClick={() => updatePaymentStatus(row, purchaseRequest, 'PAID')}>रोख पेमेंट मिळाले</button>}
+                  {purchaseRequest.status === 'PENDING' && <><button type="button" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'ACCEPTED')}>स्वीकारा</button><button type="button" className="decline" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'DECLINED')}>नाकारा</button></>}
+                  {purchaseRequest.status === 'ACCEPTED' && <button type="button" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'COMPLETED')}>व्यवहार पूर्ण करा</button>}
+                </div>
+              </div>)}</div>}
+            </details>
           </article>)}</div>}
     </section>}
 

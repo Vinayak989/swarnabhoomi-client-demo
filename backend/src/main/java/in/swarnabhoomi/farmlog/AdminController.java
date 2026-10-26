@@ -12,7 +12,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -95,6 +97,16 @@ public class AdminController {
             @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
         requireAdmin(user);
         return listings.findAllByOrderByCreatedAtDesc(pageRequest(page, size)).map(AdminController::listingRecord);
+    }
+
+    @DeleteMapping("/listings/{id}")
+    @Transactional
+    public void deleteListing(@PathVariable Long id,
+            @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
+        requireAdmin(user);
+        FarmProductListing listing = listings.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "विक्रीची नोंद सापडली नाही."));
+        listings.delete(listing);
     }
 
     @GetMapping("/purchase-requests")
