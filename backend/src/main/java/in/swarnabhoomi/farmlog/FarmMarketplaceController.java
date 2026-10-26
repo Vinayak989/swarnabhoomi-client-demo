@@ -67,8 +67,8 @@ public class FarmMarketplaceController {
     }
 
     @GetMapping("/listings")
-    public List<ListingResponse> listings() {
-        return repository.findTop200ByOrderByCreatedAtDesc().stream().map(ListingResponse::from).toList();
+    public List<PublicListingResponse> listings() {
+        return repository.findTop200ByOrderByCreatedAtDesc().stream().map(PublicListingResponse::from).toList();
     }
 
     @PostMapping("/photos")
@@ -366,10 +366,15 @@ public class FarmMarketplaceController {
     }
 
     @GetMapping("/listings/{id}/contact")
-    public Map<String, String> contact(@PathVariable Long id) {
+    public SellerContactResponse contact(@PathVariable Long id,
+            @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
+        if (!"admin".equals(user.getRole())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can view seller contact details.");
+        }
         FarmProductListing listing = repository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "विक्रीची नोंद सापडली नाही."));
-        return Map.of("phone", listing.getPhone());
+        return new SellerContactResponse(listing.getSellerName(), listing.getPhone(), listing.getAddress(),
+                listing.getLatitude(), listing.getLongitude());
     }
 
     @PostMapping("/access")
@@ -423,7 +428,6 @@ public class FarmMarketplaceController {
         order.setBuyerPhone(buyer.getMobileNumber());
         order.setProductName(listing.getProductName());
         order.setSellerName(listing.getSellerName());
-        order.setSellerPhone(listing.getPhone());
         order.setPricePerUnit(discountedPrice(listing.getPricePerUnit(), listing.getDiscountPercent()));
         order.setQuantity(quantity);
         order.setUnit(listing.getUnit());
@@ -579,18 +583,33 @@ public class FarmMarketplaceController {
 
     public record PurchaseRequestStatusUpdate(String status, String paymentStatus) {}
 
-    public record PurchaseRequestResponse(Long id, Long listingId, String buyerName, String buyerPhone,
-            String productName, String sellerName, String sellerPhone, BigDecimal quantity, String unit, BigDecimal pricePerUnit,
+    public record PurchaseRequestResponse(Long id, Long listingId, String buyerName,
+            String productName, String sellerName, BigDecimal quantity, String unit, BigDecimal pricePerUnit,
             BigDecimal totalAmount, MarketplacePurchaseRequest.Fulfillment fulfillment, String note,
             MarketplacePurchaseRequest.Status status, MarketplacePurchaseRequest.PaymentMethod paymentMethod,
             MarketplacePurchaseRequest.PaymentStatus paymentStatus, java.time.Instant createdAt) {
         static PurchaseRequestResponse from(MarketplacePurchaseRequest request) {
             return new PurchaseRequestResponse(request.getId(), request.getListingId(), request.getBuyerName(),
-                    request.getBuyerPhone(), request.getProductName(), request.getSellerName(), request.getSellerPhone(), request.getQuantity(),
+                    request.getProductName(), request.getSellerName(), request.getQuantity(),
                     request.getUnit(), request.getPricePerUnit(), request.getPricePerUnit() == null ? null
                         : request.getPricePerUnit().multiply(request.getQuantity()), request.getFulfillment(),
                     request.getNote(), request.getStatus(), request.getPaymentMethod(),
                     request.getPaymentStatus(), request.getCreatedAt());
+        }
+    }
+
+    public record SellerContactResponse(String sellerName, String phone, String address,
+            double latitude, double longitude) {}
+
+    public record PublicListingResponse(Long id, String sellerName, String productName, String cropType,
+            String category, double quantity, BigDecimal pricePerUnit, BigDecimal discountPercent,
+            BigDecimal discountedPricePerUnit, boolean available, String unit, String description, String photoUrl) {
+        static PublicListingResponse from(FarmProductListing listing) {
+            return new PublicListingResponse(listing.getId(), listing.getSellerName(), listing.getProductName(),
+                    listing.getCropType(), listing.getCategory(), listing.getQuantity(), listing.getPricePerUnit(),
+                    listing.getDiscountPercent(), discountedPrice(listing.getPricePerUnit(), listing.getDiscountPercent()),
+                    !Boolean.FALSE.equals(listing.getAvailable()), listing.getUnit(), listing.getDescription(),
+                    listing.getPhotoUrl());
         }
     }
 

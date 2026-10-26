@@ -1,7 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import L from 'leaflet';
-import { ArrowDownRight, ArrowDownWideNarrow, ArrowRight, ArrowUpRight, Check, ClipboardList, FileDown, Heart, LocateFixed, MapPin, Minus, PackageCheck, PackagePlus, Phone, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, ShoppingCart, Store, Trash2, Upload, UserRound, Wheat, X } from 'lucide-react';
-import 'leaflet/dist/leaflet.css';
+import { ArrowDownRight, ArrowDownWideNarrow, ArrowRight, ArrowUpRight, Check, ClipboardList, FileDown, Heart, LocateFixed, MapPin, Minus, PackageCheck, PackagePlus, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, ShoppingCart, Store, Trash2, Upload, UserRound, Wheat } from 'lucide-react';
 import { fetchOfficialPrices, findLatestCommodityPrice, MARKET_CROP_OPTIONS } from './MarketPrices.jsx';
 import SpeechTextInput from './SpeechTextInput.jsx';
 import './marketplace.css';
@@ -31,7 +29,6 @@ const UNITS = [
   ['crate', 'क्रेट'],
   ['piece', 'नग']
 ];
-const DEFAULT_CENTER = [16.8524, 74.5815];
 const PHOTO_LIMIT = 10 * 1024 * 1024;
 
 function readCart(userId) {
@@ -107,15 +104,6 @@ function receiptPdfBytes(canvas) {
   return output;
 }
 
-function distanceKm(a, b) {
-  const radians = value => value * Math.PI / 180;
-  const latitude = radians(b.latitude - a.latitude);
-  const longitude = radians(b.longitude - a.longitude);
-  const value = Math.sin(latitude / 2) ** 2
-    + Math.cos(radians(a.latitude)) * Math.cos(radians(b.latitude)) * Math.sin(longitude / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
-}
-
 function locateUser(onSuccess, onError) {
   if (!navigator.geolocation) {
     onError('या ब्राउझरमध्ये स्थान सुविधा उपलब्ध नाही.');
@@ -128,90 +116,6 @@ function locateUser(onSuccess, onError) {
       : 'तुमचे स्थान मिळाले नाही. पत्ता व नकाशावरील जागा तपासा.'),
     { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
   );
-}
-
-function SellerMap({ listings, buyerLocation, onSelect }) {
-  const containerRef = useRef(null);
-  const mapRef = useRef(null);
-  const markerLayerRef = useRef(null);
-
-  useEffect(() => {
-    if (!containerRef.current || mapRef.current) return undefined;
-    const map = L.map(containerRef.current, {
-      scrollWheelZoom: false,
-      zoomAnimation: false,
-      fadeAnimation: false,
-      markerZoomAnimation: false
-    }).setView(DEFAULT_CENTER, 9);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-    }).addTo(map);
-    const markers = L.layerGroup().addTo(map);
-    mapRef.current = map;
-    markerLayerRef.current = markers;
-    const resize = window.setTimeout(() => map.invalidateSize(), 120);
-    return () => {
-      window.clearTimeout(resize);
-      map.stop();
-      map.remove();
-      mapRef.current = null;
-      markerLayerRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    const markerLayer = markerLayerRef.current;
-    if (!map || !markerLayer) return;
-    markerLayer.clearLayers();
-    const points = [];
-
-    listings.forEach(listing => {
-      const point = [listing.latitude, listing.longitude];
-      points.push(point);
-      const marker = L.marker(point, {
-        icon: L.divIcon({
-          className: 'market-map-pin',
-          html: '<span>🌾</span>',
-          iconSize: [38, 42],
-          iconAnchor: [19, 39]
-        })
-      }).addTo(markerLayer);
-      const popup = document.createElement('div');
-      const name = document.createElement('strong');
-      name.textContent = listing.productName;
-      const seller = document.createElement('span');
-      seller.textContent = listing.sellerName;
-      popup.append(name, seller);
-      marker.bindPopup(popup);
-      marker.on('click', () => onSelect(listing.id));
-    });
-
-    if (buyerLocation) {
-      const point = [buyerLocation.latitude, buyerLocation.longitude];
-      points.push(point);
-      L.circleMarker(point, {
-        radius: 8,
-        color: '#fff',
-        weight: 2,
-        fillColor: '#3180b5',
-        fillOpacity: 1
-      }).bindTooltip('तुमचे स्थान').addTo(markerLayer);
-    }
-
-    if (points.length > 1) {
-      map.fitBounds(L.latLngBounds(points), { padding: [28, 28], maxZoom: 13 });
-    } else if (points.length === 1) {
-      map.setView(points[0], buyerLocation ? 12 : 14);
-    } else {
-      map.setView(buyerLocation ? [buyerLocation.latitude, buyerLocation.longitude] : DEFAULT_CENTER, 10);
-    }
-    const resize = window.setTimeout(() => map.invalidateSize(), 80);
-    return () => window.clearTimeout(resize);
-  }, [listings, buyerLocation, onSelect]);
-
-  return <div className="market-map" ref={containerRef} aria-label="जवळील शेतमाल विक्रेत्यांचा नकाशा"/>;
 }
 
 function ProductPhoto({ apiBase, photoUrl, authorization, productName }) {
@@ -271,9 +175,6 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       return new Set();
     }
   });
-  const [buyerLocation, setBuyerLocation] = useState(null);
-  const [radius, setRadius] = useState(25);
-  const [nearbyOnly, setNearbyOnly] = useState(false);
   const [locationMessage, setLocationMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -297,8 +198,6 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   const [buyerOrdersNotice, setBuyerOrdersNotice] = useState('');
   const [receiptBusyId, setReceiptBusyId] = useState(null);
   const [receiptError, setReceiptError] = useState('');
-  const [contact, setContact] = useState(null);
-  const [activeListing, setActiveListing] = useState(null);
   const [sellerListingTokens, setSellerListingTokens] = useState(() => {
     try {
       const stored = JSON.parse(window.localStorage.getItem(`swarnabhoomi-market-seller-tokens:${userId}`) || '{}');
@@ -498,25 +397,15 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   const filteredListings = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('mr-IN');
     return listings
-      .map(listing => ({
-        ...listing,
-        distance: buyerLocation ? distanceKm(buyerLocation, listing) : null
-      }))
-      .filter(listing => !query || [
-        ...(accountType === 'farmer' ? [] : [listing.sellerName, listing.address]),
-        listing.productName, listing.cropType, listing.category
-      ].join(' ').toLocaleLowerCase('mr-IN').includes(query))
+      .filter(listing => !query || [listing.productName, listing.cropType, listing.category]
+        .join(' ').toLocaleLowerCase('mr-IN').includes(query))
       .filter(listing => categoryFilter === 'all' || listing.category === categoryFilter)
       .filter(listing => !favoritesOnly || favoriteIds.has(String(listing.id)))
-      .filter(listing => !nearbyOnly || buyerLocation && listing.distance <= radius)
       .sort((a, b) => {
         if (sortBy === 'name') return a.productName.localeCompare(b.productName, 'mr-IN');
-        if (sortBy === 'nearest' || sortBy === 'recommended' && buyerLocation) {
-          return a.distance - b.distance || b.id - a.id;
-        }
         return b.id - a.id;
       });
-  }, [listings, search, categoryFilter, favoritesOnly, favoriteIds, buyerLocation, nearbyOnly, radius, sortBy, accountType]);
+  }, [listings, search, categoryFilter, favoritesOnly, favoriteIds, sortBy]);
 
   function toggleFavorite(id, event) {
     event.stopPropagation();
@@ -545,39 +434,15 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     }));
   }
 
-  function askForLocation(useForListing = false) {
+  function askForLocation() {
     setLocationMessage('');
     locateUser(location => {
-      if (useForListing) {
-        setForm(current => ({
-          ...current,
-          latitude: location.latitude.toFixed(6),
-          longitude: location.longitude.toFixed(6)
-        }));
-      } else {
-        setBuyerLocation(location);
-        setNearbyOnly(true);
-      }
+      setForm(current => ({
+        ...current,
+        latitude: location.latitude.toFixed(6),
+        longitude: location.longitude.toFixed(6)
+      }));
     }, setLocationMessage);
-  }
-
-  async function fetchContact(id, token = authorization) {
-    setError('');
-    try {
-      const response = await request(`/marketplace/listings/${id}/contact`, {}, token);
-      if (response.status === 401) {
-        onUnauthorizedRef.current?.();
-        return;
-      }
-      if (response.status === 503) {
-        const body = await response.json();
-        throw new Error(body.message || 'सर्व्हरवर अॅप प्रवेश कॉन्फिगर केलेला नाही.');
-      }
-      if (!response.ok) throw new Error('विक्रेत्याचा संपर्क मिळाला नाही.');
-      setContact({ id, phone: (await response.json()).phone });
-    } catch (contactError) {
-      setError(contactError.message || 'विक्रेत्याचा संपर्क मिळाला नाही.');
-    }
   }
 
   async function saveListing(token = authorization) {
@@ -625,7 +490,6 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       photoRef.current = null;
       setView('seller');
       await loadListings(token);
-      setActiveListing(savedListing.id);
       setSellerNotice('विक्रीची नोंद जतन झाली. या ब्राउझरमधील “माझे व्यवहार” विभागातून साठा आणि खरेदीच्या विनंत्या व्यवस्थापित करा.');
     } catch (saveError) {
       setError(saveError.message || 'विक्रीची नोंद जतन करता आली नाही.');
@@ -857,7 +721,6 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
         return next;
       });
       setCart(current => current.filter(item => item.listingId !== listing.id));
-      setActiveListing(current => current === listing.id ? null : current);
       setAdminListingNotice(`${listing.productName} ची विक्रीची नोंद हटवली.`);
     } catch (deleteError) {
       setError(deleteError.message || 'विक्रीची नोंद हटवता आली नाही.');
@@ -1040,13 +903,10 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       rule(y);
       y += 52;
       wrap('विक्रेता', margin, y, 480, 34, '#879486', 22, 400);
-      const sellerNameLines = wrap(order.sellerName || 'शेतकरी विक्रेता', margin, y + 43, 490, 42, '#304736', 29, 700, 2);
+      wrap(order.sellerName || 'शेतकरी विक्रेता', margin, y + 43, 490, 42, '#304736', 29, 700, 2);
       wrap('खरेदीदार', margin + 540, y, 480, 34, '#879486', 22, 400);
-      const buyerNameLines = wrap(order.buyerName || 'खरेदीदार', margin + 540, y + 43, 490, 42, '#304736', 29, 700, 2);
-      const phoneY = y + 43 + Math.max(sellerNameLines, buyerNameLines) * 42 + 9;
-      wrap(order.sellerPhone || '—', margin, phoneY, 490, 38, '#47764b', 25, 400);
-      wrap(order.buyerPhone || buyerPhone || '—', margin + 540, phoneY, 490, 38, '#6f8371', 25, 400);
-      y = phoneY + 72;
+      wrap(order.buyerName || 'खरेदीदार', margin + 540, y + 43, 490, 42, '#304736', 29, 700, 2);
+      y += 43 + 2 * 42 + 24;
       wrap('वितरण पद्धत', margin, y, contentWidth, 34, '#879486', 22, 400);
       wrap(fulfillment, margin, y + 44, contentWidth, 40, '#304736', 28, 700);
       y += 115;
@@ -1076,14 +936,12 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     }
   }
 
-  const phoneDigits = contact?.phone.replace(/\D/g, '') || '';
-
   return <div className="market-page" lang="mr">
     <section className={`market-hero market-hero-${accountType}`}>
       <div className="market-hero-copy">
         <span className="market-eyebrow"><Wheat size={15}/> शेतमाल थेट शेतकऱ्याकडून</span>
         <h1>{accountType === 'buyer' ? 'ताज्या शेतमालाची खरेदी' : accountType === 'seller' || accountType === 'farmer' ? 'तुमचा शेतमाल, थेट बाजारात' : 'शेतकरी बाजार'}</h1>
-        <p>{accountType === 'buyer' ? 'आजूबाजूच्या शेतकऱ्यांकडून ताजा माल शोधा, भाव पहा आणि थेट ऑर्डर द्या.' : accountType === 'seller' || accountType === 'farmer' ? 'तुमचा माल नोंदवा, साठा सांभाळा आणि खरेदीदारांच्या विनंत्या एका ठिकाणी हाताळा.' : 'उपलब्ध शेतमाल शोधा किंवा विक्रीची नोंद आणि व्यवहार व्यवस्थापित करा.'}</p>
+        <p>{accountType === 'buyer' ? 'उपलब्ध ताजा शेतमाल शोधा, भाव पहा आणि थेट ऑर्डर द्या.' : accountType === 'seller' || accountType === 'farmer' ? 'तुमचा माल नोंदवा, साठा सांभाळा आणि खरेदीदारांच्या विनंत्या एका ठिकाणी हाताळा.' : 'उपलब्ध शेतमाल शोधा किंवा विक्रीची नोंद आणि व्यवहार व्यवस्थापित करा.'}</p>
         <div className="market-hero-actions">
           {accountType === 'buyer' ? <>
             <button type="button" className="market-hero-cta primary" onClick={() => setView('browse')}><Search size={16}/> शेतमाल शोधा <ArrowRight size={15}/></button>
@@ -1130,16 +988,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
         {availableCategories.map(category => <button type="button" key={category} className={categoryFilter === category ? 'selected' : ''} aria-pressed={categoryFilter === category} onClick={() => setCategoryFilter(category)}>{category}</button>)}
       </section>
       <section className="market-search-panel">
-        <label className="market-search-field"><Search size={17}/><SpeechTextInput><input value={search} onChange={event => setSearch(event.target.value)} placeholder={accountType === 'farmer' ? 'पीक किंवा शेतमाल शोधा' : 'पीक, शेतमाल, विक्रेता किंवा पत्ता शोधा'}/></SpeechTextInput></label>
-        {accountType !== 'farmer' && <>
-          <button className="market-location-button" type="button" onClick={() => askForLocation(false)}><LocateFixed size={16}/> जवळचे विक्रेते</button>
-          <label className="market-radius">त्रिज्या
-            <select value={radius} onChange={event => setRadius(Number(event.target.value))}>
-              <option value={5}>५ किमी</option><option value={25}>२५ किमी</option><option value={50}>५० किमी</option><option value={100}>१०० किमी</option>
-            </select>
-          </label>
-          <button className={`market-nearby-toggle ${nearbyOnly ? 'selected' : ''}`} type="button" onClick={() => buyerLocation ? setNearbyOnly(value => !value) : askForLocation(false)}><ArrowDownWideNarrow size={15}/>{nearbyOnly ? 'सर्व विक्रेते दाखवा' : 'फक्त जवळचे दाखवा'}</button>
-        </>}
+        <label className="market-search-field"><Search size={17}/><SpeechTextInput><input value={search} onChange={event => setSearch(event.target.value)} placeholder="पीक किंवा शेतमाल शोधा"/></SpeechTextInput></label>
       </section>
       <section className="market-filter-row" aria-label="शेतमाल शोध फिल्टर">
         <label className="market-filter-field"><span>प्रकार</span>
@@ -1150,9 +999,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
         </label>
         <label className="market-filter-field"><span>क्रम</span>
           <select value={sortBy} onChange={event => setSortBy(event.target.value)}>
-            <option value="recommended">{accountType === 'farmer' ? 'नवीन नोंदी आधी' : 'जवळचे / नवीन'}</option>
-            {accountType !== 'farmer' && <option value="nearest" disabled={!buyerLocation}>जवळचे आधी</option>}
-            {accountType !== 'farmer' && <option value="recent">नवीन नोंदी आधी</option>}
+            <option value="recommended">नवीन नोंदी आधी</option>
             <option value="name">नावानुसार</option>
           </select>
         </label>
@@ -1160,28 +1007,20 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
           <Heart size={14} fill={favoritesOnly ? 'currentColor' : 'none'}/>{favoritesOnly ? 'सर्व दाखवा' : 'आवडती'} <span>{favoriteCount.toLocaleString('mr-IN')}</span>
         </button>}
       </section>
-      {accountType !== 'farmer' && locationMessage && <p className="market-location-note" role="status">{locationMessage}</p>}
       {accountType === 'farmer' && marketPriceError && <div className="market-message market-price-comparison-error" role="status">बाजारभाव तुलना सध्या उपलब्ध नाही. {marketPriceError}</div>}
-      <div className={`market-map-layout ${accountType === 'farmer' ? 'market-farmer-list-layout' : ''}`}>
-        {accountType !== 'farmer' && <section className="market-map-card">
-          <div className="market-card-heading"><div><span>OpenStreetMap</span><h2>नकाशावरील विक्रेते</h2></div><span className="market-result-count">{filteredListings.length.toLocaleString('mr-IN')} विक्रेते</span></div>
-          <SellerMap listings={filteredListings} buyerLocation={buyerLocation} onSelect={setActiveListing}/>
-          <p className="market-map-note">निळा ठिपका तुमचे स्थान; हिरवे चिन्ह शेतमाल विक्रेता दाखवते.</p>
-        </section>}
-        <section className="market-listings">
-          <div className="market-card-heading"><div><span>उपलब्ध शेतमाल</span><h2>{accountType === 'farmer' ? 'शेतमाल आणि विक्री दर' : 'विक्रेते'}</h2></div>{accountType === 'farmer' ? <span className="market-result-count">{filteredListings.length.toLocaleString('mr-IN')} उत्पादने</span> : buyerLocation&&<span className="market-result-count"><LocateFixed size={12}/> जवळचे आधी</span>}</div>
+      <section className={`market-listings ${accountType === 'farmer' ? 'market-farmer-listings' : ''}`}>
+          <div className="market-card-heading"><div><span>उपलब्ध शेतमाल</span><h2>{accountType === 'farmer' ? 'शेतमाल आणि विक्री दर' : 'शेतमालाची यादी'}</h2></div><span className="market-result-count">{filteredListings.length.toLocaleString('mr-IN')} उत्पादने</span></div>
           {loading ? <div className="market-empty">विक्रीची माहिती लोड होत आहे…</div>
             : !filteredListings.length ? <div className="market-empty"><Wheat size={28}/><b>{favoritesOnly ? 'आवडत्या नोंदी सापडल्या नाहीत' : 'शेतमाल सापडला नाही'}</b><span>{favoritesOnly ? 'यादीत हृदयाचे चिन्ह दाबून आवडते शेतमाल जतन करा.' : 'शोध किंवा फिल्टर बदलून पाहा किंवा नवी विक्रीची नोंद जोडा.'}</span></div>
-              : <div className="market-listing-scroll">{filteredListings.map(listing=><article className={`market-listing-card ${accountType === 'farmer' ? 'market-farmer-listing-card' : ''} ${activeListing === listing.id ? 'focused' : ''}`} key={listing.id} onClick={accountType === 'farmer' ? undefined : () => setActiveListing(listing.id)}>
+              : <div className="market-listing-scroll">{filteredListings.map(listing=><article className={`market-listing-card ${accountType === 'farmer' ? 'market-farmer-listing-card' : ''}`} key={listing.id}>
                 <ProductPhoto apiBase={apiBase} photoUrl={listing.photoUrl} authorization={authorization} productName={listing.productName}/>
                 <div className="market-listing-content">
-                  <div className="market-listing-heading"><span>{listing.category}</span>{listing.distance !== null&&<small>{listing.distance < 1 ? `${Math.round(listing.distance*1000).toLocaleString('mr-IN')} मी` : `${listing.distance.toLocaleString('mr-IN',{maximumFractionDigits:1})} किमी`}</small>}{accountType !== 'farmer' && <button type="button" className={`market-favorite-button ${favoriteIds.has(String(listing.id)) ? 'saved' : ''}`} aria-label={favoriteIds.has(String(listing.id)) ? 'आवडत्यामधून काढा' : 'आवडत्यात जतन करा'} aria-pressed={favoriteIds.has(String(listing.id))} onClick={event => toggleFavorite(listing.id, event)}><Heart size={14} fill={favoriteIds.has(String(listing.id)) ? 'currentColor' : 'none'}/></button>}</div>
+                  <div className="market-listing-heading"><span>{listing.category}</span>{accountType !== 'farmer' && <button type="button" className={`market-favorite-button ${favoriteIds.has(String(listing.id)) ? 'saved' : ''}`} aria-label={favoriteIds.has(String(listing.id)) ? 'आवडत्यामधून काढा' : 'आवडत्यात जतन करा'} aria-pressed={favoriteIds.has(String(listing.id))} onClick={event => toggleFavorite(listing.id, event)}><Heart size={14} fill={favoriteIds.has(String(listing.id)) ? 'currentColor' : 'none'}/></button>}</div>
                   <h3>{listing.productName}</h3><p className="market-crop-type">{listing.cropType}</p>
                   <p className={`market-stock ${listing.available === false ? 'unavailable' : ''}`}>{listing.available === false ? 'सध्या उपलब्ध नाही' : `${formatQuantity(listing)} उपलब्ध`}</p>
                   {accountType === 'farmer' ? farmerPriceComparison(listing) : priceDisplay(listing)}
                   {accountType !== 'farmer' && <>
                     <div className="market-seller"><UserRound size={13}/><b>{listing.sellerName}</b></div>
-                    <p className="market-address"><MapPin size={13}/>{listing.address}</p>
                     <div className="market-listing-actions">
                       {accountType === 'admin'
                         ? <button type="button" className="market-admin-delete-button" onClick={event => deleteMarketplaceListing(listing, event)} disabled={deletingListingId !== null}><Trash2 size={14}/>{deletingListingId === listing.id ? 'हटवत आहे…' : 'नोंद हटवा'}</button>
@@ -1189,14 +1028,12 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
                           {accountType === 'buyer' && listing.pricePerUnit != null && listing.available !== false && Number(listing.quantity) > 0
                             ? <button type="button" className="market-buy-button" onClick={event => addToCart(listing, event)}><ShoppingCart size={14}/>{cart.some(item => item.listingId === listing.id) ? 'आणखी जोडा' : 'कार्टमध्ये जोडा'}</button>
                             : <button type="button" className="market-buy-button" disabled><ShoppingBag size={14}/>{listing.available === false || Number(listing.quantity) <= 0 ? 'साठा संपला' : 'खरेदीदारांसाठी'}</button>}
-                          <button type="button" className="market-contact-button" onClick={event => { event.stopPropagation(); fetchContact(listing.id); }}><Phone size={14}/> संपर्क मिळवा</button>
                         </>}
                     </div>
                   </>}
                 </div>
               </article>)}</div>}
-        </section>
-      </div>
+      </section>
     </> : view === 'cart' && accountType === 'buyer' ? <section className="market-cart-page">
       <div className="market-form-card market-cart-intro">
         <div className="market-card-heading"><div><span>खरेदीची तयारी</span><h2>तुमचे कार्ट</h2></div><span className="market-result-count">{cartRows.length.toLocaleString('mr-IN')} वस्तू</span></div>
@@ -1223,9 +1060,9 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
             </article>;
           })}</div>
           <form className="market-checkout-card" onSubmit={submitCheckout}>
-            <div className="market-card-heading"><div><span>ऑर्डर</span><h2>विक्रेत्यांना पाठवा</h2></div><ShoppingBag size={19}/></div>
+            <div className="market-card-heading"><div><span>ऑर्डर</span><h2>खरेदी ऑर्डर</h2></div><ShoppingBag size={19}/></div>
             <label className="market-field"><span>तुमचे नाव *</span><SpeechTextInput><input value={buyerName} onChange={event => setBuyerName(event.target.value)} maxLength={100} required autoComplete="name"/></SpeechTextInput></label>
-            <label className="market-field"><span>नोंदणीकृत मोबाईल</span><input value={buyerPhone} readOnly/><small>हा नंबर विक्रेत्यांना संपर्कासाठी दिसेल.</small></label>
+            <label className="market-field"><span>नोंदणीकृत मोबाईल</span><input value={buyerPhone} readOnly/><small>तुमचा संपर्क क्रमांक फक्त प्रशासक पाहू शकतो.</small></label>
             <label className="market-field"><span>माल कसा हवा?</span><select value={buyerFulfillment} onChange={event => setBuyerFulfillment(event.target.value)}><option value="PICKUP">मी घेऊन जाईन</option><option value="DELIVERY">पोहोचवून हवा</option></select></label>
             <label className="market-field"><span>विक्रेत्यांसाठी संदेश <small>ऐच्छिक</small></span><SpeechTextInput><textarea maxLength={500} value={buyerNote} onChange={event => setBuyerNote(event.target.value)} placeholder="सोयीची वेळ किंवा इतर माहिती"/></SpeechTextInput></label>
             <fieldset className="market-payment-options">
@@ -1241,14 +1078,14 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
             </fieldset>
             <div className="market-checkout-total"><span>अंदाजे एकूण</span><b>₹{cartTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></div>
             {buyerOrdersError && <div className="market-message market-error" role="alert">{buyerOrdersError}</div>}
-            <p className="market-purchase-privacy"><ShieldCheck size={14}/> ऑर्डर आणि पेमेंटची स्थिती खरेदीदार व विक्रेता दोघांनाही दिसेल.</p>
+            <p className="market-purchase-privacy"><ShieldCheck size={14}/> ऑर्डरची स्थिती दोघांना दिसेल. खरेदीदार आणि विक्रेत्यांचे संपर्क तपशील फक्त प्रशासकाला दिसतात.</p>
             <button type="submit" className="market-submit-button" disabled={buyerOrdersLoading || cartRows.some(item => item.listing.available === false || Number(item.quantity) > Number(item.listing.quantity))}><ShoppingBag size={16}/>{buyerOrdersLoading ? 'ऑर्डर पाठवत आहे…' : 'ऑर्डर निश्चित करा'}</button>
           </form>
         </div>}
     </section> : view === 'orders' && accountType === 'buyer' ? <section className="market-buyer-orders">
       <div className="market-form-card market-buyer-orders-intro">
         <div className="market-card-heading"><div><span>खरेदीचा मागोवा</span><h2>माझ्या ऑर्डर</h2></div><button type="button" className="market-location-button" onClick={loadBuyerOrders} disabled={buyerOrdersLoading}><RefreshCw size={14}/> ताजे करा</button></div>
-        <p>तुमच्या ऑर्डरची स्थिती आणि विक्रेत्यांचा संपर्क येथे पाहा.</p>
+        <p>तुमच्या ऑर्डरची स्थिती आणि पेमेंटची माहिती येथे पाहा.</p>
       </div>
       {buyerOrdersNotice && <div className="market-message market-success" role="status"><Check size={15}/>{buyerOrdersNotice}</div>}
       {buyerOrdersError && <div className="market-message market-error" role="alert">{buyerOrdersError}</div>}
@@ -1261,11 +1098,10 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
             <div className="market-payment-summary"><span>{paymentMethodLabel(order.paymentMethod)}</span><b className={`payment-${String(order.paymentStatus || '').toLowerCase()}`}>{paymentStatusLabel(order.paymentStatus)}</b></div>
             {order.totalAmount != null && <b className="market-buyer-order-total">₹{Number(order.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>}
             <time dateTime={order.createdAt}>{new Date(order.createdAt).toLocaleString('mr-IN', { dateStyle: 'medium', timeStyle: 'short' })}</time>
-            {order.sellerPhone && <a href={`tel:${order.sellerPhone}`} className="market-request-phone"><Phone size={13}/>विक्रेत्याशी संपर्क · {order.sellerPhone}</a>}
             <button type="button" className="market-receipt-button" onClick={() => downloadOrderReceipt(order)} disabled={receiptBusyId === order.id}><FileDown size={15}/>{receiptBusyId === order.id ? 'पावती तयार होत आहे…' : 'PDF पावती डाउनलोड करा'}</button>
           </article>)}</div>}
     </section> : view === 'register' ? <section className="market-form-card">
-      <div className="market-card-heading"><div><span>विक्रेत्याची माहिती</span><h2>तुमचा उपलब्ध शेतमाल जोडा</h2></div><div className="market-private-badge"><ShieldCheck size={14}/> संपर्क फक्त प्रवेशानंतर</div></div>
+      <div className="market-card-heading"><div><span>विक्रेत्याची माहिती</span><h2>तुमचा उपलब्ध शेतमाल जोडा</h2></div><div className="market-private-badge"><ShieldCheck size={14}/> संपर्क माहिती सुरक्षित</div></div>
       <p className="market-form-intro">तुमची विक्रीची माहिती आणि अचूक पत्ता नोंदवा. नकाशावरील स्थान तुमच्या ब्राउझरमधून घ्या किंवा निर्देशांक भरा.</p>
       <form className="market-form" onSubmit={submitListing}>
         <div className="market-form-section-title"><UserRound size={16}/> विक्रेता आणि संपर्क</div>
@@ -1276,12 +1112,13 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
         </div>
         <div className="market-location-fields">
           <div className="market-form-section-title"><MapPin size={16}/> नकाशावरील अचूक शेताचे स्थान *</div>
-          <button type="button" className="market-location-button" onClick={() => askForLocation(true)}><LocateFixed size={15}/> माझे सध्याचे स्थान घ्या</button>
+          <button type="button" className="market-location-button" onClick={askForLocation}><LocateFixed size={15}/> माझे सध्याचे स्थान घ्या</button>
+          {locationMessage && <p className="market-location-note" role="status">{locationMessage}</p>}
           <div className="market-form-grid market-coordinate-grid">
             <label className="market-field"><span>अक्षांश (Latitude)</span><input name="latitude" type="number" min="-90" max="90" step="any" value={form.latitude} onChange={updateField} required placeholder="उदा. 16.8524"/></label>
             <label className="market-field"><span>रेखांश (Longitude)</span><input name="longitude" type="number" min="-180" max="180" step="any" value={form.longitude} onChange={updateField} required placeholder="उदा. 74.5815"/></label>
           </div>
-          <small className="market-precision-note">तुम्ही निवडलेल्या अचूक निर्देशांकांवर विक्रेता नकाशावर दिसेल.</small>
+          <small className="market-precision-note">अचूक पत्ता आणि स्थान फक्त प्रशासकाला दिसेल.</small>
         </div>
         <div className="market-form-section-title"><Wheat size={16}/> विक्रीसाठी शेतमाल</div>
         <div className="market-form-grid">
@@ -1343,7 +1180,6 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
                 <div className="market-request-top"><b>{purchaseRequest.buyerName}</b><span className={`market-request-status status-${purchaseRequest.status.toLowerCase()}`}>{requestStatusLabel(purchaseRequest.status)}</span></div>
                 <p>{Number(purchaseRequest.quantity).toLocaleString('mr-IN')} {UNITS.find(([value]) => value === purchaseRequest.unit)?.[1] || purchaseRequest.unit} · {purchaseRequest.fulfillment === 'DELIVERY' ? 'पोहोचवणे हवे' : 'स्वतः घेऊन जाणार'}{purchaseRequest.totalAmount != null ? ` · ₹${Number(purchaseRequest.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}</p>
                 <div className="market-payment-summary"><span>{paymentMethodLabel(purchaseRequest.paymentMethod)}</span><b className={`payment-${String(purchaseRequest.paymentStatus || '').toLowerCase()}`}>{paymentStatusLabel(purchaseRequest.paymentStatus)}</b></div>
-                <a href={`tel:${purchaseRequest.buyerPhone}`} className="market-request-phone"><Phone size={13}/>{purchaseRequest.buyerPhone}</a>
                 {purchaseRequest.note && <p className="market-request-note">“{purchaseRequest.note}”</p>}
                 <div className="market-request-actions">
                   {purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus === 'PENDING' && purchaseRequest.status !== 'DECLINED' && <button type="button" onClick={() => updatePaymentStatus(row, purchaseRequest, 'PAID')}>रोख पेमेंट मिळाले</button>}
@@ -1355,16 +1191,6 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
           </article>)}</div>}
     </section>}
 
-    {contact&&<div className="market-modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setContact(null)}}>
-      <section className="market-contact-modal" role="dialog" aria-modal="true" aria-labelledby="market-contact-title">
-        <button type="button" className="market-modal-close" onClick={() => setContact(null)} aria-label="बंद करा"><X size={18}/></button>
-        <div className="market-login-icon"><Phone size={21}/></div><span>विक्रेता संपर्क</span>
-        <h2 id="market-contact-title">{listings.find(listing=>listing.id===contact.id)?.sellerName||'विक्रेता'}</h2>
-        <a className="market-phone-number" href={`tel:${contact.phone}`}>{contact.phone}</a>
-        <div className="market-contact-actions"><a href={`tel:${contact.phone}`}><Phone size={16}/> फोन करा</a><a href={`https://wa.me/${phoneDigits}`} target="_blank" rel="noreferrer">WhatsApp</a></div>
-        <p>संपर्क माहिती फक्त अॅप प्रवेशानंतर दाखवली जाते.</p>
-      </section>
-    </div>}
   </div>;
 }
 

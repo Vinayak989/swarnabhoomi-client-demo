@@ -380,3 +380,6 @@
 .market-admin-delete-button:hover:not(:disabled){border-color:#dba8a3;background:#ffefec}
 .market-admin-delete-button:disabled{opacity:.65;cursor:wait}
 @media(max-width:560px){.market-seller-quick-facts{grid-template-columns:1fr}.market-seller-quick-facts>span{grid-template-columns:minmax(90px,.55fr) minmax(0,1fr);align-items:center}.market-seller-details summary{min-height:46px}.market-seller-details .market-seller-controls{margin:8px;padding:10px}}
+.market-farmer-listings{max-height:none}
+.market-farmer-listings .market-listing-scroll{grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
+@media(max-width:800px){.market-farmer-listings .market-listing-scroll{grid-template-columns:1fr}}

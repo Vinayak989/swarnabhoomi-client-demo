@@ -52,7 +52,7 @@ class FarmMarketplaceControllerTest {
     }
 
     @Test
-    void listingCanBePublishedButPhoneIsOnlyReturnedByAuthenticatedContactEndpoint() throws Exception {
+    void publicListingsHideSellerContactAndLocationAndContactEndpointRejectsNonAdmin() throws Exception {
         mvc.perform(post("/api/marketplace/listings")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(VALID_LISTING))
@@ -65,15 +65,17 @@ class FarmMarketplaceControllerTest {
         mvc.perform(get("/api/marketplace/listings"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(1)))
-            .andExpect(jsonPath("$[0].phone").doesNotExist());
+            .andExpect(jsonPath("$[0].phone").doesNotExist())
+            .andExpect(jsonPath("$[0].address").doesNotExist())
+            .andExpect(jsonPath("$[0].latitude").doesNotExist())
+            .andExpect(jsonPath("$[0].longitude").doesNotExist());
 
         mvc.perform(get("/api/marketplace/listings/{id}/contact", id))
             .andExpect(status().isUnauthorized());
 
         mvc.perform(get("/api/marketplace/listings/{id}/contact", id)
                 .header("Authorization", authorization()))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.phone").value("+919876543210"));
+            .andExpect(status().isUnauthorized());
     }
 
     @Test

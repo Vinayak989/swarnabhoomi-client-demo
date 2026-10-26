@@ -61,3 +61,38 @@
 @media(max-width:760px){.market-prices{gap:14px}.market-prices-hero{min-height:165px;align-items:flex-start;flex-direction:column;padding:20px}.market-prices-hero-copy{padding-right:5px}.market-prices-hero h1{font-size:22px}.market-prices-hero p{max-width:500px;font-size:12px}.market-prices-refresh{min-height:37px;padding:0 12px}.market-prices-hero-mark{right:16px;top:17px;bottom:auto;width:45px;height:45px;border-radius:14px}.market-prices-hero-mark svg{width:23px;height:23px}.market-prices-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.market-prices-stats>div{min-height:68px;padding:10px 12px}.market-prices-stats strong{font-size:18px}.market-prices-stats .market-prices-updated strong{font-size:13px}.market-prices-controls{grid-template-columns:1fr 1fr}.market-prices-search{grid-column:1/-1}.market-prices-grid{gap:9px}.market-price-card{padding:12px;min-height:205px}.market-price-card h2{font-size:14px}.market-price-date{font-size:9px}.market-price-modal strong{font-size:22px}.market-price-modal span{font-size:10px}.market-price-range{font-size:10px}.market-prices-source{flex-direction:column;gap:3px}}
 @media(max-width:430px){.market-prices-grid{grid-template-columns:1fr}.market-price-card{min-height:0}.market-price-card-heading{min-height:38px}.market-prices-controls{grid-template-columns:1fr}.market-prices-search{grid-column:auto}.market-prices-select{height:42px}}
 @media(prefers-reduced-motion:reduce){.market-prices,.market-price-card{animation:none}.market-prices-refresh,.market-price-card{transition:none}.market-prices-spin{animation-duration:2.5s}}
+.market-prices-hero{min-height:188px;border-color:#d5e5d0;border-radius:20px;background:radial-gradient(ellipse at 90% 10%,rgba(195,228,180,.82),transparent 35%),linear-gradient(116deg,#f1f8ec,#eaf4e4 62%,#deeed8);box-shadow:0 10px 28px #3459380d}
+.market-prices-hero:after{position:absolute;right:8%;bottom:-116px;width:260px;height:260px;border:1px solid #6f9c6720;border-radius:50%;content:"";pointer-events:none}
+.market-prices-hero-mark{right:10%;width:104px;height:104px;border-color:#85a97b30;border-radius:31px;background:#ffffff8c;color:#568b51;box-shadow:0 12px 24px #42674310}
+.market-prices-refresh{border-color:#c9ddc4;background:#fff;color:#356b40;box-shadow:0 4px 12px #355e3710}
+.market-prices-stats>div{min-height:82px;border-radius:14px;transition:transform .16s,border-color .16s,box-shadow .16s}
+.market-prices-stats>div:hover{transform:translateY(-2px);border-color:#cbdcc5;box-shadow:0 8px 20px #334d3216}
+.market-prices-explore{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:17px;padding:13px 15px;border:1px solid #e0e9dc;border-radius:14px;background:linear-gradient(110deg,#fbfdf9,#f4f8f0);box-shadow:0 4px 13px #334d3209}
+.market-prices-popular{display:grid;gap:9px;min-width:0}
+.market-prices-explore-heading{display:flex;align-items:baseline;gap:9px;color:#526b54;font-size:11px;font-weight:750}
+.market-prices-explore-heading small{color:#95a093;font-size:10px;font-weight:500}
+.market-prices-crop-chips{display:flex;flex-wrap:wrap;gap:7px}
+.market-prices-crop-chips button{display:inline-flex;align-items:center;gap:6px;min-height:31px;padding:0 10px;border:1px solid #e0e9dc;border-radius:999px;background:#fff;color:#657c66;font:inherit;font-size:10px;font-weight:650;cursor:pointer;transition:transform .15s,border-color .15s,background .15s,color .15s}
+.market-prices-crop-chips button:hover{transform:translateY(-1px);border-color:#b9d0b2;background:#f4f9f1;color:#3f7545}
+.market-prices-crop-chips button.selected{border-color:#4f8753;background:#4f8753;color:#fff;box-shadow:0 3px 8px #3d74432b}
+.market-prices-crop-chips button span{opacity:.72;font-size:9px;font-variant-numeric:tabular-nums}
+.market-prices-unit-picker{display:grid;gap:6px;justify-items:end;padding-left:15px;border-left:1px solid #e2e9de}
+.market-prices-unit-picker>span{color:#7d8d7d;font-size:10px;font-weight:700}
+.market-prices-unit-picker>div{display:flex;padding:3px;border:1px solid #e0e9dc;border-radius:9px;background:#edf3e9}
+.market-prices-unit-picker button{min-height:29px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:#748675;font:inherit;font-size:10px;font-weight:700;cursor:pointer;transition:background .15s,color .15s,box-shadow .15s}
+.market-prices-unit-picker button.selected{background:#fff;color:#3c7546;box-shadow:0 1px 5px #314e331c}
+.market-price-card{min-height:228px;padding:16px;border-radius:16px;border-color:#e2eade;box-shadow:0 7px 20px #334d320c}
+.market-price-card:before{position:absolute;top:0;right:16px;left:16px;height:3px;border-radius:0 0 4px 4px;background:linear-gradient(90deg,#83ae69,#d4b45c);content:""}
+.market-price-card:hover{transform:translateY(-3px);border-color:#c5d9bf;box-shadow:0 12px 24px #334d3219}
+.market-price-modal{margin-top:11px}
+.market-price-modal strong{color:#2e7645}
+.market-price-range-visual{margin-top:6px}
+.market-price-range-track{position:relative;height:6px;overflow:visible;border-radius:99px;background:linear-gradient(90deg,#eadcae,#d9e8c8 50%,#8fbd82)}
+.market-price-range-track span{position:absolute;top:50%;width:13px;height:13px;border:3px solid #fff;border-radius:50%;background:#39774a;box-shadow:0 1px 5px #304a3560;transform:translate(-50%,-50%)}
+.market-price-range{justify-content:space-between;margin-top:5px;padding:4px 0 8px;border-top:0}
+.market-price-market{margin-top:auto;padding-top:8px}
+.market-prices-more button{min-height:40px;padding-inline:20px;border-radius:11px;box-shadow:0 3px 9px #334d320a;transition:transform .15s,background .15s}
+.market-prices-more button:hover{transform:translateY(-1px)}
+@media(max-width:760px){.market-prices-hero{min-height:175px}.market-prices-hero-mark{right:16px;width:51px;height:51px}.market-prices-explore{grid-template-columns:1fr;gap:12px;padding:12px}.market-prices-unit-picker{grid-template-columns:1fr auto;align-items:center;justify-items:start;padding:10px 0 0;border-top:1px solid #e2e9de;border-left:0}.market-prices-unit-picker>div{justify-self:end}.market-prices-explore-heading{flex-wrap:wrap}}
+@media(max-width:430px){.market-prices-crop-chips{gap:6px}.market-prices-crop-chips button{min-height:29px;padding:0 8px;font-size:9px}.market-prices-explore-heading{font-size:10px}.market-prices-explore-heading small{font-size:9px}.market-price-card:before{right:12px;left:12px}}
+@media(prefers-reduced-motion:reduce){.market-prices-stats>div,.market-prices-crop-chips button,.market-prices-unit-picker button,.market-prices-more button{transition:none}}

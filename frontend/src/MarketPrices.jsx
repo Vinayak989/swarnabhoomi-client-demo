@@ -164,6 +164,7 @@ export default function MarketPricesPanel() {
   const [crop, setCrop] = useState('');
   const [district, setDistrict] = useState('');
   const [sort, setSort] = useState('recent');
+  const [priceUnit, setPriceUnit] = useState('quintal');
   const [visibleCount, setVisibleCount] = useState(40);
 
   const load = useCallback(async (force = false) => {
@@ -187,8 +188,18 @@ export default function MarketPricesPanel() {
 
   const prices = feed?.prices || [];
   const crops = useMemo(() => [...new Set(prices.map(item => item.commodity).filter(Boolean))].sort((a, b) => cropNameInMarathi(a).localeCompare(cropNameInMarathi(b), 'mr')), [prices]);
+  const popularCrops = useMemo(() => {
+    const counts = new Map();
+    prices.forEach(item => {
+      if (item.commodity) counts.set(item.commodity, (counts.get(item.commodity) || 0) + 1);
+    });
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]
+      || cropNameInMarathi(a[0]).localeCompare(cropNameInMarathi(b[0]), 'mr')).slice(0, 6);
+  }, [prices]);
   const districts = useMemo(() => [...new Set(prices.map(item => item.district).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [prices]);
   const commodityCount = useMemo(() => new Set(prices.map(item => item.commodity).filter(Boolean)).size, [prices]);
+  const displayedPrice = value => value == null || value === '' ? '—'
+    : money(Number(value) / (priceUnit === 'kg' ? 100 : 1));
   const filtered = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
     return prices.filter(item => (!crop || item.commodity === crop)
@@ -232,13 +243,38 @@ export default function MarketPricesPanel() {
       <label className="market-prices-select"><ArrowDownWideNarrow size={16}/><select value={sort} onChange={event => setSort(event.target.value)} aria-label="दरांची मांडणी"><option value="recent">नवीन नोंदी आधी</option><option value="low">कमी मोडल दर आधी</option><option value="high">जास्त मोडल दर आधी</option></select></label>
     </div>
 
+    <div className="market-prices-explore">
+      <div className="market-prices-popular">
+        <div className="market-prices-explore-heading"><span>सर्वाधिक नोंदी असलेली पिके</span><small>एका स्पर्शात फिल्टर करा</small></div>
+        <div className="market-prices-crop-chips" role="group" aria-label="लोकप्रिय पिके निवडा">
+          <button type="button" className={!crop ? 'selected' : ''} aria-pressed={!crop} onClick={() => setCrop('')}>सर्व पिके</button>
+          {crop && !popularCrops.some(([name]) => name === crop) && <button type="button" className="selected" aria-pressed="true" onClick={() => setCrop('')}>{cropNameInMarathi(crop)} <span>×</span></button>}
+          {popularCrops.map(([name, count]) => <button type="button" key={name} className={crop === name ? 'selected' : ''} aria-pressed={crop === name} onClick={() => setCrop(name)}>
+            {cropNameInMarathi(name)} <span>{count.toLocaleString('mr-IN')}</span>
+          </button>)}
+        </div>
+      </div>
+      <div className="market-prices-unit-picker">
+        <span>भावाचे एकक</span>
+        <div role="group" aria-label="भावाचे एकक निवडा">
+          <button type="button" className={priceUnit === 'quintal' ? 'selected' : ''} aria-pressed={priceUnit === 'quintal'} onClick={() => setPriceUnit('quintal')}>क्विंटल</button>
+          <button type="button" className={priceUnit === 'kg' ? 'selected' : ''} aria-pressed={priceUnit === 'kg'} onClick={() => setPriceUnit('kg')}>किलो</button>
+        </div>
+      </div>
+    </div>
+
     {loading && !feed ? <div className="market-prices-loading"><RefreshCw className="market-prices-spin" size={20}/> अधिकृत बाजारभाव आणत आहोत…</div>
       : filtered.length ? <>
         <div className="market-prices-grid">
           {filtered.slice(0, visibleCount).map((item, index) => <article className="market-price-card" key={`${item.market}-${item.commodity}-${item.variety}-${item.arrivalDate}-${index}`}>
             <div className="market-price-card-heading"><div><span className="market-price-label">शेतमाल</span><h2>{cropNameInMarathi(item.commodity)}</h2></div><span className="market-price-date"><CalendarDays size={14}/>{stamp(item.arrivalDate)}</span></div>
-            <div className="market-price-modal"><strong>{money(item.modalPrice)}</strong><span>मोडल दर / क्विंटल</span></div>
-            <div className="market-price-range"><span>किमान <b>{money(item.minPrice)}</b></span><span>कमाल <b>{money(item.maxPrice)}</b></span></div>
+            <div className="market-price-modal"><strong>{displayedPrice(item.modalPrice)}</strong><span>मोडल दर / {priceUnit === 'kg' ? 'किलो' : 'क्विंटल'}</span></div>
+            <div className="market-price-range-visual" role="img" aria-label={`किमान ${displayedPrice(item.minPrice)}, कमाल ${displayedPrice(item.maxPrice)}, मोडल ${displayedPrice(item.modalPrice)}`}>
+              <div className="market-price-range-track">
+                <span style={{ left: `${Number(item.maxPrice) > Number(item.minPrice) ? Math.max(0, Math.min(100, (Number(item.modalPrice) - Number(item.minPrice)) / (Number(item.maxPrice) - Number(item.minPrice)) * 100)) : 50}%` }}/>
+              </div>
+              <div className="market-price-range"><span>किमान <b>{displayedPrice(item.minPrice)}</b></span><span>कमाल <b>{displayedPrice(item.maxPrice)}</b></span></div>
+            </div>
             <div className="market-price-market"><MapPin size={15}/><div><b>{item.market || 'बाजार उपलब्ध नाही'}</b><span>{item.district}{item.variety ? ` · ${item.variety}` : ''}</span></div></div>
             {item.grade && <span className="market-price-grade">{item.grade}</span>}
           </article>)}

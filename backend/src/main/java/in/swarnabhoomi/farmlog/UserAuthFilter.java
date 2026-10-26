@@ -70,7 +70,7 @@ public class UserAuthFilter extends OncePerRequestFilter {
                     && !"buyer".equals(user.getRole())
                 || MARKETPLACE_ORDERS.equals(path) && !"buyer".equals(user.getRole())
                 || MARKETPLACE_BUYER_ORDERS.equals(path) && !"buyer".equals(user.getRole())
-                || MARKETPLACE_CONTACT.matcher(path).matches() && !"buyer".equals(user.getRole())
+                || MARKETPLACE_CONTACT.matcher(path).matches() && !"admin".equals(user.getRole())
                 || MARKETPLACE_SELLER.matcher(path).matches()
                     && !("GET".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method))
                 || MARKETPLACE_SELLER.matcher(path).matches()
