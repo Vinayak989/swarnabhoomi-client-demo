@@ -1078,6 +1078,14 @@ select:focus-visible {
 .admin-row-details dl { display: grid; grid-template-columns: minmax(95px,.55fr) minmax(140px,1fr); gap: 5px 10px; min-width: 310px; max-width: 480px; margin: 9px 0 2px; padding: 11px; border: 1px solid #e8eee5; border-radius: 8px; background: #fbfcf9; }
 .admin-row-details dt { color: #78877a; font-size: 10px; }
 .admin-row-details dd { min-width: 0; margin: 0; color: #405746; font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.admin-status.verified { background: #e9f5e8; color: #42784a; }
+.admin-status.not_verified,.admin-status.expired { background: #fff0ec; color: #a75e50; }
+.admin-status.not_claimed { background: #f1f3ef; color: #788477; }
+.admin-organic-review-links,.admin-organic-review-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.admin-organic-review-links a { color: #3f7447; font-size: 10px; font-weight: 650; }
+.admin-organic-review-actions button { min-height: 30px; padding: 0 8px; border: 1px solid #d9e7d5; border-radius: 7px; background: #f1f8ee; color: #47784b; font: 700 10px inherit; cursor: pointer; }
+.admin-organic-review-actions button.reject { border-color: #efd8d4; background: #fff5f2; color: #a25249; }
+.admin-organic-review-actions button:disabled { opacity: .6; cursor: wait; }
 .admin-loading,.admin-empty { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 130px; color: #879489; font-size: 12px; }
 .admin-pagination { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 12px; color: #829084; font-size: 11px; }
 .admin-pagination > div { display: flex; gap: 7px; }

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Sprout, Plus, Search, CloudSun, Sun, Cloud, CloudRain, ImagePlus, Leaf, Wallet, Boxes, TrendingUp, CalendarDays, ChevronRight, ChevronDown, X, Save, Trash2, MapPin, LoaderCircle, Mic, MicOff, FileDown, FileSpreadsheet, Activity, Bell, CheckCircle2, BookOpen, ShoppingBasket, HandHelping, ArrowUp, Shield, RefreshCw } from 'lucide-react';
+import { Sprout, Plus, Search, CloudSun, Sun, Cloud, CloudRain, ImagePlus, Leaf, Wallet, Boxes, TrendingUp, CalendarDays, ChevronRight, ChevronDown, X, Save, Trash2, MapPin, LoaderCircle, Mic, MicOff, FileDown, FileSpreadsheet, Activity, Bell, CheckCircle2, BookOpen, ShoppingBasket, HandHelping, ArrowUp, Shield, RefreshCw, UserRound, ArrowRight } from 'lucide-react';
 import farmLogo from './image/WhatsApp Image 2026-10-20 at 2.00.01 PM.jpeg';
 import AssistantPanel from './AssistantPanel.jsx';
 import ReminderPanel from './ReminderPanel.jsx';
@@ -7,6 +7,7 @@ import InformationPanel from './InformationPanel.jsx';
 import MarketplacePanel from './MarketplacePanel.jsx';
 import ConsultantPanel from './ConsultantPanel.jsx';
 import AuthPanel from './AuthPanel.jsx';
+import AccountProfilePanel from './AccountProfilePanel.jsx';
 import GovernmentSchemesPanel, { GovernmentSchemeBanner } from './GovernmentSchemes.jsx';
 import MarketPricesPanel from './MarketPrices.jsx';
 import { Landmark } from 'lucide-react';
@@ -39,15 +40,16 @@ const NAV_ITEMS = {
   reminders: { label: 'स्मरणपत्रे', icon: Bell },
   assistant: { label: 'AI शेती सहाय्यक', icon: Sprout },
   information: { label: 'माहिती', icon: BookOpen },
+  profile: { label: 'माझे प्रोफाइल', icon: UserRound },
   marketplace: { label: 'शेतकरी बाजार', icon: ShoppingBasket },
   consultants: { label: 'सेंद्रिय सल्लागार', icon: HandHelping },
   admin: { label: 'व्यवस्थापन', icon: Activity }
 };
 const accountTabLabel=(account,tab)=>account.id==='farmer'&&tab==='marketplace'?'शेतमाल विक्री':NAV_ITEMS[tab].label;
 const ACCOUNT_TYPES = [
-  { id: 'farmer', label: 'शेतकरी', initials: 'शे', homeTab: 'entries', tabs: ['entries', 'reminders', 'assistant', 'marketplace', 'prices', 'consultants', 'schemes'], description: 'दैनिक नोंद, शेतीसाठी AI मदत, शेतमाल विक्री, स्मरणपत्रे आणि सेंद्रिय सल्लागार' },
-  { id: 'seller', label: 'विक्रेता', initials: 'वि', homeTab: 'marketplace', tabs: ['marketplace', 'information'], description: 'शेतमालाची नोंद, उपलब्ध साठा आणि खरेदीदारांच्या विनंत्या सांभाळा' },
-  { id: 'buyer', label: 'खरेदीदार', initials: 'ख्रे', homeTab: 'marketplace', tabs: ['marketplace'], description: 'शेतमाल शोधा आणि विक्रेत्यांशी संपर्क करा' },
+  { id: 'farmer', label: 'शेतकरी', initials: 'शे', homeTab: 'entries', tabs: ['entries', 'reminders', 'assistant', 'marketplace', 'prices', 'consultants', 'schemes', 'profile'], description: 'दैनिक नोंद, शेतीसाठी AI मदत, शेतमाल विक्री, स्मरणपत्रे आणि सेंद्रिय सल्लागार' },
+  { id: 'seller', label: 'विक्रेता', initials: 'वि', homeTab: 'marketplace', tabs: ['marketplace', 'profile', 'information'], description: 'शेतमालाची नोंद, उपलब्ध साठा आणि खरेदीदारांच्या विनंत्या सांभाळा' },
+  { id: 'buyer', label: 'खरेदीदार', initials: 'ख्रे', homeTab: 'marketplace', tabs: ['marketplace', 'profile'], description: 'शेतमाल शोधा आणि विक्रेत्यांशी संपर्क करा' },
   { id: 'consultant', label: 'सेंद्रिय सल्लागार', initials: 'स', homeTab: 'consultants', tabs: ['consultants', 'information'], description: 'सल्लागार प्रोफाइल प्रकाशित करा आणि शेती माहिती पहा' },
   { id: 'admin', label: 'प्रशासक', initials: 'प्र', homeTab: 'admin', tabs: ['admin', 'marketplace', 'information'], description: 'खाते, बाजार व्यवहार, शेतकरी नोंदी आणि सल्लागार प्रोफाइल व्यवस्थापन' }
 ];
@@ -71,6 +73,7 @@ function readSessionUser() {
 function App(){
   const [authUser,setAuthUser]=useState(readSessionUser);
   const [authToken,setAuthToken]=useState(()=>sessionStorage.getItem('swarnabhoomi-user-token')||'');
+  const [accountProfile,setAccountProfile]=useState(null),[accountProfileLoading,setAccountProfileLoading]=useState(false);
   const [selectedAccount,setSelectedAccount]=useState(null);
   const [accountType,setAccountType]=useState(()=>readSessionUser()?.role||null),[lastAccountType,setLastAccountType]=useState(readAccountType);
   const [activeTab,setActiveTab]=useState(()=>{const role=readSessionUser()?.role;const account=ACCOUNT_TYPES.find(item=>item.id===role);const requested=new URLSearchParams(window.location.search).get('tab');return account?.tabs.includes(requested)?requested:(account?.homeTab||'entries')});
@@ -87,7 +90,7 @@ function App(){
     sessionStorage.removeItem('swarnabhoomi-user');
     sessionStorage.removeItem('swarnabhoomi-auth');
     sessionStorage.removeItem('swarnabhoomi-marketplace-auth');
-    setAuthToken('');setAuthUser(null);setSelectedAccount(null);setAccountType(null);setEntries([]);setAssistantMessages([]);setSchemeFeed(null);
+    setAuthToken('');setAuthUser(null);setSelectedAccount(null);setAccountType(null);setEntries([]);setAssistantMessages([]);setSchemeFeed(null);setAccountProfile(null);
   },[]);
   const apiFetch=useCallback((url,options={})=>{
     const headers={...(options.headers||{}),...(authToken?{Authorization:`Bearer ${authToken}`}:{})};
@@ -96,6 +99,15 @@ function App(){
     const request=fetch(url,{...options,headers}).then(response=>{if(response.status===401&&authToken)logout();return response});
     return creatingEntry?request.then(response=>response.status>=500?queueFarmEntry(options.body,authUser?.id):response).catch(error=>{if(error instanceof TypeError)return queueFarmEntry(options.body,authUser?.id);throw error}):request;
   },[authToken,authUser,logout]);
+  useEffect(()=>{
+    if(!authToken||!['farmer','seller','buyer'].includes(accountType)){setAccountProfile(null);setAccountProfileLoading(false);return}
+    let active=true;setAccountProfileLoading(true);
+    apiFetch(`${API}/profile`).then(async response=>{if(!response.ok)throw new Error('प्रोफाइल मिळाली नाही.');return response.json()})
+      .then(profile=>{if(active)setAccountProfile(profile)})
+      .catch(()=>{if(active)setAccountProfile(null)})
+      .finally(()=>{if(active)setAccountProfileLoading(false)});
+    return()=>{active=false};
+  },[apiFetch,authToken,accountType]);
   const refreshSchemeFeed=useCallback(async(silent=false)=>{
     if(!authToken||accountType!=='farmer')return;
     if(silent)setSchemeRefreshing(true);else setSchemeLoading(true);
@@ -174,8 +186,9 @@ function App(){
   }
   if(!accountType)return <AccountSelection lastAccountType={lastAccountType} onSelect={chooseAccount}/>;
   return <div className="app-shell">
-    <aside className="sidebar"><div className="brand"><img className="brand-logo" src={farmLogo} alt="स्वर्णभूमी सेंद्रिय शेतीचे चिन्ह"/></div><div className="nav-label">मुख्य मेनू</div>{currentAccount.tabs.map(tab=>{const item=NAV_ITEMS[tab],Icon=item.icon,label=accountTabLabel(currentAccount,tab);return <button type="button" key={tab} className={`nav ${activeTab===tab?'active':''}`} onClick={()=>setActiveTab(tab)} aria-label={label} title={label}><Icon size={18}/>{label}</button>})}<div className="sidebar-tip"><Leaf size={19}/><b>आजची छोटी नोंद,<br/>उद्याची मोठी भरभराट.</b><span>तुमच्या शेताचा प्रत्येक दिवस जपून ठेवा.</span><div className="tip-leaves">✳　✳</div></div><button type="button" className="profile account-profile" onClick={logout} aria-label="लॉगआउट"><div className="avatar">{currentAccount.initials}</div><span><b>{currentAccount.label} खाते</b><small>{authUser.mobileNumber} · लॉगआउट</small></span><ChevronRight size={16}/></button></aside>
+    <aside className="sidebar"><div className="brand"><img className="brand-logo" src={farmLogo} alt="स्वर्णभूमी सेंद्रिय शेतीचे चिन्ह"/></div><div className="nav-label">मुख्य मेनू</div>{currentAccount.tabs.map(tab=>{const item=NAV_ITEMS[tab],Icon=item.icon,label=accountTabLabel(currentAccount,tab);return <button type="button" key={tab} className={`nav ${activeTab===tab?'active':''}`} onClick={()=>setActiveTab(tab)} aria-label={label} title={label}><Icon size={18}/>{label}{tab==='profile'&&!accountProfile?.complete&&<span className="profile-completion-indicator">भरायचे</span>}</button>})}<div className="sidebar-tip"><Leaf size={19}/><b>आजची छोटी नोंद,<br/>उद्याची मोठी भरभराट.</b><span>तुमच्या शेताचा प्रत्येक दिवस जपून ठेवा.</span><div className="tip-leaves">✳　✳</div></div><button type="button" className="profile account-profile" onClick={logout} aria-label="लॉगआउट"><div className="avatar">{currentAccount.initials}</div><span><b>{currentAccount.label} खाते</b><small>{authUser.mobileNumber} · लॉगआउट</small></span><ChevronRight size={16}/></button></aside>
     <main ref={mainRef} className="main"><header className="topbar"><div><span className="crumb">स्वर्णभूमी　/　</span><b>{accountTabLabel(currentAccount,activeTab)}</b></div><div className="today"><CalendarDays size={16}/>{new Date().toLocaleDateString('mr-IN',{weekday:'long',day:'numeric',month:'long'})}</div></header>
+      {['farmer','seller','buyer'].includes(accountType)&&!accountProfile?.complete&&activeTab!=='profile'&&<div className="profile-reminder-banner" role="status"><Shield size={16}/><span>तुमचे प्रोफाइल अपूर्ण आहे. खरेदीदार आणि प्रशासकांसाठी माहिती पूर्ण करा.</span><button type="button" onClick={()=>setActiveTab('profile')}>प्रोफाइल पूर्ण करा <ArrowRight size={14}/></button></div>}
       {accountType==='farmer'&&<GovernmentSchemeBanner announcements={schemeFeed?.announcements||[]} onOpen={()=>setActiveTab('schemes')}/>}
       {activeTab==='entries'?<>
       <section className="welcome"><div><span className="eyebrow"><span className="pulse"/> तुमच्या शेताची डायरी</span><h1>नमस्कार, शेतकरी मित्रा! <span>🌱</span></h1><p>आज शेतात काय घडलं? तुमची नोंद इथे जतन करा.</p></div><button className="primary" onClick={()=>{setForm(fresh());setQuickTemplatesOpen(false);setWeatherOpen(false);setOpen(true)}}><Plus size={19}/> आजची नोंद लिहा</button><div className="welcome-art"><span>☀️</span><div>〰️〰️</div></div></section>
@@ -187,6 +200,7 @@ function App(){
       <footer>🌿　तुमच्या कष्टांना योग्य नोंद — स्वर्णभूमी</footer></>:activeTab==='reminders'?<ReminderPanel apiFetch={apiFetch} apiBase={API} entries={entries} userId={authUser.id} onUnauthorized={logout}/>:null}
       <div hidden={activeTab!=='assistant'}><AssistantPanel apiFetch={apiFetch} apiBase={API} messages={assistantMessages} setMessages={setAssistantMessages} farmData={assistantFarmData} onUnauthorized={logout}/></div>
       {activeTab==='information'&&<InformationPanel/>}
+      {activeTab==='profile'&&<AccountProfilePanel accountType={accountType} mobileNumber={authUser.mobileNumber} profile={accountProfile} profileLoading={accountProfileLoading} onSaved={setAccountProfile} apiFetch={apiFetch}/>}
       {activeTab==='schemes'&&accountType==='farmer'&&<GovernmentSchemesPanel feed={schemeFeed} loading={schemeLoading} refreshing={schemeRefreshing} error={schemeError} onRefresh={()=>refreshSchemeFeed(false)}/>}
       {activeTab==='prices'&&<MarketPricesPanel/>}
       {activeTab==='admin'&&<AdminOverview apiBase={API} apiFetch={apiFetch}/>}
@@ -267,8 +281,9 @@ function AccountSelection({lastAccountType,onSelect}){
 }
 
 const ADMIN_SECTIONS = {
-  buyers: { label: 'खरेदीदार', endpoint: '/users?role=buyer', columns: ['मोबाईल क्रमांक', 'नोंदणी दिनांक', 'खाते क्रमांक'] },
-  sellers: { label: 'विक्रेते', endpoint: '/users?role=seller', columns: ['मोबाईल क्रमांक', 'नोंदणी दिनांक', 'खाते क्रमांक'] },
+  buyers: { label: 'खरेदीदार प्रोफाइल', endpoint: '/users?role=buyer', columns: ['नाव / संपर्क', 'ठिकाण', 'प्रमाणपत्र', 'पडताळणी', 'नोंदणी'] },
+  sellers: { label: 'विक्रेता प्रोफाइल', endpoint: '/users?role=seller', columns: ['नाव / संपर्क', 'ठिकाण', 'प्रमाणपत्र', 'पडताळणी', 'नोंदणी'] },
+  farmers: { label: 'शेतकरी प्रोफाइल', endpoint: '/users?role=farmer', columns: ['नाव / संपर्क', 'ठिकाण', 'प्रमाणपत्र', 'पडताळणी', 'नोंदणी'] },
   consultants: { label: 'सेंद्रिय सल्लागार', endpoint: '/consultants', columns: ['नाव', 'मोबाईल क्रमांक', 'सेवा क्षेत्र', 'तज्ज्ञता', 'अनुभव', 'नोंदणी दिनांक'] },
   entries: { label: 'शेतकऱ्यांच्या दैनिक नोंदी', endpoint: '/daily-entries', columns: ['दिनांक', 'शेतकरी मोबाईल', 'पीक / विभाग', 'आजची कामे', 'उत्पादन', 'तपशील'] },
   listings: { label: 'विक्रीच्या नोंदी', endpoint: '/listings', columns: ['माल', 'विक्रेता', 'प्रमाण', 'भाव', 'स्थिती', 'दिनांक'] },
@@ -285,8 +300,9 @@ const adminMoney = value => value==null?'—':`₹${Number(value).toLocaleString
 
 function downloadAdminCsv(section,rows){
   const columns={
-    buyers:[['मोबाईल क्रमांक','mobileNumber'],['नोंदणी दिनांक','createdAt'],['खाते क्रमांक','id']],
-    sellers:[['मोबाईल क्रमांक','mobileNumber'],['नोंदणी दिनांक','createdAt'],['खाते क्रमांक','id']],
+    buyers:[['प्रोफाइल पूर्ण','profileComplete'],['नाव','fullName'],['मोबाईल क्रमांक','mobileNumber'],['व्यवसाय','businessName'],['गाव','village'],['तालुका','taluka'],['जिल्हा','district'],['राज्य','state'],['पिनकोड','pincode'],['पत्ता','address'],['परिचय','about'],['प्रमाणपत्र प्रणाली','organicCertificationSystem'],['प्रमाणपत्र क्रमांक','organicCertificationNumber'],['वैधता','organicCertificateValidUntil'],['पडताळणी स्थिती','organicVerificationStatus'],['पडताळणी नोंद','organicVerificationNote'],['तपासणी दिनांक','organicVerificationCheckedAt'],['नोंदणी दिनांक','createdAt']],
+    sellers:[['प्रोफाइल पूर्ण','profileComplete'],['नाव','fullName'],['मोबाईल क्रमांक','mobileNumber'],['व्यवसाय / शेत','businessName'],['गाव','village'],['तालुका','taluka'],['जिल्हा','district'],['राज्य','state'],['पिनकोड','pincode'],['पत्ता','address'],['परिचय','about'],['प्रमाणपत्र प्रणाली','organicCertificationSystem'],['प्रमाणपत्र क्रमांक','organicCertificationNumber'],['वैधता','organicCertificateValidUntil'],['पडताळणी स्थिती','organicVerificationStatus'],['पडताळणी नोंद','organicVerificationNote'],['तपासणी दिनांक','organicVerificationCheckedAt'],['नोंदणी दिनांक','createdAt']],
+    farmers:[['प्रोफाइल पूर्ण','profileComplete'],['नाव','fullName'],['मोबाईल क्रमांक','mobileNumber'],['व्यवसाय / शेत','businessName'],['गाव','village'],['तालुका','taluka'],['जिल्हा','district'],['राज्य','state'],['पिनकोड','pincode'],['पत्ता','address'],['परिचय','about'],['प्रमाणपत्र प्रणाली','organicCertificationSystem'],['प्रमाणपत्र क्रमांक','organicCertificationNumber'],['वैधता','organicCertificateValidUntil'],['पडताळणी स्थिती','organicVerificationStatus'],['पडताळणी नोंद','organicVerificationNote'],['तपासणी दिनांक','organicVerificationCheckedAt'],['नोंदणी दिनांक','createdAt']],
     consultants:[['नाव','name'],['मोबाईल क्रमांक','phone'],['सेवा क्षेत्र','serviceArea'],['तज्ज्ञता','expertise'],['अनुभव वर्षे','experienceYears'],['परिचय','introduction'],['नोंदणी दिनांक','createdAt']],
     entries:[['शेतकरी मोबाईल','farmerMobileNumber'],['दिनांक','entryDate'],['पीक / विभाग','farmSection'],['हंगाम','seasonName'],['क्षेत्र एकर','plotAreaAcres'],['आजची कामे','workDone'],['साहित्य','materials'],['हवामान','weather'],['पिनकोड','pincode'],['मजूर','workerCount'],['मजुरी खर्च','laborCost'],['साहित्य खर्च','materialsCost'],['इतर खर्च','otherCost'],['पाणी लिटर','waterLitres'],['निविष्ठा प्रकार','applicationKind'],['निविष्ठा','applicationName'],['निविष्ठा प्रमाण','applicationAmount'],['निविष्ठा एकक','applicationUnit'],['उत्पादन किलो','productionKg'],['विक्री किलो','soldKg'],['विक्री उत्पन्न','saleIncome'],['पीक स्थिती','cropCondition'],['माती नोंदी','soilNotes'],['कीड / रोग','pestDisease'],['तीव्रता','issueSeverity'],['उपाय','intervention'],['पुढील पाहणी','followUpDate'],['उद्याची योजना','tomorrowPlan'],['विशेष नोंद','specialNote'],['हवामान तपशील','weatherDetails'],['फोटो','photoUrl'],['पावती फोटो','receiptPhotoUrls']],
     listings:[['माल','productName'],['विक्रेता','sellerName'],['विक्रेता मोबाईल','accountMobileNumber'],['प्रमाण','quantity'],['एकक','unit'],['भाव','pricePerUnit'],['उपलब्ध','available'],['नोंदणी दिनांक','createdAt']],
@@ -299,7 +315,7 @@ function downloadAdminCsv(section,rows){
 }
 
 function AdminOverview({apiBase,apiFetch}){
-  const [summary,setSummary]=useState(null),[section,setSection]=useState('buyers'),[page,setPage]=useState(null),[pageIndex,setPageIndex]=useState(0),[loading,setLoading]=useState(true),[summaryLoading,setSummaryLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState(''),[search,setSearch]=useState(''),[reload,setReload]=useState(0),[showConsultantForm,setShowConsultantForm]=useState(false),[consultantSaving,setConsultantSaving]=useState(false),[consultantForm,setConsultantForm]=useState({name:'',phone:'',serviceArea:'',expertise:'',experienceYears:'',introduction:''});
+  const [summary,setSummary]=useState(null),[section,setSection]=useState('buyers'),[page,setPage]=useState(null),[pageIndex,setPageIndex]=useState(0),[loading,setLoading]=useState(true),[summaryLoading,setSummaryLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState(''),[search,setSearch]=useState(''),[reload,setReload]=useState(0),[reviewingUserId,setReviewingUserId]=useState(null),[showConsultantForm,setShowConsultantForm]=useState(false),[consultantSaving,setConsultantSaving]=useState(false),[consultantForm,setConsultantForm]=useState({name:'',phone:'',serviceArea:'',expertise:'',experienceYears:'',introduction:''});
   useEffect(()=>{let active=true;setSummaryLoading(true);apiFetch(`${apiBase}/admin/overview`).then(async response=>{if(!response.ok)throw new Error('प्रशासक सारांश माहिती मिळाली नाही.');return response.json()}).then(value=>{if(active){setSummary(value);setError('')}}).catch(exception=>{if(active)setError(exception.message||'सारांश माहिती मिळाली नाही.')}).finally(()=>{if(active)setSummaryLoading(false)});return()=>{active=false}},[apiBase,apiFetch,reload]);
   useEffect(()=>{let active=true;setLoading(true);const config=ADMIN_SECTIONS[section];apiFetch(`${apiBase}/admin${config.endpoint}${config.endpoint.includes('?')?'&':'?'}page=${pageIndex}&size=50`).then(async response=>{if(!response.ok)throw new Error('नोंदी मिळाल्या नाहीत. पुन्हा प्रयत्न करा.');return response.json()}).then(value=>{if(active){setPage(value);setError('')}}).catch(exception=>{if(active)setError(exception.message||'नोंदी मिळाल्या नाहीत.')}).finally(()=>{if(active)setLoading(false)});return()=>{active=false}},[apiBase,apiFetch,section,pageIndex,reload]);
   const rows=page?.content||[];
@@ -315,14 +331,33 @@ function AdminOverview({apiBase,apiFetch}){
     }catch(exception){setError(exception.message||'सल्लागार प्रोफाइल जतन करता आली नाही.');}
     finally{setConsultantSaving(false);}
   }
+  async function reviewOrganicVerification(userId,status){
+    const defaultNote=status==='VERIFIED'?'':'प्रमाणपत्राची सरकारी नोंद जुळली नाही';
+    const note=window.prompt('तपासलेल्या सरकारी पोर्टलचे नाव (PGS, APEDA किंवा Jaivik Bharat) आणि नोंद लिहा:',defaultNote);
+    if(note===null)return;
+    setReviewingUserId(userId);setError('');setNotice('');
+    try{
+      const response=await apiFetch(`${apiBase}/admin/users/${userId}/organic-verification`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status,note})});
+      const result=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(result.message||'पडताळणी जतन करता आली नाही.');
+      setNotice('सेंद्रिय प्रमाणपत्र पडताळणीची स्थिती जतन झाली.');setReload(value=>value+1);
+    }catch(exception){setError(exception.message||'पडताळणी जतन करता आली नाही.');}
+    finally{setReviewingUserId(null);}
+  }
   function renderRows(){
-    if(section==='buyers'||section==='sellers')return filteredRows.map(row=><tr key={row.id}><td><b>{row.mobileNumber}</b></td><td>{adminDate(row.createdAt)}</td><td>#{Number(row.id).toLocaleString('mr-IN')}</td></tr>);
+    if(section==='buyers'||section==='sellers'||section==='farmers')return filteredRows.map(row=><tr key={row.id}>
+      <td><b>{row.fullName||'प्रोफाइल भरलेले नाही'}</b><small>{row.mobileNumber} · खाते #{Number(row.id).toLocaleString('mr-IN')}</small><small>{row.profileComplete?'प्रोफाइल पूर्ण':'प्रोफाइल अपूर्ण'}</small><details className="admin-row-details"><summary>संपूर्ण प्रोफाइल</summary><dl>{[['व्यवसाय / शेताचे नाव',row.businessName],['गाव',row.village],['तालुका',row.taluka],['जिल्हा',row.district],['राज्य',row.state],['पिनकोड',row.pincode],['पत्ता',row.address],['परिचय',row.about],['नोंदणी',adminDate(row.createdAt)]].filter(([,value])=>value).map(([label,value])=><React.Fragment key={label}><dt>{label}</dt><dd>{value}</dd></React.Fragment>)}</dl></details></td>
+      <td>{[row.village,row.taluka,row.district,row.state].filter(Boolean).join(' · ')||'—'}{row.pincode&&<small>{row.pincode}</small>}</td>
+      <td>{row.organicCertificationNumber?<><b>{row.organicCertificationSystem==='PGS_INDIA'?'PGS-India UID':'NPOP / APEDA'}</b><small>{row.organicCertificationNumber}</small><small>वैधता: {adminDate(row.organicCertificateValidUntil)}</small></>:<span>दिलेली नाही</span>}</td>
+      <td><span className={`admin-status ${String(row.organicVerificationStatus||'NOT_CLAIMED').toLowerCase()}`}>{({NOT_CLAIMED:'दावा नाही',PENDING:'तपासणी बाकी',VERIFIED:'तपासले',EXPIRED:'कालबाह्य',NOT_VERIFIED:'पुष्टी नाही'})[row.organicVerificationStatus]||'तपासणी बाकी'}</span>{row.organicVerificationCheckedAt&&<small>तपासणी: {adminDate(row.organicVerificationCheckedAt)}</small>}{row.organicVerificationNote&&<small>{row.organicVerificationNote}</small>}{row.organicCertificationNumber&&<details className="admin-row-details"><summary>पोर्टल / निकाल</summary><div className="admin-organic-review-links"><a href="https://pgsindia-ncof.gov.in/consumer_ver.aspx" target="_blank" rel="noreferrer">PGS-India तपासा</a><a href="https://npop.apeda.gov.in/Certification-Body-Operator-Details" target="_blank" rel="noreferrer">APEDA तपासा</a><a href="https://jaivikbharat.fssai.gov.in/" target="_blank" rel="noreferrer">Jaivik Bharat शोधा</a></div><div className="admin-organic-review-actions"><button type="button" onClick={()=>reviewOrganicVerification(row.id,'VERIFIED')} disabled={reviewingUserId!==null}>{reviewingUserId===row.id?'जतन…':'तपासले'}</button><button type="button" className="reject" onClick={()=>reviewOrganicVerification(row.id,'NOT_VERIFIED')} disabled={reviewingUserId!==null}>पुष्टी नाही</button></div></details>}</td>
+      <td>{adminDate(row.createdAt)}</td>
+    </tr>);
     if(section==='consultants')return filteredRows.map(row=><tr key={row.id}><td><b>{row.name}</b>{row.introduction&&<small>{row.introduction}</small>}</td><td>{row.phone}</td><td>{row.serviceArea}</td><td>{row.expertise}</td><td>{Number(row.experienceYears||0).toLocaleString('mr-IN')} वर्षे</td><td>{adminDate(row.createdAt)}</td></tr>);
     if(section==='entries')return filteredRows.map(row=><tr key={row.id}><td>{adminDate(row.entryDate)}</td><td><b>{row.farmerMobileNumber||'—'}</b></td><td>{row.farmSection||'—'}</td><td className="admin-work-cell">{row.workDone||'—'}</td><td>{row.productionKg==null?'—':`${Number(row.productionKg).toLocaleString('mr-IN')} किलो`}</td><td><details className="admin-row-details"><summary>संपूर्ण नोंद</summary><dl>{[['हंगाम',row.seasonName],['क्षेत्र (एकर)',row.plotAreaAcres],['हवामान',row.weather],['हवामान तपशील',row.weatherDetails],['पिनकोड',row.pincode],['साहित्य',row.materials],['पाणी (लिटर)',row.waterLitres],['निविष्ठेचा प्रकार',row.applicationKind],['निविष्ठा',row.applicationName],['निविष्ठेचे प्रमाण',row.applicationAmount==null?'':`${row.applicationAmount} ${row.applicationUnit||''}`],['मजूर',row.workerCount],['मजुरी खर्च',adminMoney(row.laborCost)],['साहित्य खर्च',adminMoney(row.materialsCost)],['इतर खर्च',adminMoney(row.otherCost)],['विक्री',row.soldKg==null?'—':`${row.soldKg} किलो`],['विक्री उत्पन्न',adminMoney(row.saleIncome)],['पीक स्थिती',row.cropCondition],['मातीची नोंद',row.soilNotes],['कीड / रोग',row.pestDisease],['तीव्रता',row.issueSeverity],['केलेला उपाय',row.intervention],['पुढील पाहणी',adminDate(row.followUpDate)],['उद्याची योजना',row.tomorrowPlan],['विशेष नोंद',row.specialNote],['शेताचा फोटो',row.photoUrl],['पावती फोटो',row.receiptPhotoUrls]].filter(([,value])=>value!=null&&value!=='').map(([label,value])=><React.Fragment key={label}><dt>{label}</dt><dd>{value}</dd></React.Fragment>)}</dl></details></td></tr>);
     if(section==='listings')return filteredRows.map(row=><tr key={row.id}><td><b>{row.productName}</b><small>{row.cropType} · {row.category}</small></td><td>{row.sellerName}<small>{row.accountMobileNumber||row.sellerPhone}</small></td><td>{Number(row.quantity).toLocaleString('mr-IN')} {row.unit}</td><td>{adminMoney(row.pricePerUnit)}</td><td><span className={`admin-status ${row.available?'active':'inactive'}`}>{row.available?'उपलब्ध':'विकले'}</span></td><td>{adminDate(row.createdAt)}</td></tr>);
     return filteredRows.map(row=><tr key={row.id}><td><b>{row.buyerName}</b><small>{row.buyerPhone}</small></td><td>{row.productName||'माल नोंद उपलब्ध नाही'}<small>{row.sellerName||'विक्रेता नोंद उपलब्ध नाही'}</small></td><td>{Number(row.quantity).toLocaleString('mr-IN')} {row.unit}</td><td><span className={`admin-status ${String(row.status||'').toLowerCase()}`}>{row.status}</span><small>{({CASH:'रोख',UPI:'UPI'})[row.paymentMethod]||'—'} · {({PENDING:'पेमेंट बाकी',PAID:'पेमेंट मिळाले',FAILED:'अयशस्वी'})[row.paymentStatus]||'पेमेंट नोंद नाही'}</small></td><td>{adminDate(row.createdAt)}</td></tr>);
   }
-  const statCards=[['buyers','नोंदणीकृत खरेदीदार',summary?.buyers],['sellers','नोंदणीकृत विक्रेते',summary?.sellers],['entries','शेतकऱ्यांच्या दैनिक नोंदी',summary?.dailyEntries],['consultants','सेंद्रिय सल्लागार प्रोफाइल',summary?.consultantProfiles],['listings','एकूण विक्री नोंदी',summary?.listings],['requests','खरेदी विनंत्या',summary?.purchaseRequests],['requests','प्रलंबित खरेदी विनंत्या',summary?.pendingRequests],['entries','आजच्या दैनिक नोंदी',summary?.todayEntries]];
+  const statCards=[['buyers','नोंदणीकृत खरेदीदार',summary?.buyers],['sellers','नोंदणीकृत विक्रेते',summary?.sellers],['farmers','नोंदणीकृत शेतकरी',summary?.farmers],['entries','शेतकऱ्यांच्या दैनिक नोंदी',summary?.dailyEntries],['consultants','सेंद्रिय सल्लागार प्रोफाइल',summary?.consultantProfiles],['listings','एकूण विक्री नोंदी',summary?.listings],['requests','खरेदी विनंत्या',summary?.purchaseRequests],['requests','प्रलंबित खरेदी विनंत्या',summary?.pendingRequests],['entries','आजच्या दैनिक नोंदी',summary?.todayEntries]];
   return <section className="account-admin-page" lang="mr"><div className="account-admin-hero"><span><Shield size={15}/> स्वर्णभूमी · सुरक्षित प्रशासक विभाग</span><h1>व्यवस्थापन आढावा</h1><p>खाते नोंदणी, बाजार व्यवहार आणि शेतकऱ्यांच्या दैनिक नोंदी एका ठिकाणी पाहा.</p><button type="button" className="admin-refresh" onClick={()=>setReload(value=>value+1)} disabled={summaryLoading||loading}><RefreshCw size={15} className={summaryLoading||loading?'spin':''}/> माहिती रिफ्रेश करा</button></div>
     {error&&<p className="account-admin-error" role="status">{error}</p>}{notice&&<p className="account-admin-notice" role="status">{notice}</p>}
     <div className="account-admin-stats">{statCards.map(([key,label,value],index)=><button type="button" key={`${key}-${index}`} className={`admin-stat-card ${section===key?'selected':''}`} onClick={()=>selectSection(key)}><span>{label}</span><strong>{summaryLoading?'…':Number(value||0).toLocaleString('mr-IN')}</strong><small>{label==='आजच्या दैनिक नोंदी'?'नोंदी आज':label==='शेतकऱ्यांच्या दैनिक नोंदी'?'सर्व शेतकरी खात्यांतून':label==='प्रलंबित खरेदी विनंत्या'?'उत्तराच्या प्रतीक्षेत':''}</small></button>)}</div>

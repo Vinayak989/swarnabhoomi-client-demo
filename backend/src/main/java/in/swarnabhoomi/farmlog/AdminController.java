@@ -15,7 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,20 +27,22 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/admin")
 @Transactional(readOnly = true)
 public class AdminController {
-    private static final Set<String> VIEWABLE_ACCOUNT_ROLES = Set.of("buyer", "seller");
+    private static final Set<String> VIEWABLE_ACCOUNT_ROLES = Set.of("buyer", "seller", "farmer");
     private static final Set<String> FARM_ACCOUNT_ROLES = Set.of("farmer", "seller");
     private static final int MAX_PAGE_SIZE = 100;
 
     private final AppUserRepository users;
+    private final AccountProfileRepository profiles;
     private final FarmEntryRepository entries;
     private final FarmProductListingRepository listings;
     private final MarketplacePurchaseRequestRepository purchaseRequests;
     private final OrganicConsultantRepository consultantProfiles;
 
-    public AdminController(AppUserRepository users, FarmEntryRepository entries,
+    public AdminController(AppUserRepository users, AccountProfileRepository profiles, FarmEntryRepository entries,
             FarmProductListingRepository listings, MarketplacePurchaseRequestRepository purchaseRequests,
             OrganicConsultantRepository consultantProfiles) {
         this.users = users;
+        this.profiles = profiles;
         this.entries = entries;
         this.listings = listings;
         this.purchaseRequests = purchaseRequests;
@@ -69,9 +73,55 @@ public class AdminController {
             @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
         requireAdmin(user);
         if (!VIEWABLE_ACCOUNT_ROLES.contains(role)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "खरेदीदार किंवा विक्रेता खाते निवडा.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "खरेदीदार, विक्रेता किंवा शेतकरी खाते निवडा.");
         }
-        return users.findAllByRoleOrderByCreatedAtDesc(role, pageRequest(page, size)).map(AdminController::userRecord);
+        Page<AppUser> accountPage = users.findAllByRoleOrderByCreatedAtDesc(role, pageRequest(page, size));
+        Set<Long> userIds = accountPage.getContent().stream().map(AppUser::getId).collect(Collectors.toSet());
+        Map<Long, AccountProfile> profileByUserId = userIds.isEmpty() ? Map.of()
+                : profiles.findAllByUserIds(userIds).stream()
+                        .collect(Collectors.toMap(AccountProfile::getUserId, Function.identity()));
+        return accountPage.map(account -> userRecord(account, profileByUserId.get(account.getId())));
+    }
+
+    @PatchMapping("/users/{id}/organic-verification")
+    @Transactional
+    public VerificationRecord reviewOrganicVerification(@PathVariable Long id,
+            @RequestBody(required = false) VerificationReviewRequest request,
+            @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser admin) {
+        requireAdmin(admin);
+        AppUser account = users.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "खाते सापडले नाही."));
+        if (!("seller".equals(account.getRole()) || "farmer".equals(account.getRole()))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "सेंद्रिय पडताळणी फक्त विक्रेता किंवा शेतकरी खात्यासाठी आहे.");
+        }
+        if (request == null || !("VERIFIED".equals(request.status()) || "NOT_VERIFIED".equals(request.status()))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "पडताळणीचा निकाल निवडा.");
+        }
+        AccountProfile profile = profiles.findByUserId(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "प्रोफाइल सापडले नाही."));
+        if (profile.getOrganicCertificationNumber() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "प्रोफाइलमध्ये प्रमाणपत्र क्रमांक नाही.");
+        }
+        String note = request.note() == null ? null : request.note().trim();
+        if ("VERIFIED".equals(request.status())
+                && (profile.getOrganicCertificateValidUntil() == null
+                    || profile.getOrganicCertificateValidUntil().isBefore(LocalDate.now()))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "वैधता दिनांक नसलेले किंवा कालबाह्य प्रमाणपत्र पडताळलेले म्हणून जतन करता येणार नाही.");
+        }
+        if ("VERIFIED".equals(request.status()) && (note == null || note.isBlank()
+                || !note.toLowerCase(java.util.Locale.ROOT).matches(".*(pgs|apeda|jaivik|fssai).*"))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "पडताळलेल्या सरकारी पोर्टलचे नाव नोंदीत लिहा.");
+        }
+        if (note != null && note.length() > 500) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "पडताळणीची नोंद ५०० अक्षरांपेक्षा मोठी आहे.");
+        }
+        profile.setOrganicVerificationStatus(request.status());
+        profile.setOrganicVerificationNote(note == null || note.isBlank() ? null : note);
+        profile.setOrganicVerificationCheckedAt(Instant.now());
+        profile.setOrganicVerificationCheckedBy(admin.getId());
+        profiles.save(profile);
+        return new VerificationRecord(id, profile.getOrganicVerificationStatus(),
+                profile.getOrganicVerificationNote(), profile.getOrganicVerificationCheckedAt());
     }
 
     @GetMapping("/consultants")
@@ -132,8 +182,29 @@ public class AdminController {
         }
     }
 
-    private static UserRecord userRecord(AppUser user) {
-        return new UserRecord(user.getId(), user.getMobileNumber(), user.getRole(), user.getCreatedAt());
+    private static UserRecord userRecord(AppUser user, AccountProfile profile) {
+        return new UserRecord(user.getId(), user.getMobileNumber(), user.getRole(), user.getCreatedAt(),
+                profile == null ? null : profile.getFullName(), profile == null ? null : profile.getBusinessName(),
+                profile == null ? null : profile.getVillage(), profile == null ? null : profile.getTaluka(),
+                profile == null ? null : profile.getDistrict(), profile == null ? null : profile.getState(),
+                profile == null ? null : profile.getPincode(), profile == null ? null : profile.getAddress(),
+                profile == null ? null : profile.getAbout(),
+                profile == null ? null : profile.getOrganicCertificationSystem(),
+                profile == null ? null : profile.getOrganicCertificationNumber(),
+                profile == null ? null : profile.getOrganicCertificateValidUntil(),
+                profile == null ? "NOT_CLAIMED" : organicVerificationStatus(profile),
+                profile == null ? null : profile.getOrganicVerificationNote(),
+                profile == null ? null : profile.getOrganicVerificationCheckedAt(),
+                profile != null && profile.getOrganicVerificationCheckedBy() != null,
+                profile != null && profile.getFullName() != null && profile.getVillage() != null
+                        && profile.getDistrict() != null && profile.getState() != null);
+    }
+
+    private static String organicVerificationStatus(AccountProfile profile) {
+        if ("VERIFIED".equals(profile.getOrganicVerificationStatus())
+                && profile.getOrganicCertificateValidUntil() != null
+                && profile.getOrganicCertificateValidUntil().isBefore(LocalDate.now())) return "EXPIRED";
+        return profile.getOrganicVerificationStatus();
     }
 
     private static DailyEntryRecord dailyRecord(FarmEntry entry) {
@@ -171,7 +242,15 @@ public class AdminController {
             long listings, long availableListings, long purchaseRequests, long pendingRequests,
             long dailyEntries, long todayEntries) {}
 
-    public record UserRecord(Long id, String mobileNumber, String role, Instant createdAt) {}
+    public record UserRecord(Long id, String mobileNumber, String role, Instant createdAt,
+            String fullName, String businessName, String village, String taluka, String district, String state,
+            String pincode, String address, String about, String organicCertificationSystem,
+            String organicCertificationNumber, LocalDate organicCertificateValidUntil,
+            String organicVerificationStatus, String organicVerificationNote,
+            Instant organicVerificationCheckedAt, boolean organicVerificationReviewed, boolean profileComplete) {}
+
+    public record VerificationReviewRequest(String status, String note) {}
+    public record VerificationRecord(Long userId, String status, String note, Instant checkedAt) {}
 
     public record ConsultantRecord(Long id, String name, String phone, String serviceArea, String expertise,
             int experienceYears, String introduction, Instant createdAt) {}
