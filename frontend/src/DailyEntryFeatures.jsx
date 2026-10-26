@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Bug, ChevronDown, ImagePlus, Sprout, Trash2 } from 'lucide-react';
 import { Bell, LoaderCircle } from 'lucide-react';
 import { getBrowserPushSubscriptionId } from './reminderNotifications.js';
+import SpeechTextInput from './SpeechTextInput.jsx';
 import './dailyEntryFeatures.css';
 
 const templates = [
@@ -111,10 +112,10 @@ export function IssueTrackingFields({ form, set, apiFetch, apiBase, userId }) {
   }
 
   return <section className="form-section issue-tracking-fields"><h3><Bug size={18}/> कीड / रोग व पुढील पाहणी</h3><div className="form-grid three">
-    <label className="field"><span className="field-label">कीड किंवा रोग</span><input value={form.pestDisease} onChange={e => set('pestDisease', e.target.value)} placeholder="लक्षण किंवा कीडीचे नाव"/></label>
+    <label className="field"><span className="field-label">कीड किंवा रोग</span><SpeechTextInput><input value={form.pestDisease} onChange={e => set('pestDisease', e.target.value)} placeholder="लक्षण किंवा कीडीचे नाव"/></SpeechTextInput></label>
     <label className="field"><span className="field-label">तीव्रता</span><select value={form.issueSeverity} onChange={e => set('issueSeverity', e.target.value)}><option value="">निवडा...</option><option>कमी</option><option>मध्यम</option><option>जास्त</option></select></label>
     <label className="field"><span className="field-label">पुढील पाहणीची तारीख</span><input type="date" value={form.followUpDate} disabled={reminderBusy} onChange={event => { set('followUpDate', event.target.value); void syncReminder(event.target.value); }}/></label>
-  </div><label className="field"><span className="field-label">केलेला उपाय / निरीक्षण</span><textarea rows="2" value={form.intervention} onChange={e => set('intervention', e.target.value)} placeholder="उपाय, प्रमाण आणि पुढे काय तपासायचे ते लिहा"/></label>
+  </div><label className="field"><span className="field-label">केलेला उपाय / निरीक्षण</span><SpeechTextInput><textarea rows="2" value={form.intervention} onChange={e => set('intervention', e.target.value)} placeholder="उपाय, प्रमाण आणि पुढे काय तपासायचे ते लिहा"/></SpeechTextInput></label>
     {reminderBusy && <div className="follow-up-reminder" role="status"><LoaderCircle className="spin" size={14}/> स्मरणपत्र जतन करत आहे...</div>}
     {reminderMessage && <div className="follow-up-reminder" role="status"><span>{reminderMessage}</span></div>}
     {reminderError && <div className="follow-up-reminder" role="alert"><small>{reminderError}</small></div>}

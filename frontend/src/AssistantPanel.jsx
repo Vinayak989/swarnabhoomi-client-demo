@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BellPlus, Bot, Camera, CheckCircle2, ImagePlus, LoaderCircle, Mic, MicOff, Send, Sprout, Volume2, X } from 'lucide-react';
 import { getBrowserPushSubscriptionId } from './reminderNotifications.js';
+import SpeechTextInput from './SpeechTextInput.jsx';
 import './assistant.css';
 
 const MAX_ORIGINAL_PHOTO_SIZE = 10_000_000;
@@ -341,7 +342,7 @@ export default function AssistantPanel({ apiFetch, apiBase, messages, setMessage
         <button type="button" className="assistant-reminder-close" onClick={() => setReminderDraft(null)} disabled={reminderSaving} aria-label="बंद करा"><X size={18}/></button>
         <div className="assistant-reminder-icon"><BellPlus size={20}/></div>
         <span>AI सल्ल्याची आठवण</span><h2>स्मरणपत्र तयार करा</h2>
-        <label>काम किंवा तपासणी<input value={reminderDraft.reason} onChange={event => setReminderDraft(current => ({ ...current, reason: event.target.value }))} maxLength={300} required/></label>
+        <label>काम किंवा तपासणी<SpeechTextInput><input value={reminderDraft.reason} onChange={event => setReminderDraft(current => ({ ...current, reason: event.target.value }))} maxLength={300} required/></SpeechTextInput></label>
         <label>तारीख आणि वेळ (भारतीय वेळ)<input type="datetime-local" min={indiaDateTimeInput(new Date())} value={reminderDraft.scheduledAt} onChange={event => setReminderDraft(current => ({ ...current, scheduledAt: event.target.value }))} required/></label>
         {reminderError && <div className="assistant-error" role="alert">{reminderError}</div>}
         <p>स्मरणपत्र जतन झाल्यावर ते स्मरणपत्रे विभागात दिसेल.</p>

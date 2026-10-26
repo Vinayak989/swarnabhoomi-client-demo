@@ -1,0 +1,11 @@
+.speech-input-wrap{position:relative;display:block;flex:1 1 auto;width:100%;min-width:0}
+.market-prices-search>.speech-input-wrap{flex:1 1 0;min-width:0;color:inherit;font-size:inherit;white-space:normal}
+.speech-input-wrap>input:not([type="checkbox"]):not([type="radio"]),.speech-input-wrap>textarea{box-sizing:border-box;padding-right:42px!important}
+.speech-input-control{position:absolute;z-index:2;top:50%;right:6px;display:inline-flex;align-items:center;justify-content:center;transform:translateY(-50%)}
+.speech-input-multiline>.speech-input-control{top:7px;transform:none}
+.speech-input-button{width:27px;height:27px;display:grid;place-items:center;padding:0;border:0;border-radius:7px;background:#eff5ed;color:#59805d;cursor:pointer;transition:background .15s,color .15s}
+.speech-input-button:hover:not(:disabled){background:#e1efe1;color:#347447}
+.speech-input-button:disabled{opacity:.55;cursor:not-allowed}
+.speech-input-control.listening .speech-input-button{background:#ffede9;color:#b94d42;animation:speech-input-pulse 1.3s infinite}
+.speech-input-notice{position:absolute;z-index:8;right:0;top:calc(100% + 5px);width:max-content;max-width:250px;padding:6px 8px;border:1px solid #e6ebe4;border-radius:6px;background:#fff;box-shadow:0 5px 15px #17251720;color:#a34d45;font-size:10px;font-weight:500}
+@keyframes speech-input-pulse{50%{box-shadow:0 0 0 4px #f5d8d2}}

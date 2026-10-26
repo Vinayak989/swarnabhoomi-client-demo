@@ -3,6 +3,7 @@ import L from 'leaflet';
 import { ArrowDownRight, ArrowDownWideNarrow, ArrowRight, ArrowUpRight, Check, ClipboardList, FileDown, Heart, LocateFixed, MapPin, Minus, PackageCheck, PackagePlus, Phone, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, ShoppingCart, Store, Trash2, Upload, UserRound, Wheat, X } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import { fetchOfficialPrices, findLatestCommodityPrice, MARKET_CROP_OPTIONS } from './MarketPrices.jsx';
+import SpeechTextInput from './SpeechTextInput.jsx';
 import './marketplace.css';
 
 const EMPTY_FORM = {
@@ -1129,7 +1130,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
         {availableCategories.map(category => <button type="button" key={category} className={categoryFilter === category ? 'selected' : ''} aria-pressed={categoryFilter === category} onClick={() => setCategoryFilter(category)}>{category}</button>)}
       </section>
       <section className="market-search-panel">
-        <label className="market-search-field"><Search size={17}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder={accountType === 'farmer' ? 'पीक किंवा शेतमाल शोधा' : 'पीक, शेतमाल, विक्रेता किंवा पत्ता शोधा'}/></label>
+        <label className="market-search-field"><Search size={17}/><SpeechTextInput><input value={search} onChange={event => setSearch(event.target.value)} placeholder={accountType === 'farmer' ? 'पीक किंवा शेतमाल शोधा' : 'पीक, शेतमाल, विक्रेता किंवा पत्ता शोधा'}/></SpeechTextInput></label>
         {accountType !== 'farmer' && <>
           <button className="market-location-button" type="button" onClick={() => askForLocation(false)}><LocateFixed size={16}/> जवळचे विक्रेते</button>
           <label className="market-radius">त्रिज्या
@@ -1223,10 +1224,10 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
           })}</div>
           <form className="market-checkout-card" onSubmit={submitCheckout}>
             <div className="market-card-heading"><div><span>ऑर्डर</span><h2>विक्रेत्यांना पाठवा</h2></div><ShoppingBag size={19}/></div>
-            <label className="market-field"><span>तुमचे नाव *</span><input value={buyerName} onChange={event => setBuyerName(event.target.value)} maxLength={100} required autoComplete="name"/></label>
+            <label className="market-field"><span>तुमचे नाव *</span><SpeechTextInput><input value={buyerName} onChange={event => setBuyerName(event.target.value)} maxLength={100} required autoComplete="name"/></SpeechTextInput></label>
             <label className="market-field"><span>नोंदणीकृत मोबाईल</span><input value={buyerPhone} readOnly/><small>हा नंबर विक्रेत्यांना संपर्कासाठी दिसेल.</small></label>
             <label className="market-field"><span>माल कसा हवा?</span><select value={buyerFulfillment} onChange={event => setBuyerFulfillment(event.target.value)}><option value="PICKUP">मी घेऊन जाईन</option><option value="DELIVERY">पोहोचवून हवा</option></select></label>
-            <label className="market-field"><span>विक्रेत्यांसाठी संदेश <small>ऐच्छिक</small></span><textarea maxLength={500} value={buyerNote} onChange={event => setBuyerNote(event.target.value)} placeholder="सोयीची वेळ किंवा इतर माहिती"/></label>
+            <label className="market-field"><span>विक्रेत्यांसाठी संदेश <small>ऐच्छिक</small></span><SpeechTextInput><textarea maxLength={500} value={buyerNote} onChange={event => setBuyerNote(event.target.value)} placeholder="सोयीची वेळ किंवा इतर माहिती"/></SpeechTextInput></label>
             <fieldset className="market-payment-options">
               <legend>पेमेंट पद्धत</legend>
               <label className={`market-payment-choice ${paymentMethod === 'CASH' ? 'selected' : ''}`}>
@@ -1269,9 +1270,9 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       <form className="market-form" onSubmit={submitListing}>
         <div className="market-form-section-title"><UserRound size={16}/> विक्रेता आणि संपर्क</div>
         <div className="market-form-grid">
-          <label className="market-field"><span>शेतकरी / विक्रेत्याचे नाव *</span><input name="sellerName" value={form.sellerName} onChange={updateField} maxLength={100} required placeholder="पूर्ण नाव"/></label>
-          <label className="market-field"><span>मोबाइल नंबर * <small>भारतीय नंबर</small></span><input name="phone" value={form.phone} onChange={updateField} maxLength={18} inputMode="tel" autoComplete="tel" required placeholder="+919876543210"/></label>
-          <label className="market-field market-field-wide"><span>संपूर्ण पत्ता *</span><textarea name="address" value={form.address} onChange={updateField} maxLength={500} required placeholder="गाव, तालुका, जिल्हा आणि शेताचा पत्ता"/></label>
+          <label className="market-field"><span>शेतकरी / विक्रेत्याचे नाव *</span><SpeechTextInput><input name="sellerName" value={form.sellerName} onChange={updateField} maxLength={100} required placeholder="पूर्ण नाव"/></SpeechTextInput></label>
+          <label className="market-field"><span>मोबाइल नंबर * <small>भारतीय नंबर</small></span><SpeechTextInput><input name="phone" value={form.phone} onChange={updateField} maxLength={18} inputMode="tel" autoComplete="tel" required placeholder="+919876543210"/></SpeechTextInput></label>
+          <label className="market-field market-field-wide"><span>संपूर्ण पत्ता *</span><SpeechTextInput><textarea name="address" value={form.address} onChange={updateField} maxLength={500} required placeholder="गाव, तालुका, जिल्हा आणि शेताचा पत्ता"/></SpeechTextInput></label>
         </div>
         <div className="market-location-fields">
           <div className="market-form-section-title"><MapPin size={16}/> नकाशावरील अचूक शेताचे स्थान *</div>
@@ -1290,7 +1291,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
               {MARKET_CROP_OPTIONS.map(name => <option value={name} key={name}>{name}</option>)}
               <option value="__other__">इतर शेतमाल / स्वतः लिहा</option>
             </select>
-            {customProductName && <input name="productName" value={form.productName} onChange={updateField} maxLength={120} required placeholder="शेतमालाचे नाव लिहा"/>}
+            {customProductName && <SpeechTextInput><input name="productName" value={form.productName} onChange={updateField} maxLength={120} required placeholder="शेतमालाचे नाव लिहा"/></SpeechTextInput>}
           </label>
           <label className="market-field"><span>शेतमालाचा प्रकार *</span><select name="category" value={form.category} onChange={updateField}>{CATEGORIES.map(category=><option key={category}>{category}</option>)}</select></label>
           <div className="market-quantity-field">
@@ -1299,7 +1300,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
           </div>
           <label className="market-field"><span>प्रति एकक किंमत (₹) *</span><input name="pricePerUnit" type="number" min="0.01" max="9999999999.99" step="0.01" value={form.pricePerUnit} onChange={updateField} required placeholder="उदा. ८०.००"/><small>खरेदीदारांना ही किंमत दिसेल.</small></label>
           <label className="market-field"><span>ऑफर सवलत (%) <small>ऐच्छिक</small></span><input name="discountPercent" type="number" min="0" max="99.99" step="0.01" value={form.discountPercent} onChange={updateField} placeholder="उदा. १०"/><small>सवलतीनंतरची किंमत खरेदीदारांना दिसेल.</small></label>
-          <label className="market-field market-field-wide"><span>शेतमालाची माहिती <small>ऐच्छिक</small></span><textarea name="description" value={form.description} onChange={updateField} maxLength={1000} placeholder="काढणीची तारीख, उपलब्धता किंवा इतर तपशील"/></label>
+          <label className="market-field market-field-wide"><span>शेतमालाची माहिती <small>ऐच्छिक</small></span><SpeechTextInput><textarea name="description" value={form.description} onChange={updateField} maxLength={1000} placeholder="काढणीची तारीख, उपलब्धता किंवा इतर तपशील"/></SpeechTextInput></label>
         </div>
         <div className="market-photo-picker">
           <input ref={fileInputRef} type="file" accept="image/*" onChange={selectPhoto} hidden/>

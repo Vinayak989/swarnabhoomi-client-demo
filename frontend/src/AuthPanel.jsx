@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, KeyRound, LockKeyhole, ShieldCheck, Smartphone } from 'lucide-react';
+import SpeechTextInput from './SpeechTextInput.jsx';
 import './auth.css';
 
 async function sendRequest(url, payload) {
@@ -101,13 +102,13 @@ export default function AuthPanel({ account, apiBase, onAuthenticated, onBack })
         <button className="auth-submit" disabled={busy || code.length !== 6}>{busy ? 'तपासत आहे…' : 'OTP तपासा आणि प्रवेश करा'}</button>
         <button className="auth-text-button" type="button" onClick={() => changeMode('otp')}>नवीन OTP मागवा</button>
       </form> : mode === 'otp' ? <form className="auth-form" onSubmit={requestCode}>
-        <label><span>मोबाईल क्रमांक</span><input type="tel" inputMode="tel" autoComplete="tel" value={mobileNumber} onChange={event => setMobileNumber(event.target.value)} maxLength={18} required placeholder="९८७६५४३२१०"/></label>
+        <label><span>मोबाईल क्रमांक</span><SpeechTextInput><input type="tel" inputMode="tel" autoComplete="tel" value={mobileNumber} onChange={event => setMobileNumber(event.target.value)} maxLength={18} required placeholder="९८७६५४३२१०"/></SpeechTextInput></label>
         {notice && <p className="auth-notice" role="status">{notice}</p>}
         {error && <p className="auth-error" role="alert">{error}</p>}
         <button className="auth-submit" disabled={busy}>{busy ? 'OTP पाठवत आहे…' : <><KeyRound size={17}/> OTP पाठवा</>}</button>
         <button className="auth-text-button" type="button" onClick={() => changeMode('login')}>पासवर्ड वापरा</button>
       </form> : <form className="auth-form" onSubmit={submitPassword}>
-        <label><span>मोबाईल क्रमांक</span><input type="tel" inputMode="tel" autoComplete="tel" value={mobileNumber} onChange={event => setMobileNumber(event.target.value)} maxLength={18} required placeholder="९८७६५४३२१०"/></label>
+        <label><span>मोबाईल क्रमांक</span><SpeechTextInput><input type="tel" inputMode="tel" autoComplete="tel" value={mobileNumber} onChange={event => setMobileNumber(event.target.value)} maxLength={18} required placeholder="९८७६५४३२१०"/></SpeechTextInput></label>
         <label><span>{mode === 'register' ? 'पासवर्ड तयार करा' : 'पासवर्ड'}</span><input type="password" autoComplete={mode === 'register' ? 'new-password' : 'current-password'} value={password} onChange={event => setPassword(event.target.value)} minLength={8} maxLength={72} required placeholder="किमान ८ अक्षरे"/></label>
         {mode === 'register' && <label><span>पासवर्ड पुन्हा लिहा</span><input type="password" autoComplete="new-password" value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} minLength={8} maxLength={72} required/></label>}
         {mode === 'register' && account.id === 'admin' && <p className="auth-notice">प्रशासक खाते सार्वजनिक sign up मधून तयार करता येत नाही. प्रणाली प्रशासकाकडून खाते तयार करून घ्या.</p>}

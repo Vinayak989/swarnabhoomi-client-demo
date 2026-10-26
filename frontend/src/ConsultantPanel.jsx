@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, LoaderCircle, MapPin, MessageCircle, MessageSquareText, Phone, Search, Sprout, X } from 'lucide-react';
+import SpeechTextInput from './SpeechTextInput.jsx';
 import './consultant.css';
 
 const EMPTY_CONSULTATION = {
@@ -117,12 +118,12 @@ function ConsultantPanel({ apiBase }) {
 
     <div className="consultant-directory-head">
       <div><span>समुदायातील मार्गदर्शक · {filteredConsultants.length.toLocaleString('mr-IN')} सल्लागार</span><h2>सल्लागार शोधा</h2></div>
-      <label className="consultant-search"><Search size={16}/><input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="नाव, जिल्हा किंवा तज्ज्ञता शोधा" aria-label="सल्लागार शोधा"/></label>
+      <label className="consultant-search"><Search size={16}/><SpeechTextInput><input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="नाव, जिल्हा किंवा तज्ज्ञता शोधा" aria-label="सल्लागार शोधा"/></SpeechTextInput></label>
     </div>
 
     <div className="consultant-filters" aria-label="सल्लागार फिल्टर">
       <label><span>सेवा क्षेत्र</span><select value={areaFilter} onChange={event => setAreaFilter(event.target.value)}><option value="">सर्व क्षेत्रे</option>{serviceAreas.map(area => <option key={area} value={area}>{area}</option>)}</select></label>
-      <label><span>तज्ज्ञता</span><input value={specialtyFilter} onChange={event => setSpecialtyFilter(event.target.value)} placeholder="उदा. कीड व्यवस्थापन"/></label>
+      <label><span>तज्ज्ञता</span><SpeechTextInput><input value={specialtyFilter} onChange={event => setSpecialtyFilter(event.target.value)} placeholder="उदा. कीड व्यवस्थापन"/></SpeechTextInput></label>
       <label><span>किमान अनुभव</span><select value={minimumExperience} onChange={event => setMinimumExperience(event.target.value)}><option value="">काहीही</option><option value="5">५+ वर्षे</option><option value="10">१०+ वर्षे</option><option value="15">१५+ वर्षे</option></select></label>
       {hasConsultantFilters && <button type="button" className="consultant-clear-filters" onClick={() => { setSearch(''); setAreaFilter(''); setSpecialtyFilter(''); setMinimumExperience(''); }}>फिल्टर साफ करा</button>}
     </div>
@@ -153,11 +154,11 @@ function ConsultantPanel({ apiBase }) {
         <div className="consultant-section-heading"><div><span>{requestingConsultant.name}</span><h2>सल्ला विनंती</h2></div><MessageCircle size={20}/></div>
         <p className="consultant-request-intro">तुमची माहिती WhatsApp संदेशात या सल्लागाराला पाठवली जाईल. अॅप ही विनंती साठवत नाही.</p>
         <div className="consultant-form-grid">
-          <label className="consultant-field"><span>तुमचे नाव <i>*</i></span><input autoComplete="name" maxLength={100} required value={consultation.farmerName} onChange={event => setConsultation(current => ({ ...current, farmerName: event.target.value }))} placeholder="पूर्ण नाव"/></label>
-          <label className="consultant-field"><span>मोबाइल नंबर <i>*</i></span><input type="tel" inputMode="tel" autoComplete="tel" pattern="(?:\+91[\s-]?)?[6-9](?:[\s-]?[0-9]){9}" maxLength={16} required value={consultation.phone} onChange={event => setConsultation(current => ({ ...current, phone: event.target.value }))} placeholder="+91 98765 43210"/></label>
-          <label className="consultant-field consultant-field-wide"><span>पीक / प्रकार <i>*</i></span><input maxLength={100} required value={consultation.crop} onChange={event => setConsultation(current => ({ ...current, crop: event.target.value }))} placeholder="उदा. ऊस, डाळिंब"/></label>
-          <label className="consultant-field consultant-field-wide"><span>शेतीची समस्या <i>*</i></span><textarea maxLength={800} rows="4" required value={consultation.problem} onChange={event => setConsultation(current => ({ ...current, problem: event.target.value }))} placeholder="लक्षणे आणि ती कधीपासून दिसत आहेत ते सांगा"/></label>
-          <label className="consultant-field consultant-field-wide"><span>संपर्कासाठी सोयीची वेळ</span><input maxLength={100} value={consultation.preferredTime} onChange={event => setConsultation(current => ({ ...current, preferredTime: event.target.value }))} placeholder="उदा. आज संध्याकाळी ६ नंतर"/></label>
+          <label className="consultant-field"><span>तुमचे नाव <i>*</i></span><SpeechTextInput><input autoComplete="name" maxLength={100} required value={consultation.farmerName} onChange={event => setConsultation(current => ({ ...current, farmerName: event.target.value }))} placeholder="पूर्ण नाव"/></SpeechTextInput></label>
+          <label className="consultant-field"><span>मोबाइल नंबर <i>*</i></span><SpeechTextInput><input type="tel" inputMode="tel" autoComplete="tel" pattern="(?:\+91[\s-]?)?[6-9](?:[\s-]?[0-9]){9}" maxLength={16} required value={consultation.phone} onChange={event => setConsultation(current => ({ ...current, phone: event.target.value }))} placeholder="+91 98765 43210"/></SpeechTextInput></label>
+          <label className="consultant-field consultant-field-wide"><span>पीक / प्रकार <i>*</i></span><SpeechTextInput><input maxLength={100} required value={consultation.crop} onChange={event => setConsultation(current => ({ ...current, crop: event.target.value }))} placeholder="उदा. ऊस, डाळिंब"/></SpeechTextInput></label>
+          <label className="consultant-field consultant-field-wide"><span>शेतीची समस्या <i>*</i></span><SpeechTextInput><textarea maxLength={800} rows="4" required value={consultation.problem} onChange={event => setConsultation(current => ({ ...current, problem: event.target.value }))} placeholder="लक्षणे आणि ती कधीपासून दिसत आहेत ते सांगा"/></SpeechTextInput></label>
+          <label className="consultant-field consultant-field-wide"><span>संपर्कासाठी सोयीची वेळ</span><SpeechTextInput><input maxLength={100} value={consultation.preferredTime} onChange={event => setConsultation(current => ({ ...current, preferredTime: event.target.value }))} placeholder="उदा. आज संध्याकाळी ६ नंतर"/></SpeechTextInput></label>
         </div>
         <div className="consultant-form-footer"><span>WhatsAppमध्ये संदेश तपासून Send दाबा.</span><button className="consultant-primary" type="submit"><MessageCircle size={15}/> WhatsAppवर पाठवा</button></div>
       </form>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, ExternalLink, Leaf, LoaderCircle, Save, ShieldCheck, UserRound } from 'lucide-react';
 import './accountProfile.css';
+import SpeechTextInput from './SpeechTextInput.jsx';
 
 const ORGANIC_SOURCES = [
   { label: 'PGS-India UID पडताळणी', href: 'https://pgsindia-ncof.gov.in/consumer_ver.aspx' },
@@ -98,16 +99,16 @@ function AccountProfilePanel({ accountType, mobileNumber, profile, profileLoadin
       <section className="account-profile-section">
         <div className="account-profile-section-heading"><span><UserRound size={17}/></span><div><h2>मूलभूत माहिती</h2><p>तुमची ओळख आणि परिसर</p></div></div>
         <div className="account-profile-grid">
-          <label><span>पूर्ण नाव *</span><input name="fullName" value={form.fullName} onChange={updateField} maxLength={120} required placeholder="तुमचे नाव"/></label>
+          <label><span>पूर्ण नाव *</span><SpeechTextInput><input name="fullName" value={form.fullName} onChange={updateField} maxLength={120} required placeholder="तुमचे नाव"/></SpeechTextInput></label>
           <label><span>मोबाईल क्रमांक</span><input value={mobileNumber || ''} readOnly/><small>लॉगिन क्रमांक बदलण्यासाठी खाते सहाय्याशी संपर्क करा.</small></label>
-          <label><span>व्यवसाय / शेताचे नाव</span><input name="businessName" value={form.businessName} onChange={updateField} maxLength={160} placeholder="ऐच्छिक"/></label>
-          <label><span>गाव *</span><input name="village" value={form.village} onChange={updateField} maxLength={120} required placeholder="गावाचे नाव"/></label>
-          <label><span>तालुका</span><input name="taluka" value={form.taluka} onChange={updateField} maxLength={120} placeholder="तालुका"/></label>
-          <label><span>जिल्हा *</span><input name="district" value={form.district} onChange={updateField} maxLength={120} required placeholder="जिल्हा"/></label>
-          <label><span>राज्य *</span><input name="state" value={form.state} onChange={updateField} maxLength={120} required placeholder="राज्य"/></label>
+          <label><span>व्यवसाय / शेताचे नाव</span><SpeechTextInput><input name="businessName" value={form.businessName} onChange={updateField} maxLength={160} placeholder="ऐच्छिक"/></SpeechTextInput></label>
+          <label><span>गाव *</span><SpeechTextInput><input name="village" value={form.village} onChange={updateField} maxLength={120} required placeholder="गावाचे नाव"/></SpeechTextInput></label>
+          <label><span>तालुका</span><SpeechTextInput><input name="taluka" value={form.taluka} onChange={updateField} maxLength={120} placeholder="तालुका"/></SpeechTextInput></label>
+          <label><span>जिल्हा *</span><SpeechTextInput><input name="district" value={form.district} onChange={updateField} maxLength={120} required placeholder="जिल्हा"/></SpeechTextInput></label>
+          <label><span>राज्य *</span><SpeechTextInput><input name="state" value={form.state} onChange={updateField} maxLength={120} required placeholder="राज्य"/></SpeechTextInput></label>
           <label><span>पिनकोड</span><input name="pincode" value={form.pincode} onChange={event => setForm(current => ({ ...current, pincode: event.target.value.replace(/\D/g, '').slice(0, 6) }))} inputMode="numeric" maxLength={6} placeholder="६ अंक"/></label>
-          <label className="wide"><span>पत्ता</span><textarea name="address" value={form.address} onChange={updateField} maxLength={500} rows="2" placeholder="ऐच्छिक"/></label>
-          <label className="wide"><span>थोडक्यात परिचय</span><textarea name="about" value={form.about} onChange={updateField} maxLength={800} rows="3" placeholder="तुमच्याबद्दल किंवा व्यवसायाबद्दल लिहा"/></label>
+          <label className="wide"><span>पत्ता</span><SpeechTextInput><textarea name="address" value={form.address} onChange={updateField} maxLength={500} rows="2" placeholder="ऐच्छिक"/></SpeechTextInput></label>
+          <label className="wide"><span>थोडक्यात परिचय</span><SpeechTextInput><textarea name="about" value={form.about} onChange={updateField} maxLength={800} rows="3" placeholder="तुमच्याबद्दल किंवा व्यवसायाबद्दल लिहा"/></SpeechTextInput></label>
         </div>
       </section>
 
@@ -124,7 +125,7 @@ function AccountProfilePanel({ accountType, mobileNumber, profile, profileLoadin
             <option value="NPOP_APEDA">NPOP / APEDA</option>
           </select></label>
           {form.organicCertificationSystem !== 'NONE' && <>
-            <label><span>{form.organicCertificationSystem === 'PGS_INDIA' ? 'PGS-India UID *' : 'NPOP प्रमाणपत्र क्रमांक *'}</span><input name="organicCertificationNumber" value={form.organicCertificationNumber} onChange={updateField} maxLength={120} required placeholder="प्रमाणपत्रावरील क्रमांक"/></label>
+            <label><span>{form.organicCertificationSystem === 'PGS_INDIA' ? 'PGS-India UID *' : 'NPOP प्रमाणपत्र क्रमांक *'}</span><SpeechTextInput><input name="organicCertificationNumber" value={form.organicCertificationNumber} onChange={updateField} maxLength={120} required placeholder="प्रमाणपत्रावरील क्रमांक"/></SpeechTextInput></label>
             <label><span>प्रमाणपत्राची वैधता *</span><input name="organicCertificateValidUntil" type="date" value={form.organicCertificateValidUntil} onChange={updateField} required/></label>
           </>}
         </div>

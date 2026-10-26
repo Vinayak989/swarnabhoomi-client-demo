@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowDownWideNarrow, CalendarDays, ChartNoAxesCombined, CircleAlert, MapPin, RefreshCw, Search, Wheat } from 'lucide-react';
+import SpeechTextInput from './SpeechTextInput.jsx';
 import './marketPrices.css';
 
 const SOURCE_URL = 'https://www.data.gov.in/catalog/current-daily-price-various-commodities-various-markets-mandi';
@@ -225,7 +226,7 @@ export default function MarketPricesPanel() {
     {error && <div className="market-prices-error" role="status"><CircleAlert size={17}/><span>{error}{feed?.prices?.length ? ' शेवटची मिळालेली माहिती खाली दाखवली आहे.' : ''}</span></div>}
 
     <div className="market-prices-controls">
-      <label className="market-prices-search"><Search size={17}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="पीक, बाजार किंवा जिल्हा शोधा" aria-label="पीक, बाजार किंवा जिल्हा शोधा"/><span>{filtered.length.toLocaleString('mr-IN')} नोंदी</span></label>
+      <label className="market-prices-search"><Search size={17}/><SpeechTextInput><input value={search} onChange={event => setSearch(event.target.value)} placeholder="पीक, बाजार किंवा जिल्हा शोधा" aria-label="पीक, बाजार किंवा जिल्हा शोधा"/></SpeechTextInput><span>{filtered.length.toLocaleString('mr-IN')} नोंदी</span></label>
       <label className="market-prices-select"><Wheat size={16}/><select value={crop} onChange={event => setCrop(event.target.value)} aria-label="पिकानुसार फिल्टर करा"><option value="">सर्व पिके</option>{crops.map(name => <option key={name} value={name}>{cropNameInMarathi(name)}</option>)}</select></label>
       <label className="market-prices-select"><MapPin size={16}/><select value={district} onChange={event => setDistrict(event.target.value)} aria-label="जिल्ह्यानुसार फिल्टर करा"><option value="">सर्व जिल्हे</option>{districts.map(name => <option key={name} value={name}>{name}</option>)}</select></label>
       <label className="market-prices-select"><ArrowDownWideNarrow size={16}/><select value={sort} onChange={event => setSort(event.target.value)} aria-label="दरांची मांडणी"><option value="recent">नवीन नोंदी आधी</option><option value="low">कमी मोडल दर आधी</option><option value="high">जास्त मोडल दर आधी</option></select></label>
