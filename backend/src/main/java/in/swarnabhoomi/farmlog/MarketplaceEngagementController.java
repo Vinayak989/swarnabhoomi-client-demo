@@ -3,7 +3,9 @@ package in.swarnabhoomi.farmlog;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.PageRequest;
@@ -62,15 +64,52 @@ public class MarketplaceEngagementController {
                 .toList();
     }
 
+    @GetMapping("/unread-messages")
+    @Transactional(readOnly = true)
+    public List<UnreadMessageCount> unreadMessages(
+            @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
+        requireMarketplaceAccount(user);
+        boolean buyer = "buyer".equals(user.getRole());
+        List<MarketplacePurchaseRequest> userOrders;
+        if (buyer) {
+            userOrders = orders.findTop100ByBuyerUserIdOrderByCreatedAtDesc(user.getId());
+        } else {
+            List<Long> listingIds = listings.findAllByOwner_Id(user.getId()).stream()
+                    .map(FarmProductListing::getId).toList();
+            if (listingIds.isEmpty()) return List.of();
+            userOrders = orders.findAllByListingIdInOrderByCreatedAtDesc(listingIds);
+        }
+        if (userOrders.isEmpty()) return List.of();
+
+        Map<Long, MarketplacePurchaseRequest> ordersById = new HashMap<>();
+        userOrders.forEach(order -> ordersById.put(order.getId(), order));
+        Map<Long, Long> unreadByOrder = new HashMap<>();
+        List<Long> orderIds = userOrders.stream().map(MarketplacePurchaseRequest::getId).toList();
+        for (MarketplaceOrderMessage message : messages.findAllByRequestIdInAndSenderUserIdNot(orderIds, user.getId())) {
+            MarketplacePurchaseRequest order = ordersById.get(message.getRequestId());
+            if (order == null) continue;
+            long lastReadId = buyer ? order.getBuyerLastReadMessageId() : order.getSellerLastReadMessageId();
+            if (message.getId() > lastReadId) unreadByOrder.merge(order.getId(), 1L, Long::sum);
+        }
+        return unreadByOrder.entrySet().stream()
+                .map(entry -> new UnreadMessageCount(entry.getKey(), entry.getValue())).toList();
+    }
+
     @GetMapping("/orders/{orderId}/messages")
+    @Transactional
     public ConversationResponse conversation(@PathVariable Long orderId,
             @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
         MarketplacePurchaseRequest order = requireParticipant(orderId, user);
         List<MarketplaceConversationBlock> orderBlocks = blocks.findAllByRequestId(orderId);
         boolean blockedByMe = orderBlocks.stream().anyMatch(block -> block.getUserId().equals(user.getId()));
         boolean blockedByOther = orderBlocks.stream().anyMatch(block -> !block.getUserId().equals(user.getId()));
-        return new ConversationResponse(messages.findAllByRequestIdOrderByCreatedAtAsc(orderId).stream()
-                .map(MessageResponse::from).toList(), blockedByMe, blockedByOther, !blockedByMe && !blockedByOther
+        List<MarketplaceOrderMessage> conversationMessages = messages.findAllByRequestIdOrderByCreatedAtAsc(orderId);
+        long latestMessageId = conversationMessages.stream().mapToLong(MarketplaceOrderMessage::getId).max().orElse(0L);
+        if (latestMessageId > 0) {
+            if (user.getId().equals(order.getBuyerUserId())) orders.markBuyerMessagesRead(orderId, latestMessageId);
+            else orders.markSellerMessagesRead(orderId, latestMessageId);
+        }
+        return new ConversationResponse(conversationMessages.stream().map(MessageResponse::from).toList(), blockedByMe, blockedByOther, !blockedByMe && !blockedByOther
                     && order.getStatus() != MarketplacePurchaseRequest.Status.DECLINED);
     }
 
@@ -281,6 +320,7 @@ public class MarketplaceEngagementController {
     private static String trimToNull(String value) { return value == null || value.isBlank() ? null : value.trim(); }
 
     public record MessageCreate(String body) {}
+    public record UnreadMessageCount(Long orderId, long unreadCount) {}
     public record MessageResponse(Long id, Long requestId, Long senderUserId, String senderRole, String body, Instant createdAt) {
         static MessageResponse from(MarketplaceOrderMessage message) {
             return new MessageResponse(message.getId(), message.getRequestId(), message.getSenderUserId(),

@@ -197,6 +197,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   const [buyerOrdersLoading, setBuyerOrdersLoading] = useState(false);
   const [buyerOrdersError, setBuyerOrdersError] = useState('');
   const [buyerOrdersNotice, setBuyerOrdersNotice] = useState('');
+  const [unreadMessages, setUnreadMessages] = useState({});
   const [receiptBusyId, setReceiptBusyId] = useState(null);
   const [receiptError, setReceiptError] = useState('');
   const [sellerListingTokens, setSellerListingTokens] = useState(() => {
@@ -260,6 +261,32 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     const response = await fetch(`${apiBase}${path}`, { ...options, headers });
     return response;
   }, [apiBase, authorization]);
+
+  const loadUnreadMessages = useCallback(async () => {
+    if (!['buyer', 'seller', 'farmer'].includes(accountType)) {
+      setUnreadMessages({});
+      return;
+    }
+    try {
+      const response = await request('/marketplace/unread-messages');
+      if (response.status === 401) {
+        onUnauthorizedRef.current?.();
+        return;
+      }
+      if (!response.ok) return;
+      const rows = await response.json();
+      setUnreadMessages(Object.fromEntries(rows.map(item => [item.orderId, Number(item.unreadCount) || 0])));
+    } catch {
+      // Keep the last known unread counts if the network is briefly unavailable.
+    }
+  }, [accountType, request]);
+
+  useEffect(() => {
+    if (!['buyer', 'seller', 'farmer'].includes(accountType)) return undefined;
+    void loadUnreadMessages();
+    const timer = window.setInterval(loadUnreadMessages, 15000);
+    return () => window.clearInterval(timer);
+  }, [accountType, loadUnreadMessages]);
 
   const loadPaymentOptions = useCallback(async () => {
     try {
@@ -381,6 +408,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     [listings]);
   const pendingSellerRequests = useMemo(() => sellerListings.reduce((sum, row) =>
     sum + row.requests.filter(purchaseRequest => purchaseRequest.status === 'PENDING').length, 0), [sellerListings]);
+  const unreadMessageTotal = useMemo(() => Object.values(unreadMessages).reduce((total, count) => total + count, 0), [unreadMessages]);
   const activeSellerListings = useMemo(() => sellerListings.filter(row => row.listing.available && Number(row.listing.quantity) > 0).length,
     [sellerListings]);
   const farmerMarketReferences = useMemo(() => new Map(listings.map(listing => [
@@ -988,11 +1016,11 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       <button type="button" role="tab" aria-selected={view === 'browse'} className={view === 'browse' ? 'active' : ''} onClick={() => setView('browse')}><Search size={16}/> शेतमाल शोधा</button>
       {accountType === 'buyer' && <>
         <button type="button" role="tab" aria-selected={view === 'cart'} className={view === 'cart' ? 'active' : ''} onClick={() => { setCartNotice(''); setView('cart'); }}><ShoppingCart size={16}/> कार्ट <span className="market-tab-count">{cart.length.toLocaleString('mr-IN')}</span></button>
-        <button type="button" role="tab" aria-selected={view === 'orders'} className={view === 'orders' ? 'active' : ''} onClick={() => { setBuyerOrdersNotice(''); setView('orders'); }}><ClipboardList size={16}/> माझ्या ऑर्डर</button>
+        <button type="button" role="tab" aria-selected={view === 'orders'} className={view === 'orders' ? 'active' : ''} onClick={() => { setBuyerOrdersNotice(''); setView('orders'); }}><ClipboardList size={16}/> माझ्या ऑर्डर{unreadMessageTotal > 0 && <span className="market-unread-badge" aria-label={`${unreadMessageTotal.toLocaleString('mr-IN')} न वाचलेले संदेश`}>{unreadMessageTotal.toLocaleString('mr-IN')}</span>}</button>
       </>}
       {accountType !== 'buyer' && accountType !== 'admin' && <>
         <button type="button" role="tab" aria-selected={view === 'register'} className={view === 'register' ? 'active' : ''} onClick={() => { setError(''); setView('register'); }}><PackagePlus size={16}/> शेतमाल विक्रीसाठी नोंदवा</button>
-        <button type="button" role="tab" aria-selected={view === 'seller'} className={view === 'seller' ? 'active' : ''} onClick={() => { setError(''); setView('seller'); }}><ClipboardList size={16}/> माझे व्यवहार</button>
+        <button type="button" role="tab" aria-selected={view === 'seller'} className={view === 'seller' ? 'active' : ''} onClick={() => { setError(''); setView('seller'); }}><ClipboardList size={16}/> माझे व्यवहार{unreadMessageTotal > 0 && <span className="market-unread-badge" aria-label={`${unreadMessageTotal.toLocaleString('mr-IN')} न वाचलेले संदेश`}>{unreadMessageTotal.toLocaleString('mr-IN')}</span>}</button>
       </>}
     </div>
 
@@ -1120,7 +1148,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
             {order.totalAmount != null && <b className="market-buyer-order-total">₹{Number(order.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>}
             <time dateTime={order.createdAt}>{new Date(order.createdAt).toLocaleString('mr-IN', { dateStyle: 'medium', timeStyle: 'short' })}</time>
             <button type="button" className="market-receipt-button" onClick={() => downloadOrderReceipt(order)} disabled={receiptBusyId === order.id}><FileDown size={15}/>{receiptBusyId === order.id ? 'पावती तयार होत आहे…' : 'PDF पावती डाउनलोड करा'}</button>
-            <MarketplaceConversation orderId={order.id} userId={userId} request={request}/>
+            <MarketplaceConversation orderId={order.id} userId={userId} request={request} unreadCount={unreadMessages[order.id] || 0} onRead={loadUnreadMessages}/>
             <SellerReviewForm order={order} request={request} onSubmitted={() => setBuyerOrders(current => current.map(item => item.id === order.id ? { ...item, reviewSubmitted: true } : item))}/>
           </article>)}</div>}
     </section> : view === 'register' ? <section className="market-form-card">
@@ -1210,7 +1238,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
                   {purchaseRequest.status === 'PENDING' && <><button type="button" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'ACCEPTED')}>स्वीकारा</button><button type="button" className="decline" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'DECLINED')}>नाकारा</button></>}
                   {purchaseRequest.status === 'ACCEPTED' && nextSellerStage(purchaseRequest) && <div className="market-request-stage-action"><button type="button" disabled={purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus !== 'PAID' && nextSellerStage(purchaseRequest) === 'COMPLETED'} onClick={() => updateFulfillmentStage(row, purchaseRequest, nextSellerStage(purchaseRequest))}><PackageCheck size={13}/>{stageLabel(nextSellerStage(purchaseRequest))} म्हणून नोंदवा</button>{purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus !== 'PAID' && nextSellerStage(purchaseRequest) === 'COMPLETED'&&<small>पूर्ण करण्यापूर्वी रोख पेमेंट नोंदवा.</small>}</div>}
                 </div>
-                <MarketplaceConversation orderId={purchaseRequest.id} userId={userId} request={request}/>
+                <MarketplaceConversation orderId={purchaseRequest.id} userId={userId} request={request} unreadCount={unreadMessages[purchaseRequest.id] || 0} onRead={loadUnreadMessages}/>
               </div>)}</div>}
             </details>
           </article>)}</div>}

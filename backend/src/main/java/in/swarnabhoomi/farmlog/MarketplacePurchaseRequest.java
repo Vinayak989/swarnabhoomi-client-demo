@@ -32,6 +32,12 @@ public class MarketplacePurchaseRequest {
     @Column(name = "buyer_user_id")
     private Long buyerUserId;
 
+    @Column(name = "buyer_last_read_message_id")
+    private Long buyerLastReadMessageId = 0L;
+
+    @Column(name = "seller_last_read_message_id")
+    private Long sellerLastReadMessageId = 0L;
+
     @Column(nullable = false, length = 100)
     private String buyerName;
 
@@ -93,6 +99,10 @@ public class MarketplacePurchaseRequest {
     public void setListingId(Long value) { listingId = value; }
     public Long getBuyerUserId() { return buyerUserId; }
     public void setBuyerUserId(Long value) { buyerUserId = value; }
+    public Long getBuyerLastReadMessageId() { return buyerLastReadMessageId == null ? 0L : buyerLastReadMessageId; }
+    public void setBuyerLastReadMessageId(Long value) { buyerLastReadMessageId = value; }
+    public Long getSellerLastReadMessageId() { return sellerLastReadMessageId == null ? 0L : sellerLastReadMessageId; }
+    public void setSellerLastReadMessageId(Long value) { sellerLastReadMessageId = value; }
     public String getBuyerName() { return buyerName; }
     public void setBuyerName(String value) { buyerName = value; }
     public String getProductName() { return productName; }

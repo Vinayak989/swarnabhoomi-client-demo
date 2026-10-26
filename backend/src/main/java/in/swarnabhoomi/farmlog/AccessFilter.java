@@ -26,7 +26,7 @@ public class AccessFilter extends OncePerRequestFilter {
     private static final String MARKETPLACE_ORDERS = "/api/marketplace/orders";
     private static final String MARKETPLACE_BUYER_ORDERS = "/api/marketplace/buyer/orders";
     private static final Pattern MARKETPLACE_USER_FEATURE = Pattern.compile(
-            "^/api/marketplace/(?:orders/[0-9]+/(?:messages|block|review)|messages/[0-9]+/report|price-alerts(?:/[0-9]+)?)$");
+            "^/api/marketplace/(?:unread-messages|orders/[0-9]+/(?:messages|block|review)|messages/[0-9]+/report|price-alerts(?:/[0-9]+)?)$");
     private static final Pattern MARKETPLACE_PUBLIC_REVIEWS = Pattern.compile("^/api/marketplace/listings/[0-9]+/reviews$");
     @Value("${app.access.enabled:false}") private boolean enabled;
     @Value("${app.access.username:demo}") private String expectedUsername;

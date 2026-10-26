@@ -16,6 +16,7 @@ public interface FarmProductListingRepository extends JpaRepository<FarmProductL
     @Query("select listing from FarmProductListing listing where listing.id = :id")
     java.util.Optional<FarmProductListing> findByIdForUpdate(@Param("id") Long id);
     List<FarmProductListing> findTop200ByOrderByCreatedAtDesc();
+    List<FarmProductListing> findAllByOwner_Id(Long ownerId);
     long countByAvailableTrue();
     @EntityGraph(attributePaths = "owner")
     Page<FarmProductListing> findAllByOrderByCreatedAtDesc(Pageable pageable);

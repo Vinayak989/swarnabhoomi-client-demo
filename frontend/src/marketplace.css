@@ -265,6 +265,8 @@
 .market-actions button:hover:not(.active){background:#f4f7f2;color:#395a3e}
 .market-actions button.active{background:#24563a;color:#fff;box-shadow:0 4px 12px #24563a28}
 .market-tab-count{background:#fff;color:#24563a;font-size:9px}
+.market-unread-badge{min-width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;border:1px solid #fff;border-radius:999px;background:#d74943;color:#fff;font-size:9px;font-weight:850;line-height:1;box-shadow:0 2px 7px #a92f2f2a}
+.market-chat-unread{flex:0 0 auto;min-width:18px;height:18px;padding:0 4px;font-size:8px}
 .market-category-shortcuts{display:flex;align-items:center;gap:8px;margin:0 0 11px;padding:2px 1px;overflow-x:auto;scrollbar-width:none}
 .market-category-shortcuts::-webkit-scrollbar{display:none}
 .market-category-label{flex:none;margin-right:3px;color:#839084;font-size:10px;font-weight:700}
