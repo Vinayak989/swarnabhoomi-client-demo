@@ -53,7 +53,7 @@ const accountTabLabel=(account,tab)=>account.id==='farmer'&&tab==='marketplace'?
 const ACCOUNT_TYPES = [
   { id: 'farmer', label: 'शेतकरी', initials: 'शे', homeTab: 'entries', tabs: ['entries', 'profits', 'reminders', 'assistant', 'marketplace', 'prices', 'consultants', 'schemes', 'profile'], description: 'दैनिक नोंद, नफा-खर्चाचा हिशेब, शेतीसाठी AI मदत, शेतमाल विक्री आणि स्मरणपत्रे' },
   { id: 'seller', label: 'विक्रेता', initials: 'वि', homeTab: 'marketplace', tabs: ['marketplace', 'prices', 'profile', 'information'], description: 'शेतमालाची नोंद, बाजारभाव आणि खरेदीदारांच्या विनंत्या सांभाळा' },
-  { id: 'buyer', label: 'खरेदीदार', initials: 'ख्रे', homeTab: 'marketplace', tabs: ['marketplace', 'prices', 'profile'], description: 'शेतमाल शोधा, बाजारभाव पहा आणि दर सूचना मिळवा' },
+  { id: 'buyer', label: 'खरेदीदार', initials: 'ख्रे', homeTab: 'marketplace', tabs: ['marketplace', 'profile'], description: 'शेतमाल शोधा आणि खरेदीदाराचे प्रोफाइल व्यवस्थापित करा' },
   { id: 'consultant', label: 'सेंद्रिय सल्लागार', initials: 'स', homeTab: 'consultants', tabs: ['consultants', 'information'], description: 'सल्लागार प्रोफाइल प्रकाशित करा आणि शेती माहिती पहा' },
   { id: 'admin', label: 'प्रशासक', initials: 'प्र', homeTab: 'admin', tabs: ['admin', 'marketplace', 'information'], description: 'खाते, बाजार व्यवहार, शेतकरी नोंदी आणि सल्लागार प्रोफाइल व्यवस्थापन' }
 ];
