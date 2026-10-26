@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
-import { ArrowDownWideNarrow, ArrowRight, Check, ClipboardList, FileDown, Heart, LocateFixed, MapPin, Minus, PackageCheck, PackagePlus, Phone, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, ShoppingCart, Store, Trash2, Upload, UserRound, Wheat, X } from 'lucide-react';
+import { ArrowDownRight, ArrowDownWideNarrow, ArrowRight, ArrowUpRight, Check, ClipboardList, FileDown, Heart, LocateFixed, MapPin, Minus, PackageCheck, PackagePlus, Phone, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, ShoppingCart, Store, Trash2, Upload, UserRound, Wheat, X } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
+import { fetchOfficialPrices, findLatestCommodityPrice } from './MarketPrices.jsx';
 import './marketplace.css';
 
 const EMPTY_FORM = {
@@ -249,6 +250,9 @@ function ProductPhoto({ apiBase, photoUrl, authorization, productName }) {
 function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyerPhone = '', onUnauthorized }) {
   const [view, setView] = useState('browse');
   const [listings, setListings] = useState([]);
+  const [marketPriceFeed, setMarketPriceFeed] = useState(null);
+  const [marketPriceLoading, setMarketPriceLoading] = useState(false);
+  const [marketPriceError, setMarketPriceError] = useState('');
   const [form, setForm] = useState(EMPTY_FORM);
   const [photo, setPhoto] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -433,6 +437,23 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   }, [loadListings]);
 
   useEffect(() => {
+    if (accountType !== 'farmer') return undefined;
+    let active = true;
+    setMarketPriceLoading(true);
+    fetchOfficialPrices().then(feed => {
+      if (active) {
+        setMarketPriceFeed(feed);
+        setMarketPriceError('');
+      }
+    }).catch(priceError => {
+      if (active) setMarketPriceError(priceError.message || 'बाजारभाव सध्या उपलब्ध नाहीत.');
+    }).finally(() => {
+      if (active) setMarketPriceLoading(false);
+    });
+    return () => { active = false; };
+  }, [accountType]);
+
+  useEffect(() => {
     loadPaymentOptions();
   }, [loadPaymentOptions]);
 
@@ -458,6 +479,10 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     sum + row.requests.filter(purchaseRequest => purchaseRequest.status === 'PENDING').length, 0), [sellerListings]);
   const activeSellerListings = useMemo(() => sellerListings.filter(row => row.listing.available && Number(row.listing.quantity) > 0).length,
     [sellerListings]);
+  const farmerMarketReferences = useMemo(() => new Map(listings.map(listing => [
+    listing.id,
+    findLatestCommodityPrice(listing, marketPriceFeed?.prices || [])
+  ])), [listings, marketPriceFeed]);
 
   const cartRows = useMemo(() => cart.map(item => ({
     ...item,
@@ -474,7 +499,8 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
         distance: buyerLocation ? distanceKm(buyerLocation, listing) : null
       }))
       .filter(listing => !query || [
-        listing.sellerName, listing.productName, listing.cropType, listing.category, listing.address
+        ...(accountType === 'farmer' ? [] : [listing.sellerName, listing.address]),
+        listing.productName, listing.cropType, listing.category
       ].join(' ').toLocaleLowerCase('mr-IN').includes(query))
       .filter(listing => categoryFilter === 'all' || listing.category === categoryFilter)
       .filter(listing => !favoritesOnly || favoriteIds.has(String(listing.id)))
@@ -486,7 +512,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
         }
         return b.id - a.id;
       });
-  }, [listings, search, categoryFilter, favoritesOnly, favoriteIds, buyerLocation, nearbyOnly, radius, sortBy]);
+  }, [listings, search, categoryFilter, favoritesOnly, favoriteIds, buyerLocation, nearbyOnly, radius, sortBy, accountType]);
 
   function toggleFavorite(id, event) {
     event.stopPropagation();
@@ -809,6 +835,55 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     </div>;
   }
 
+  function pricePerKg(listing) {
+    if (listing.pricePerUnit == null) return null;
+    const price = effectivePrice(listing);
+    if (listing.unit === 'kg') return price;
+    if (listing.unit === 'quintal') return price / 100;
+    if (listing.unit === 'ton') return price / 1000;
+    return null;
+  }
+
+  function farmerPriceComparison(listing) {
+    const mandiPrice = farmerMarketReferences.get(listing.id);
+    const sellerPricePerKg = pricePerKg(listing);
+    const mandiPricePerKg = mandiPrice ? Number(mandiPrice.modalPrice) / 100 : null;
+    const percentage = sellerPricePerKg != null && mandiPricePerKg > 0
+      ? ((sellerPricePerKg - mandiPricePerKg) / mandiPricePerKg) * 100 : null;
+    const comparison = percentage == null ? '' : percentage > 0.5 ? 'higher' : percentage < -0.5 ? 'lower' : 'similar';
+
+    return <div className="market-farmer-price-comparison">
+      <div className="market-farmer-price-pair">
+        <div className="market-farmer-price-value">
+          <span>{sellerPricePerKg == null ? 'शेतकरी विक्री दर' : 'शेतकरी विक्री दर · १ किलो'}</span>
+          {listing.pricePerUnit == null
+            ? <strong>किंमत उपलब्ध नाही</strong>
+            : sellerPricePerKg == null
+              ? <strong>{formatPrice(effectivePrice(listing), listing.unit)}</strong>
+              : <strong>₹{sellerPricePerKg.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>}
+          {listing.pricePerUnit != null && (sellerPricePerKg == null
+            ? <small>या एककासाठी किलोतील दर मोजता येत नाही</small>
+            : <small>{formatPrice(effectivePrice(listing), listing.unit)} प्रमाणे</small>)}
+        </div>
+        <span className="market-farmer-price-vs">तुलना</span>
+        <div className="market-farmer-price-value mandi">
+          <span>बाजारभाव · १ किलो</span>
+          {mandiPricePerKg != null
+            ? <strong>₹{mandiPricePerKg.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+            : <strong className="market-farmer-price-pending">{marketPriceLoading ? '…' : '—'}</strong>}
+          {mandiPrice
+            ? <small>{mandiPrice.market}{mandiPrice.district ? ` · ${mandiPrice.district}` : ''}{mandiPrice.arrivalDate ? ` · ${mandiPrice.arrivalDate}` : ''}</small>
+            : <small>{marketPriceLoading ? 'मंडई भाव आणत आहोत' : marketPriceError ? 'बाजारभाव उपलब्ध नाहीत' : 'या पिकाचा मंडई भाव सापडला नाही'}</small>}
+        </div>
+      </div>
+      {comparison && <div className={`market-price-comparison-indicator ${comparison}`} role="status">
+        {comparison === 'higher' ? <ArrowUpRight size={15}/> : comparison === 'lower' ? <ArrowDownRight size={15}/> : <Minus size={15}/>}
+        {comparison === 'similar' ? 'मंडई भावाच्या जवळपास' : `मंडई भावापेक्षा ${Math.abs(percentage).toLocaleString('mr-IN', { maximumFractionDigits: 1 })}% ${comparison === 'higher' ? 'जास्त' : 'कमी'}`}
+      </div>}
+      {mandiPrice && <small className="market-price-comparison-note">AGMARKNET मोडल दर / क्विंटल ÷ १०० · {mandiPrice.arrivalDate || 'तारीख उपलब्ध नाही'}</small>}
+    </div>;
+  }
+
   function requestStatusLabel(status) {
     return ({ PENDING: 'प्रलंबित', ACCEPTED: 'स्वीकारली', DECLINED: 'नाकारली', COMPLETED: 'पूर्ण' })[status] || status;
   }
@@ -1004,14 +1079,16 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
         {availableCategories.map(category => <button type="button" key={category} className={categoryFilter === category ? 'selected' : ''} aria-pressed={categoryFilter === category} onClick={() => setCategoryFilter(category)}>{category}</button>)}
       </section>
       <section className="market-search-panel">
-        <label className="market-search-field"><Search size={17}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="पीक, शेतमाल, विक्रेता किंवा पत्ता शोधा"/></label>
-        <button className="market-location-button" type="button" onClick={() => askForLocation(false)}><LocateFixed size={16}/> जवळचे विक्रेते</button>
-        <label className="market-radius">त्रिज्या
-          <select value={radius} onChange={event => setRadius(Number(event.target.value))}>
-            <option value={5}>५ किमी</option><option value={25}>२५ किमी</option><option value={50}>५० किमी</option><option value={100}>१०० किमी</option>
-          </select>
-        </label>
-        <button className={`market-nearby-toggle ${nearbyOnly ? 'selected' : ''}`} type="button" onClick={() => buyerLocation ? setNearbyOnly(value => !value) : askForLocation(false)}><ArrowDownWideNarrow size={15}/>{nearbyOnly ? 'सर्व विक्रेते दाखवा' : 'फक्त जवळचे दाखवा'}</button>
+        <label className="market-search-field"><Search size={17}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder={accountType === 'farmer' ? 'पीक किंवा शेतमाल शोधा' : 'पीक, शेतमाल, विक्रेता किंवा पत्ता शोधा'}/></label>
+        {accountType !== 'farmer' && <>
+          <button className="market-location-button" type="button" onClick={() => askForLocation(false)}><LocateFixed size={16}/> जवळचे विक्रेते</button>
+          <label className="market-radius">त्रिज्या
+            <select value={radius} onChange={event => setRadius(Number(event.target.value))}>
+              <option value={5}>५ किमी</option><option value={25}>२५ किमी</option><option value={50}>५० किमी</option><option value={100}>१०० किमी</option>
+            </select>
+          </label>
+          <button className={`market-nearby-toggle ${nearbyOnly ? 'selected' : ''}`} type="button" onClick={() => buyerLocation ? setNearbyOnly(value => !value) : askForLocation(false)}><ArrowDownWideNarrow size={15}/>{nearbyOnly ? 'सर्व विक्रेते दाखवा' : 'फक्त जवळचे दाखवा'}</button>
+        </>}
       </section>
       <section className="market-filter-row" aria-label="शेतमाल शोध फिल्टर">
         <label className="market-filter-field"><span>प्रकार</span>
@@ -1022,42 +1099,45 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
         </label>
         <label className="market-filter-field"><span>क्रम</span>
           <select value={sortBy} onChange={event => setSortBy(event.target.value)}>
-            <option value="recommended">जवळचे / नवीन</option>
-            <option value="nearest" disabled={!buyerLocation}>जवळचे आधी</option>
-            <option value="recent">नवीन नोंदी आधी</option>
+            <option value="recommended">{accountType === 'farmer' ? 'नवीन नोंदी आधी' : 'जवळचे / नवीन'}</option>
+            {accountType !== 'farmer' && <option value="nearest" disabled={!buyerLocation}>जवळचे आधी</option>}
+            {accountType !== 'farmer' && <option value="recent">नवीन नोंदी आधी</option>}
             <option value="name">नावानुसार</option>
           </select>
         </label>
-        <button type="button" className={`market-favorites-toggle ${favoritesOnly ? 'selected' : ''}`} aria-pressed={favoritesOnly} onClick={() => setFavoritesOnly(value => !value)}>
+        {accountType !== 'farmer' && <button type="button" className={`market-favorites-toggle ${favoritesOnly ? 'selected' : ''}`} aria-pressed={favoritesOnly} onClick={() => setFavoritesOnly(value => !value)}>
           <Heart size={14} fill={favoritesOnly ? 'currentColor' : 'none'}/>{favoritesOnly ? 'सर्व दाखवा' : 'आवडती'} <span>{favoriteCount.toLocaleString('mr-IN')}</span>
-        </button>
+        </button>}
       </section>
-      {locationMessage && <p className="market-location-note" role="status">{locationMessage}</p>}
-      <div className="market-map-layout">
-        <section className="market-map-card">
+      {accountType !== 'farmer' && locationMessage && <p className="market-location-note" role="status">{locationMessage}</p>}
+      {accountType === 'farmer' && marketPriceError && <div className="market-message market-price-comparison-error" role="status">बाजारभाव तुलना सध्या उपलब्ध नाही. {marketPriceError}</div>}
+      <div className={`market-map-layout ${accountType === 'farmer' ? 'market-farmer-list-layout' : ''}`}>
+        {accountType !== 'farmer' && <section className="market-map-card">
           <div className="market-card-heading"><div><span>OpenStreetMap</span><h2>नकाशावरील विक्रेते</h2></div><span className="market-result-count">{filteredListings.length.toLocaleString('mr-IN')} विक्रेते</span></div>
           <SellerMap listings={filteredListings} buyerLocation={buyerLocation} onSelect={setActiveListing}/>
           <p className="market-map-note">निळा ठिपका तुमचे स्थान; हिरवे चिन्ह शेतमाल विक्रेता दाखवते.</p>
-        </section>
+        </section>}
         <section className="market-listings">
-          <div className="market-card-heading"><div><span>उपलब्ध शेतमाल</span><h2>विक्रेते</h2></div>{buyerLocation&&<span className="market-result-count"><LocateFixed size={12}/> जवळचे आधी</span>}</div>
+          <div className="market-card-heading"><div><span>उपलब्ध शेतमाल</span><h2>{accountType === 'farmer' ? 'शेतमाल आणि विक्री दर' : 'विक्रेते'}</h2></div>{accountType === 'farmer' ? <span className="market-result-count">{filteredListings.length.toLocaleString('mr-IN')} उत्पादने</span> : buyerLocation&&<span className="market-result-count"><LocateFixed size={12}/> जवळचे आधी</span>}</div>
           {loading ? <div className="market-empty">विक्रीची माहिती लोड होत आहे…</div>
             : !filteredListings.length ? <div className="market-empty"><Wheat size={28}/><b>{favoritesOnly ? 'आवडत्या नोंदी सापडल्या नाहीत' : 'शेतमाल सापडला नाही'}</b><span>{favoritesOnly ? 'यादीत हृदयाचे चिन्ह दाबून आवडते शेतमाल जतन करा.' : 'शोध किंवा फिल्टर बदलून पाहा किंवा नवी विक्रीची नोंद जोडा.'}</span></div>
-              : <div className="market-listing-scroll">{filteredListings.map(listing=><article className={`market-listing-card ${activeListing === listing.id ? 'focused' : ''}`} key={listing.id} onClick={() => setActiveListing(listing.id)}>
+              : <div className="market-listing-scroll">{filteredListings.map(listing=><article className={`market-listing-card ${accountType === 'farmer' ? 'market-farmer-listing-card' : ''} ${activeListing === listing.id ? 'focused' : ''}`} key={listing.id} onClick={accountType === 'farmer' ? undefined : () => setActiveListing(listing.id)}>
                 <ProductPhoto apiBase={apiBase} photoUrl={listing.photoUrl} authorization={authorization} productName={listing.productName}/>
                 <div className="market-listing-content">
-                  <div className="market-listing-heading"><span>{listing.category}</span>{listing.distance !== null&&<small>{listing.distance < 1 ? `${Math.round(listing.distance*1000).toLocaleString('mr-IN')} मी` : `${listing.distance.toLocaleString('mr-IN',{maximumFractionDigits:1})} किमी`}</small>}<button type="button" className={`market-favorite-button ${favoriteIds.has(String(listing.id)) ? 'saved' : ''}`} aria-label={favoriteIds.has(String(listing.id)) ? 'आवडत्यामधून काढा' : 'आवडत्यात जतन करा'} aria-pressed={favoriteIds.has(String(listing.id))} onClick={event => toggleFavorite(listing.id, event)}><Heart size={14} fill={favoriteIds.has(String(listing.id)) ? 'currentColor' : 'none'}/></button></div>
+                  <div className="market-listing-heading"><span>{listing.category}</span>{listing.distance !== null&&<small>{listing.distance < 1 ? `${Math.round(listing.distance*1000).toLocaleString('mr-IN')} मी` : `${listing.distance.toLocaleString('mr-IN',{maximumFractionDigits:1})} किमी`}</small>}{accountType !== 'farmer' && <button type="button" className={`market-favorite-button ${favoriteIds.has(String(listing.id)) ? 'saved' : ''}`} aria-label={favoriteIds.has(String(listing.id)) ? 'आवडत्यामधून काढा' : 'आवडत्यात जतन करा'} aria-pressed={favoriteIds.has(String(listing.id))} onClick={event => toggleFavorite(listing.id, event)}><Heart size={14} fill={favoriteIds.has(String(listing.id)) ? 'currentColor' : 'none'}/></button>}</div>
                   <h3>{listing.productName}</h3><p className="market-crop-type">{listing.cropType}</p>
                   <p className={`market-stock ${listing.available === false ? 'unavailable' : ''}`}>{listing.available === false ? 'सध्या उपलब्ध नाही' : `${formatQuantity(listing)} उपलब्ध`}</p>
-                  {priceDisplay(listing)}
-                  <div className="market-seller"><UserRound size={13}/><b>{listing.sellerName}</b></div>
-                  <p className="market-address"><MapPin size={13}/>{listing.address}</p>
-                  <div className="market-listing-actions">
-                    {accountType === 'buyer' && listing.pricePerUnit != null && listing.available !== false && Number(listing.quantity) > 0
-                      ? <button type="button" className="market-buy-button" onClick={event => addToCart(listing, event)}><ShoppingCart size={14}/>{cart.some(item => item.listingId === listing.id) ? 'आणखी जोडा' : 'कार्टमध्ये जोडा'}</button>
-                      : <button type="button" className="market-buy-button" disabled><ShoppingBag size={14}/>{listing.available === false || Number(listing.quantity) <= 0 ? 'साठा संपला' : 'खरेदीदारांसाठी'}</button>}
-                  <button type="button" className="market-contact-button" onClick={event => { event.stopPropagation(); fetchContact(listing.id); }}><Phone size={14}/> संपर्क मिळवा</button>
-                  </div>
+                  {accountType === 'farmer' ? farmerPriceComparison(listing) : priceDisplay(listing)}
+                  {accountType !== 'farmer' && <>
+                    <div className="market-seller"><UserRound size={13}/><b>{listing.sellerName}</b></div>
+                    <p className="market-address"><MapPin size={13}/>{listing.address}</p>
+                    <div className="market-listing-actions">
+                      {accountType === 'buyer' && listing.pricePerUnit != null && listing.available !== false && Number(listing.quantity) > 0
+                        ? <button type="button" className="market-buy-button" onClick={event => addToCart(listing, event)}><ShoppingCart size={14}/>{cart.some(item => item.listingId === listing.id) ? 'आणखी जोडा' : 'कार्टमध्ये जोडा'}</button>
+                        : <button type="button" className="market-buy-button" disabled><ShoppingBag size={14}/>{listing.available === false || Number(listing.quantity) <= 0 ? 'साठा संपला' : 'खरेदीदारांसाठी'}</button>}
+                      <button type="button" className="market-contact-button" onClick={event => { event.stopPropagation(); fetchContact(listing.id); }}><Phone size={14}/> संपर्क मिळवा</button>
+                    </div>
+                  </>}
                 </div>
               </article>)}</div>}
         </section>

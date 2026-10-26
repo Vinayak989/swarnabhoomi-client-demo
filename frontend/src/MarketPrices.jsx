@@ -86,7 +86,34 @@ const dateValue = value => {
   const match = String(value || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   return match ? new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1])).valueOf() : 0;
 };
-async function fetchOfficialPrices() {
+const commodityKey = value => cropNameInMarathi(value).normalize('NFC').toLocaleLowerCase('mr-IN').replace(/[\s.,;:/()_-]/g, '');
+export function findLatestCommodityPrice(listing, prices = []) {
+  const names = [listing.productName, listing.cropType].map(commodityKey).filter(Boolean);
+  const matches = prices.filter(item => {
+    const commodity = commodityKey(item.commodity);
+    return Number(item.modalPrice) > 0 && names.some(name => name === commodity
+      || name.length >= 3 && commodity.length >= 3 && (name.includes(commodity) || commodity.includes(name)));
+  });
+  return matches.sort((a, b) => dateValue(b.arrivalDate) - dateValue(a.arrivalDate))[0] || null;
+}
+
+let cachedOfficialPriceFeed = null;
+let cachedOfficialPriceAt = 0;
+let officialPriceRequest = null;
+export async function fetchOfficialPrices(force = false) {
+  if (!force && cachedOfficialPriceFeed && Date.now() - cachedOfficialPriceAt < 15 * 60 * 1000) return cachedOfficialPriceFeed;
+  if (officialPriceRequest) return officialPriceRequest;
+  officialPriceRequest = fetchOfficialPricesUncached();
+  try {
+    cachedOfficialPriceFeed = await officialPriceRequest;
+    cachedOfficialPriceAt = Date.now();
+    return cachedOfficialPriceFeed;
+  } finally {
+    officialPriceRequest = null;
+  }
+}
+
+async function fetchOfficialPricesUncached() {
   const prices = [];
   let offset = 0;
   let total = Number.MAX_SAFE_INTEGER;
