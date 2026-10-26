@@ -10,6 +10,16 @@
 .daily-feature-title > div { display: grid; gap: 2px; }
 .daily-feature-title b { color: #263a29; font-size: 14px; }
 .daily-feature-title small { color: #758074; font-size: 12px; }
+.daily-feature-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; }
+.daily-feature-toggle .daily-feature-title > span { display: grid; gap: 2px; }
+.daily-feature-chevron { flex: none; color: #758074; transition: transform .18s ease; }
+.daily-feature-chevron.expanded { transform: rotate(180deg); }
+.daily-weather-section { margin: 18px 0; }
+.form-section-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0; border: 0; background: transparent; color: #334b39; font: inherit; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; }
+.form-section-toggle > span { display: inline-flex; align-items: center; gap: 8px; }
+.form-section-toggle > span svg { color: #62885d; }
+.daily-weather-section #daily-weather-options { padding-top: 12px; }
+.crop-soil-observations .form-grid { margin-top: 12px; }
 .quick-entry-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .quick-entry-buttons button, .receipt-picker {
   border: 1px solid #dce5d8; border-radius: 10px; background: #f8faf6; color: #385d39;

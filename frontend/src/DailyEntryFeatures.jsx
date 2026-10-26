@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Bug, Droplets, ImagePlus, Sprout, Trash2 } from 'lucide-react';
+import { Bug, ChevronDown, ImagePlus, Sprout, Trash2 } from 'lucide-react';
 import { Bell, LoaderCircle } from 'lucide-react';
 import { getBrowserPushSubscriptionId } from './reminderNotifications.js';
 import './dailyEntryFeatures.css';
@@ -10,9 +10,17 @@ const templates = [
   { label: 'सेंद्रिय खत', workDone: 'सेंद्रिय खत दिले', applicationKind: 'सेंद्रिय खत' },
   { label: 'काढणी', workDone: 'काढणी केली', applicationKind: '' }
 ];
+const followUpStorageKey = (userId, date, cropOrPlot, pestDisease) =>
+  `swarnabhoomi-followup-reminder-${userId}-${[date, cropOrPlot || '', pestDisease || ''].map(encodeURIComponent).join('|')}`;
 
-export function QuickEntryTemplates({ onApply }) {
-  return <section className="daily-feature-card quick-entry-card"><div className="daily-feature-title"><Sprout size={17}/><div><b>झटपट नोंद नमुने</b><small>सामान्य कामासाठी एक टॅप करा</small></div></div><div className="quick-entry-buttons">{templates.map(template => <button type="button" key={template.label} onClick={() => onApply(template)}>{template.label}</button>)}</div></section>;
+export function QuickEntryTemplates({ onApply, expanded, onToggle }) {
+  return <section className="daily-feature-card quick-entry-card">
+    <button type="button" className="daily-feature-toggle" onClick={onToggle} aria-expanded={expanded} aria-controls="quick-entry-options">
+      <span className="daily-feature-title"><Sprout size={17}/><span><b>झटपट नोंद नमुने</b><small>सामान्य कामासाठी एक टॅप करा</small></span></span>
+      <ChevronDown className={expanded ? 'daily-feature-chevron expanded' : 'daily-feature-chevron'} size={18}/>
+    </button>
+    {expanded && <div className="quick-entry-buttons" id="quick-entry-options">{templates.map(template => <button type="button" key={template.label} onClick={() => onApply(template)}>{template.label}</button>)}</div>}
+  </section>;
 }
 
 export function PlotSeasonFields({ form, set }) {
@@ -22,27 +30,101 @@ export function PlotSeasonFields({ form, set }) {
   </div>;
 }
 
-export function InputLogFields({ form, set }) {
-  return <section className="form-section daily-structured-fields"><h3><Droplets size={18}/> पाणी व वापरलेले निविष्ठा</h3><div className="form-grid three">
-    <label className="field"><span className="field-label">पाण्याचे प्रमाण (लिटर)</span><input type="number" min="0" step="any" value={form.waterLitres} onChange={e => set('waterLitres', e.target.value)} placeholder="उदा. ५००"/></label>
-    <label className="field"><span className="field-label">निविष्ठेचा प्रकार</span><select value={form.applicationKind} onChange={e => set('applicationKind', e.target.value)}><option value="">निवडा...</option><option>सेंद्रिय खत</option><option>रासायनिक खत</option><option>कीड/रोग नियंत्रण</option><option>तण नियंत्रण</option><option>बीजप्रक्रिया</option><option>इतर</option></select></label>
-    <label className="field"><span className="field-label">नाव / उत्पादन</span><input value={form.applicationName} onChange={e => set('applicationName', e.target.value)} placeholder="उदा. जीवामृत"/></label>
-    <label className="field"><span className="field-label">वापरलेले प्रमाण</span><input type="number" min="0" step="any" value={form.applicationAmount} onChange={e => set('applicationAmount', e.target.value)} placeholder="उदा. २"/></label>
-    <label className="field"><span className="field-label">एकक</span><select value={form.applicationUnit} onChange={e => set('applicationUnit', e.target.value)}><option value="">निवडा...</option><option>किलो</option><option>ग्रॅम</option><option>लिटर</option><option>मिली</option><option>पिशवी</option><option>बाटली</option></select></label>
-  </div></section>;
+function reminderDateTime(date) {
+  const formatIndia = value => {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    }).formatToParts(value).map(part => [part.type, part.value]));
+    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+  };
+  const selected = new Date(`${date}T09:00:00+05:30`);
+  const now = new Date();
+  if (selected <= now) {
+    const laterToday = new Date(now.getTime() + 30 * 60 * 1000);
+    if (formatIndia(selected).slice(0, 10) !== formatIndia(laterToday).slice(0, 10)) {
+      throw new Error('आजची पाहणीची वेळ निघून गेली आहे. उद्याची किंवा पुढील तारीख निवडा.');
+    }
+    return formatIndia(laterToday);
+  }
+  return `${date}T09:00`;
 }
 
-export function IssueTrackingFields({ form, set }) {
+export function IssueTrackingFields({ form, set, apiFetch, apiBase, userId }) {
+  const reminderRef = React.useRef({ requestId: '', reminderId: null, date: '' });
+  const [reminderBusy, setReminderBusy] = useState(false);
+  const [reminderMessage, setReminderMessage] = useState('');
+  const [reminderError, setReminderError] = useState('');
+
+  async function syncReminder(date) {
+    if (reminderRef.current.requestId !== form.clientRequestId) {
+      reminderRef.current = { requestId: form.clientRequestId, reminderId: null, date: '' };
+    }
+    const current = reminderRef.current;
+    if (date === current.date) return;
+    setReminderBusy(true);
+    setReminderMessage('');
+    setReminderError('');
+    try {
+      if (!date) {
+        if (current.reminderId) {
+          const response = await apiFetch(`${apiBase}/reminders/${current.reminderId}`, { method: 'DELETE' });
+          if (!response.ok) throw new Error('स्मरणपत्र हटवता आले नाही.');
+          if (current.storageKey) {
+            try { localStorage.removeItem(current.storageKey); } catch { /* The server reminder is deleted. */ }
+          }
+          reminderRef.current = { ...current, reminderId: null, date: '', storageKey: '' };
+          setReminderMessage('निवडलेले स्मरणपत्र हटवले.');
+        }
+        return;
+      }
+      const scheduledAt = reminderDateTime(date);
+      const reason = `पुढील पाहणी: ${form.pestDisease || form.intervention || 'पीक तपासा'}`;
+      const cropOrPlot = [form.cropName === 'इतर' ? form.cropCustom : form.cropName, form.plotName].filter(Boolean).join(' — ').slice(0, 120);
+      const storageKey = followUpStorageKey(userId, date, cropOrPlot, form.pestDisease);
+      const body = {
+        scheduledAt,
+        reason,
+        cropOrPlot,
+        browserSubscriptionId: getBrowserPushSubscriptionId(userId)
+      };
+      const response = current.reminderId
+        ? await apiFetch(`${apiBase}/reminders/${current.reminderId}/reschedule`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scheduledAt })
+        })
+        : await apiFetch(`${apiBase}/reminders`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.detail || result?.message || 'स्मरणपत्र तयार करता आले नाही.');
+      if (current.storageKey && current.storageKey !== storageKey) {
+        try { localStorage.removeItem(current.storageKey); } catch { /* The server reminder remains saved. */ }
+      }
+      try { localStorage.setItem(storageKey, String(result.id)); } catch { /* The server reminder remains saved. */ }
+      reminderRef.current = { requestId: form.clientRequestId, reminderId: result.id, date, storageKey };
+      setReminderMessage(current.reminderId ? 'स्मरणपत्राची तारीख बदलली.' : 'पुढील पाहणी स्मरणपत्रांमध्ये जोडली.');
+    } catch (exception) {
+      setReminderError(exception.message || 'स्मरणपत्र तयार करता आले नाही. पुन्हा प्रयत्न करा.');
+    } finally {
+      setReminderBusy(false);
+    }
+  }
+
   return <section className="form-section issue-tracking-fields"><h3><Bug size={18}/> कीड / रोग व पुढील पाहणी</h3><div className="form-grid three">
     <label className="field"><span className="field-label">कीड किंवा रोग</span><input value={form.pestDisease} onChange={e => set('pestDisease', e.target.value)} placeholder="लक्षण किंवा कीडीचे नाव"/></label>
     <label className="field"><span className="field-label">तीव्रता</span><select value={form.issueSeverity} onChange={e => set('issueSeverity', e.target.value)}><option value="">निवडा...</option><option>कमी</option><option>मध्यम</option><option>जास्त</option></select></label>
-    <label className="field"><span className="field-label">पुढील पाहणीची तारीख</span><input type="date" value={form.followUpDate} onChange={e => set('followUpDate', e.target.value)}/></label>
-  </div><label className="field"><span className="field-label">केलेला उपाय / निरीक्षण</span><textarea rows="2" value={form.intervention} onChange={e => set('intervention', e.target.value)} placeholder="उपाय, प्रमाण आणि पुढे काय तपासायचे ते लिहा"/></label></section>;
+    <label className="field"><span className="field-label">पुढील पाहणीची तारीख</span><input type="date" value={form.followUpDate} disabled={reminderBusy} onChange={event => { set('followUpDate', event.target.value); void syncReminder(event.target.value); }}/></label>
+  </div><label className="field"><span className="field-label">केलेला उपाय / निरीक्षण</span><textarea rows="2" value={form.intervention} onChange={e => set('intervention', e.target.value)} placeholder="उपाय, प्रमाण आणि पुढे काय तपासायचे ते लिहा"/></label>
+    {reminderBusy && <div className="follow-up-reminder" role="status"><LoaderCircle className="spin" size={14}/> स्मरणपत्र जतन करत आहे...</div>}
+    {reminderMessage && <div className="follow-up-reminder" role="status"><span>{reminderMessage}</span></div>}
+    {reminderError && <div className="follow-up-reminder" role="alert"><small>{reminderError}</small></div>}
+  </section>;
 }
 
 export function FollowUpReminderButton({ entry, apiFetch, userId }) {
-  const storageKey = `swarnabhoomi-entry-followup-${userId}-${entry.id}`;
-  const [createdId, setCreatedId] = useState(() => { try { return localStorage.getItem(storageKey) || ''; } catch { return ''; } });
+  const storageKey = followUpStorageKey(userId, entry.followUpDate, entry.farmSection, entry.pestDisease);
+  const legacyStorageKey = `swarnabhoomi-entry-followup-${userId}-${entry.id}`;
+  const [createdId, setCreatedId] = useState(() => { try { return localStorage.getItem(storageKey) || localStorage.getItem(legacyStorageKey) || ''; } catch { return ''; } });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   if (!entry.followUpDate) return null;
@@ -61,7 +143,10 @@ export function FollowUpReminderButton({ entry, apiFetch, userId }) {
       if (!response.ok) throw new Error('स्मरणपत्र तयार झाले नाही.');
       const reminder = await response.json();
       setCreatedId(String(reminder.id));
-      try { localStorage.setItem(storageKey, String(reminder.id)); } catch { /* Reminder remains saved on the server. */ }
+      try {
+        localStorage.setItem(storageKey, String(reminder.id));
+        localStorage.setItem(legacyStorageKey, String(reminder.id));
+      } catch { /* Reminder remains saved on the server. */ }
     } catch { setError('स्मरणपत्र तयार झाले नाही. पुन्हा प्रयत्न करा.'); }
     finally { setBusy(false); }
   }
