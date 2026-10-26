@@ -74,6 +74,13 @@ const CROP_NAMES_MR = {
   'water melon': 'कलिंगड',
   wheat: 'गहू'
 };
+export const MARKET_CROP_OPTIONS = [...new Set([
+  ...Object.values(CROP_NAMES_MR), 'हळद', 'मिरची', 'मसूर', 'जिरे', 'धणे', 'दूध', 'दही', 'तूप',
+  'पनीर', 'मध', 'गूळ', 'लोणी', 'लोणचे', 'शेंगदाणे', 'काजू', 'बदाम'
+])].sort((a, b) => a.localeCompare(b, 'mr-IN'));
+export const MARKET_CROP_TYPE_OPTIONS = [...new Set([
+  ...MARKET_CROP_OPTIONS, 'देशी', 'सेंद्रिय', 'हायब्रीड', 'स्थानिक', 'ताजी', 'सुकवलेली', 'लाल', 'पांढरी', 'हिरवी'
+])].sort((a, b) => a.localeCompare(b, 'mr-IN'));
 const cropNameInMarathi = name => CROP_NAMES_MR[String(name || '').trim().toLocaleLowerCase()] || name || 'शेतमाल';
 const money = value => value == null || value === '' ? '—' : `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const stamp = value => {

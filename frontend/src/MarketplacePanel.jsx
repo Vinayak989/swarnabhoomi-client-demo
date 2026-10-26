@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet';
 import { ArrowDownRight, ArrowDownWideNarrow, ArrowRight, ArrowUpRight, Check, ClipboardList, FileDown, Heart, LocateFixed, MapPin, Minus, PackageCheck, PackagePlus, Phone, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, ShoppingCart, Store, Trash2, Upload, UserRound, Wheat, X } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
-import { fetchOfficialPrices, findLatestCommodityPrice } from './MarketPrices.jsx';
+import { fetchOfficialPrices, findLatestCommodityPrice, MARKET_CROP_OPTIONS, MARKET_CROP_TYPE_OPTIONS } from './MarketPrices.jsx';
 import './marketplace.css';
 
 const EMPTY_FORM = {
@@ -254,6 +254,8 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   const [marketPriceLoading, setMarketPriceLoading] = useState(false);
   const [marketPriceError, setMarketPriceError] = useState('');
   const [form, setForm] = useState(EMPTY_FORM);
+  const [customProductName, setCustomProductName] = useState(false);
+  const [customCropType, setCustomCropType] = useState(false);
   const [photo, setPhoto] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [authorization, setAuthorization] = useState(auth);
@@ -530,6 +532,13 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     setForm(current => ({ ...current, [name]: value }));
   }
 
+  function updateChoice(event, setCustom) {
+    const { name, value } = event.target;
+    const isCustom = value === '__other__';
+    setCustom(isCustom);
+    setForm(current => ({ ...current, [name]: isCustom ? '' : value }));
+  }
+
   function askForLocation(useForListing = false) {
     setLocationMessage('');
     locateUser(location => {
@@ -605,6 +614,8 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       }));
       setForm(EMPTY_FORM);
       formRef.current = EMPTY_FORM;
+      setCustomProductName(false);
+      setCustomCropType(false);
       setPhoto(null);
       photoRef.current = null;
       setView('seller');
@@ -1230,8 +1241,22 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
         </div>
         <div className="market-form-section-title"><Wheat size={16}/> विक्रीसाठी शेतमाल</div>
         <div className="market-form-grid">
-          <label className="market-field"><span>शेतमाल / खाद्यपदार्थाचे नाव *</span><input name="productName" value={form.productName} onChange={updateField} maxLength={120} required placeholder="उदा. ताजी हळद"/></label>
-          <label className="market-field"><span>पीक / प्रकार *</span><input name="cropType" value={form.cropType} onChange={updateField} maxLength={80} required placeholder="उदा. सेंद्रिय हळद, आंबा"/></label>
+          <label className="market-field"><span>शेतमाल / खाद्यपदार्थाचे नाव *</span>
+            <select name="productName" value={customProductName ? '__other__' : form.productName} onChange={event => updateChoice(event, setCustomProductName)} required>
+              <option value="" disabled>शेतमाल निवडा</option>
+              {MARKET_CROP_OPTIONS.map(name => <option value={name} key={name}>{name}</option>)}
+              <option value="__other__">इतर शेतमाल / स्वतः लिहा</option>
+            </select>
+            {customProductName && <input name="productName" value={form.productName} onChange={updateField} maxLength={120} required placeholder="शेतमालाचे नाव लिहा"/>}
+          </label>
+          <label className="market-field"><span>पीक / प्रकार *</span>
+            <select name="cropType" value={customCropType ? '__other__' : form.cropType} onChange={event => updateChoice(event, setCustomCropType)} required>
+              <option value="" disabled>पीक / प्रकार निवडा</option>
+              {MARKET_CROP_TYPE_OPTIONS.map(name => <option value={name} key={name}>{name}</option>)}
+              <option value="__other__">इतर पीक / प्रकार लिहा</option>
+            </select>
+            {customCropType && <input name="cropType" value={form.cropType} onChange={updateField} maxLength={80} required placeholder="पीक किंवा प्रकार लिहा"/>}
+          </label>
           <label className="market-field"><span>शेतमालाचा प्रकार *</span><select name="category" value={form.category} onChange={updateField}>{CATEGORIES.map(category=><option key={category}>{category}</option>)}</select></label>
           <div className="market-quantity-field">
             <label className="market-field"><span>उपलब्ध प्रमाण *</span><input name="quantity" type="number" min="0.01" max="1000000000" step="any" value={form.quantity} onChange={updateField} required placeholder="उदा. ५०"/></label>
