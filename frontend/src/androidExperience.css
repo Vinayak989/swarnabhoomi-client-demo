@@ -1,0 +1,376 @@
+/* App-only presentation. The regular website keeps its existing layout. */
+body:has(.android-app-mode),
+body:has(.android-entry-mode) {
+  background: #f7f6ed;
+}
+
+.android-app-mode {
+  --app-green: #176b43;
+  --app-dark: #124e35;
+  --app-cream: #f7f6ed;
+  --app-gold: #f3cd78;
+  width: 100%;
+  min-width: 0;
+  min-height: 100dvh;
+  overflow-x: clip;
+  background: var(--app-cream);
+}
+
+.android-app-mode .main {
+  width: min(100%, 1050px);
+  max-width: 100%;
+  min-width: 0;
+  padding: 0 clamp(12px, 3vw, 24px) calc(106px + env(safe-area-inset-bottom, 0px));
+}
+
+.android-app-mode .topbar {
+  height: calc(75px + env(safe-area-inset-top, 0px));
+  margin: 0 calc(-1 * clamp(12px, 3vw, 24px)) 18px;
+  padding: env(safe-area-inset-top, 0px) clamp(15px, 3vw, 27px) 0;
+  border: 0;
+  border-radius: 0 0 21px 21px;
+  background: linear-gradient(108deg, #104d34, #1c7145 74%, #318451);
+  box-shadow: 0 12px 27px rgb(18 76 47 / 18%);
+  color: white;
+}
+
+.android-app-mode .android-app-titlebar { gap: 11px; }
+.android-app-mode .android-app-titlebar img {
+  width: 44px;
+  height: 44px;
+  padding: 3px;
+  border: 1px solid rgb(255 255 255 / 28%);
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 5px 15px rgb(0 33 16 / 20%);
+}
+.android-app-mode .android-app-titlebar span { color: #d1e8d4; font-size: 11px; }
+.android-app-mode .android-app-titlebar b {
+  color: #fff;
+  font-size: clamp(16px, 4.5vw, 21px);
+  line-height: 1.25;
+}
+.android-app-mode .android-app-profile {
+  width: 43px;
+  height: 43px;
+  border: 1px solid rgb(255 255 255 / 32%);
+  border-radius: 14px;
+  background: rgb(255 255 255 / 18%);
+  color: white;
+  box-shadow: none;
+}
+
+.android-app-mode .android-bottom-nav {
+  left: 50%;
+  right: auto;
+  width: min(100%, 1050px);
+  padding: 8px max(7px, env(safe-area-inset-left, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(7px, env(safe-area-inset-right, 0px));
+  border: 1px solid #e4e9dc;
+  border-bottom: 0;
+  border-radius: 20px 20px 0 0;
+  background: rgb(255 255 253 / 98%);
+  box-shadow: 0 -10px 30px rgb(25 66 38 / 11%);
+  transform: translateX(-50%);
+}
+.android-app-mode .android-bottom-nav-item {
+  min-height: 62px;
+  padding: 3px 2px;
+  gap: 3px;
+  border-radius: 14px;
+  color: #758476;
+  font-size: clamp(9px, 2.6vw, 11px);
+  font-weight: 700;
+  touch-action: manipulation;
+}
+.android-app-mode .android-bottom-icon {
+  width: min(53px, 100%);
+  height: 34px;
+  border-radius: 13px;
+}
+.android-app-mode .android-bottom-nav-item.active { color: var(--app-dark); }
+.android-app-mode .android-bottom-nav-item.active .android-bottom-icon {
+  background: #daf0dc;
+  box-shadow: inset 0 0 0 1px #c9e7cd;
+}
+.android-app-mode .android-nav-badge {
+  position: absolute;
+  top: -4px;
+  right: 0;
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  padding-inline: 4px;
+  place-items: center;
+  border: 2px solid white;
+  border-radius: 99px;
+  background: #d7543f;
+  color: white;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.android-app-mode .market-page,
+.android-app-mode .reminder-page,
+.android-app-mode .account-admin-page { padding-top: 0; }
+.android-app-mode .market-hero,
+.android-app-mode .welcome,
+.android-app-mode .account-admin-hero {
+  overflow: hidden;
+  border: 0;
+  border-radius: 24px;
+  background: linear-gradient(108deg, rgb(13 67 42 / 95%), rgb(20 99 58 / 86%) 62%, rgb(33 121 67 / 73%)), url('/images/farm-dawn-backdrop.jpg') center / cover;
+  box-shadow: 0 17px 32px rgb(17 71 42 / 18%);
+  color: white;
+}
+.android-app-mode .market-hero h1,
+.android-app-mode .welcome h1,
+.android-app-mode .account-admin-hero h1 { color: white; }
+.android-app-mode .market-hero p,
+.android-app-mode .welcome p,
+.android-app-mode .account-admin-hero p { color: #e0eddf; }
+.android-app-mode .welcome .eyebrow { color: #d7ecd6; }
+.android-app-mode .welcome .primary,
+.android-app-mode .market-hero-cta.primary {
+  min-height: 45px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--app-gold);
+  color: #25462d;
+  box-shadow: 0 7px 18px rgb(0 37 18 / 18%);
+  font-weight: 800;
+}
+
+.android-app-mode .market-actions,
+.android-app-mode .entry-subtabs,
+.android-app-mode .market-seller-view-switch {
+  border: 1px solid #e2e9da;
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 5px 15px rgb(31 78 43 / 6%);
+}
+.android-app-mode .market-actions button.active,
+.android-app-mode .entry-subtab.active,
+.android-app-mode .market-seller-view-switch button.active {
+  border-radius: 11px;
+  background: var(--app-green);
+  color: white;
+}
+.android-app-mode .market-category-shortcuts { gap: 9px; padding: 4px 0 9px; scroll-snap-type: x proximity; }
+.android-app-mode .market-category-shortcuts button {
+  min-height: 41px;
+  padding: 0 15px;
+  border-color: #dbe6d8;
+  background: white;
+  color: #4b6550;
+  scroll-snap-align: start;
+  font-weight: 700;
+}
+.android-app-mode .market-category-shortcuts button.selected {
+  border-color: var(--app-green);
+  background: #dff1e0;
+  color: var(--app-dark);
+}
+.android-app-mode .market-search-panel,
+.android-app-mode .market-filter-row {
+  border: 1px solid #e0e8d9;
+  border-radius: 17px;
+  background: white;
+  box-shadow: 0 5px 15px rgb(31 78 43 / 5%);
+}
+.android-app-mode .market-search-field { min-height: 47px; border-radius: 12px; background: #f9fbf6; }
+
+.android-app-mode .market-listings,
+.android-app-mode .market-form-card,
+.android-app-mode .market-seller-order-card,
+.android-app-mode .reminder-form,
+.android-app-mode .reminder-list-section,
+.android-app-mode .account-profile-section {
+  border: 1px solid #e2e9d9;
+  border-radius: 20px;
+  background: white;
+  box-shadow: 0 7px 22px rgb(31 78 43 / 6%);
+}
+.android-app-mode .market-page,
+.android-app-mode .market-listings,
+.android-app-mode .market-cart-page,
+.android-app-mode .market-buyer-orders,
+.android-app-mode .account-profile-page,
+.android-app-mode .assistant-page,
+.android-app-mode .consultant-page,
+.android-app-mode .reminder-page { min-width: 0; max-width: 100%; }
+.android-app-mode .market-listings { max-height: none; }
+.android-app-mode .market-listing-scroll { max-height: none; overflow: visible; }
+.android-app-mode .market-listing-card {
+  min-width: 0;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid #e8eddc;
+  border-radius: 17px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgb(34 77 42 / 7%);
+}
+.android-app-mode .market-product-photo {
+  height: 100%;
+  min-height: 145px;
+  border-radius: 13px;
+  background: #edf5e6;
+}
+.android-app-mode .market-photo-placeholder {
+  background: radial-gradient(circle at 72% 25%, #fff4cf 0 17%, transparent 18%), linear-gradient(140deg, #eaf5de, #d5eacb);
+  color: #55875b;
+}
+.android-app-mode .market-listing-content h3 { font-size: clamp(15px, 4vw, 19px); white-space: normal; }
+.android-app-mode .market-offer-price strong { color: #155b39; font-size: 18px; }
+.android-app-mode .market-buy-button,
+.android-app-mode .market-submit-button,
+.android-app-mode .reminder-submit {
+  min-height: 41px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--app-green);
+  color: white;
+  font-weight: 800;
+}
+.android-app-mode .market-contact-button { min-height: 40px; border-radius: 10px; }
+.android-role-buyer .market-actions { display: none; }
+.android-app-mode .market-field input,
+.android-app-mode .market-field select,
+.android-app-mode .market-field textarea,
+.android-app-mode .reminder-field input,
+.android-app-mode .reminder-field textarea { min-height: 44px; border-radius: 10px; }
+
+.android-app-mode .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.android-app-mode .stat-card {
+  height: auto;
+  min-height: 104px;
+  padding: 14px;
+  border: 1px solid #e6ebda;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 6px 18px rgb(31 78 43 / 6%);
+}
+.android-app-mode .stat-card.net { background: var(--app-green); border-color: var(--app-green); }
+.android-app-mode .entry-card {
+  border: 1px solid #e3eadb;
+  border-left: 4px solid #70a76c;
+  border-radius: 17px;
+  background: white;
+  box-shadow: 0 6px 18px rgb(31 78 43 / 6%);
+}
+.android-app-mode .entry-actions :is(button, .photo-thumb-trigger) { min-width: 38px; min-height: 38px; }
+.android-app-mode .entries-head .tools { min-width: 0; }
+.android-app-mode .entries-head .tools .search { min-height: 44px; border-radius: 11px; }
+.android-app-mode .entries-head .tools > button { min-height: 42px; border-radius: 11px; }
+.android-app-mode .support-fab { bottom: calc(89px + env(safe-area-inset-bottom, 0px)); background: var(--app-green); }
+.android-app-mode .back-to-top { bottom: calc(91px + env(safe-area-inset-bottom, 0px)); }
+
+.android-entry-mode .account-select-screen,
+.android-entry-mode .auth-screen {
+  position: relative;
+  min-height: 100dvh;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 15px calc(38px + env(safe-area-inset-bottom, 0px));
+  background: #f7f6ed;
+}
+.android-entry-mode .account-select-screen::before,
+.android-entry-mode .auth-screen::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: min(34dvh, 270px);
+  border-radius: 0 0 30px 30px;
+  background: linear-gradient(110deg, rgb(14 73 45 / 92%), rgb(29 116 66 / 76%)), url('/images/farm-dawn-backdrop.jpg') center / cover;
+  content: '';
+}
+.android-entry-mode .account-select-content,
+.android-entry-mode .auth-card {
+  position: relative;
+  width: min(100%, 530px);
+  padding: clamp(19px, 5vw, 30px);
+  border: 1px solid #e3eadb;
+  border-radius: 25px;
+  background: #fffefa;
+  box-shadow: 0 18px 42px rgb(24 67 37 / 16%);
+  backdrop-filter: none;
+}
+.android-entry-mode .account-select-screen .account-role-grid { grid-template-columns: 1fr; gap: 12px; }
+.android-entry-mode .account-select-screen .account-role-card {
+  min-height: 133px;
+  border-radius: 19px;
+  box-shadow: 0 7px 18px rgb(38 75 39 / 7%);
+}
+.android-entry-mode .account-select-header h1 { color: var(--app-dark, #124e35); }
+.android-entry-mode .auth-submit { min-height: 49px; border-radius: 12px; background: #176b43; }
+.android-entry-mode .admin-entry-symbol { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+
+@media (max-width: 700px) {
+  .android-app-mode .market-page { padding-top: 0; }
+  .android-app-mode .market-hero { padding: 21px; gap: 15px; }
+  .android-app-mode .market-hero h1 { font-size: clamp(22px, 5.6vw, 29px); }
+  .android-app-mode .market-hero-stats { gap: 6px; padding: 6px; }
+  .android-app-mode .market-hero-stat { min-width: 0; padding: 8px; }
+  .android-app-mode .market-hero-stat > span { line-height: 1.3; }
+  .android-app-mode .market-hero-stat > strong { font-size: 20px; }
+  .android-app-mode .market-hero-cta { min-height: 43px; border-radius: 11px; }
+  .android-app-mode .market-actions { margin: 13px 0; }
+  .android-app-mode .market-actions button { min-height: 43px; }
+  .android-app-mode .market-listing-scroll { grid-template-columns: 1fr; }
+  .android-app-mode .market-listing-card { grid-template-columns: minmax(92px, 30%) minmax(0, 1fr); }
+  .android-app-mode .welcome { min-height: 0; padding: 21px; gap: 18px; }
+  .android-app-mode .welcome h1 { font-size: 23px; }
+  .android-app-mode .welcome .primary { align-self: flex-start; }
+  .android-app-mode .entries-head { gap: 12px; }
+  .android-app-mode .entry-card { padding: 14px; }
+  .android-app-mode .entry-actions { flex-wrap: wrap; gap: 7px; }
+  .android-app-mode .entry-subtabs { margin: 7px 0 13px; }
+  .android-app-mode .reminder-hero { border-radius: 22px; }
+}
+
+@media (max-width: 600px) {
+  .android-role-buyer .market-hero-actions .market-hero-cta:not(.primary) { display: none; }
+  .android-role-buyer .market-listings { padding: 11px; }
+  .android-role-buyer .market-listing-card { grid-template-columns: minmax(86px, 31%) minmax(0, 1fr); }
+  .android-role-buyer .market-listing-content { display: flex; flex-direction: column; }
+  .android-role-buyer .market-listing-actions { margin-top: auto; }
+  .android-app-mode .market-filter-row { gap: 8px; }
+  .android-app-mode .market-filter-field { min-width: 0; }
+  .android-app-mode .market-filter-field select { max-width: min(32vw, 145px); }
+  .android-app-mode .market-form-grid { grid-template-columns: 1fr; }
+  .android-app-mode .market-field-wide { grid-column: auto; }
+  .android-app-mode .market-seller-quick-facts { grid-template-columns: 1fr; }
+  .android-app-mode .market-seller-order-card { padding: 14px; }
+  .android-app-mode .entry-list .entry-card { grid-template-columns: minmax(0, 1fr); }
+  .android-app-mode .entry-list .entry-actions { grid-column: 1; justify-content: flex-start; }
+}
+
+@media (max-width: 380px) {
+  .android-app-mode .main { padding-inline: 11px; }
+  .android-app-mode .topbar { margin-inline: -11px; padding-inline: 14px; }
+  .android-app-mode .market-hero { padding: 18px; }
+  .android-app-mode .market-hero-stats { display: flex; overflow-x: auto; scrollbar-width: none; }
+  .android-app-mode .market-hero-stat { flex: 0 0 105px; }
+  .android-app-mode .market-listing-card { gap: 8px; padding: 8px; }
+  .android-app-mode .market-product-photo { min-height: 130px; }
+  .android-app-mode .market-listing-content h3 { font-size: 15px; }
+  .android-app-mode .stat-card { padding: 10px; }
+  .android-app-mode .android-bottom-nav-item { font-size: 9px; }
+  .android-entry-mode .account-select-screen,
+  .android-entry-mode .auth-screen { padding-inline: 10px; }
+}
+
+@media (min-width: 601px) and (max-width: 900px) {
+  .android-app-mode .market-listing-scroll { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .android-app-mode .market-listing-card { grid-template-columns: minmax(100px, 34%) minmax(0, 1fr); }
+  .android-app-mode .market-filter-field select { max-width: 180px; }
+}
+
+@media (max-height: 580px) and (orientation: landscape) {
+  .android-app-mode .topbar { height: 60px; margin-bottom: 10px; }
+  .android-app-mode .android-bottom-nav-item { min-height: 49px; }
+  .android-app-mode .main { padding-bottom: calc(77px + env(safe-area-inset-bottom, 0px)); }
+  .android-app-mode .market-hero-stats { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .android-app-mode .market-listing-card,
+  .android-app-mode .entry-card,
+  .android-app-mode .android-bottom-icon { animation: none; transition: none; }
+}

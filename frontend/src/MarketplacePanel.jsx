@@ -173,8 +173,8 @@ function ProductPhoto({ apiBase, photoUrl, authorization, productName }) {
     : <div className="market-product-photo market-photo-placeholder"><Wheat size={30}/><span>फोटो नाही</span></div>;
 }
 
-function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyerPhone = '', profile, onUnauthorized }) {
-  const [view, setView] = useState('browse');
+function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyerPhone = '', profile, onUnauthorized, requestedView, onViewChange, onUnreadChange }) {
+  const [view, setView] = useState(() => accountType === 'seller' ? 'seller' : requestedView?.view || 'browse');
   const [listings, setListings] = useState([]);
   const [marketPriceFeed, setMarketPriceFeed] = useState(null);
   const [marketPriceLoading, setMarketPriceLoading] = useState(false);
@@ -256,6 +256,12 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
 
   useEffect(() => setAuthorization(auth), [auth]);
   useEffect(() => setView(accountType === 'seller' ? 'seller' : 'browse'), [accountType]);
+  useEffect(() => {
+    if (accountType !== 'buyer' || !requestedView) return;
+    if (requestedView.view === 'cart') setBuyerFulfillment('DELIVERY');
+    setView(requestedView.view);
+  }, [accountType, requestedView]);
+  useEffect(() => { onViewChange?.(view); }, [view, onViewChange]);
   useEffect(() => {
     if (view !== 'register' || !['seller', 'farmer'].includes(accountType)) return;
     const previous = profilePrefillsRef.current.seller;
@@ -466,6 +472,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   const sellerOrders = useMemo(() => sellerListings.flatMap(row => row.requests.map(purchaseRequest => ({ row, purchaseRequest })))
     .sort((left, right) => (Date.parse(right.purchaseRequest.createdAt) || 0) - (Date.parse(left.purchaseRequest.createdAt) || 0)), [sellerListings]);
   const unreadMessageTotal = useMemo(() => Object.values(unreadMessages).reduce((total, count) => total + count, 0), [unreadMessages]);
+  useEffect(() => { onUnreadChange?.(unreadMessageTotal); }, [onUnreadChange, unreadMessageTotal]);
   const activeSellerListings = useMemo(() => sellerListings.filter(row => row.listing.available && Number(row.listing.quantity) > 0).length,
     [sellerListings]);
   const farmerMarketReferences = useMemo(() => new Map(listings.map(listing => [

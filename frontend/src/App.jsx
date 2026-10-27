@@ -16,6 +16,7 @@ import GovernmentSchemesPanel, { GovernmentSchemeBanner } from './GovernmentSche
 import MarketPricesPanel from './MarketPrices.jsx';
 import FarmProfitPanel from './FarmProfitPanel.jsx';
 import { SupportChatDialog } from './SupportChatPanel.jsx';
+import AndroidBuyerNav from './AndroidBuyerNav.jsx';
 import { Landmark } from 'lucide-react';
 import { FollowUpReminderButton, IssueTrackingFields, OfflineQueueStatus, PlotSeasonFields, QuickEntryTemplates, ReceiptGallery, downloadEntriesCsv, uploadEntryPhoto } from './DailyEntryFeatures.jsx';
 import { queueFarmEntry } from './offlineEntrySync.js';
@@ -119,12 +120,22 @@ function App(){
   const [pdfBusyEntryId,setPdfBusyEntryId]=useState(null);
   const [supportUnread,setSupportUnread]=useState(0);
   const [supportOpen,setSupportOpen]=useState(false);
+  const [androidBuyerView,setAndroidBuyerView]=useState('browse');
+  const [androidBuyerViewRequest,setAndroidBuyerViewRequest]=useState({view:'browse',nonce:0});
+  const [androidBuyerUnread,setAndroidBuyerUnread]=useState(0);
   const supportFabRef=useRef(null);
   const closeSupport=useCallback(()=>{
     setSupportOpen(false);
     window.requestAnimationFrame(()=>supportFabRef.current?.focus());
   },[]);
   const currentAccount=ACCOUNT_TYPES.find(account=>account.id===accountType)||ACCOUNT_TYPES[0];
+  const androidBuyerTitle=activeTab==='marketplace'&&accountType==='buyer'
+    ? ({browse:'ताजे शेतमाल',cart:'माझे कार्ट',orders:'माझ्या ऑर्डर'})[androidBuyerView] : null;
+  function openAndroidBuyerView(view){
+    setAndroidBuyerView(view);
+    setAndroidBuyerViewRequest(current=>({view,nonce:current.nonce+1}));
+    setActiveTab('marketplace');
+  }
   const androidPrimaryTabs=currentAccount.tabs.slice(0,4);
   const androidOverflowTabs=currentAccount.tabs.slice(4);
   const logout=useCallback(()=>{
@@ -134,7 +145,7 @@ function App(){
     sessionStorage.removeItem('swarnabhoomi-user');
     sessionStorage.removeItem('swarnabhoomi-auth');
     sessionStorage.removeItem('swarnabhoomi-marketplace-auth');
-    setAuthToken('');setAuthUser(null);setSelectedAccount(null);setAccountType(null);setEntries([]);setAssistantMessages([]);setSchemeFeed(null);setAccountProfile(null);setSupportUnread(0);setSupportOpen(false);
+    setAuthToken('');setAuthUser(null);setSelectedAccount(null);setAccountType(null);setEntries([]);setAssistantMessages([]);setSchemeFeed(null);setAccountProfile(null);setSupportUnread(0);setSupportOpen(false);setAndroidBuyerView('browse');setAndroidBuyerViewRequest({view:'browse',nonce:0});setAndroidBuyerUnread(0);
   },[]);
   const apiFetch=useCallback((url,options={})=>{
     const headers={...(options.headers||{}),...(authToken?{Authorization:`Bearer ${authToken}`}:{})};
@@ -171,7 +182,7 @@ function App(){
     const sessionUser=legacySellerInFarmerAccount?{...result.user,role:'farmer'}:result.user;
     sessionStorage.setItem('swarnabhoomi-user-token',result.token);
     sessionStorage.setItem('swarnabhoomi-user',JSON.stringify(sessionUser));
-    setAuthToken(result.token);setAuthUser(sessionUser);setAccountType(account.id);setSelectedAccount(null);
+    setAuthToken(result.token);setAuthUser(sessionUser);setAccountType(account.id);setSelectedAccount(null);setAndroidBuyerView('browse');setAndroidBuyerViewRequest({view:'browse',nonce:0});setAndroidBuyerUnread(0);
     const requested=new URLSearchParams(window.location.search).get('tab');
     const showProfitReport=account.id==='farmer'&&requested==='profits';
     setActiveTab(showProfitReport?'entries':account.tabs.includes(requested)?requested:account.homeTab);
@@ -338,9 +349,9 @@ function App(){
     return <div className={androidAppMode?'android-entry-mode':''}><AuthPanel account={selectedAccount} apiBase={API} onAuthenticated={result=>enterAccount(result,selectedAccount)} onBack={()=>setSelectedAccount(null)}/></div>;
   }
   if(!accountType)return <div className={androidAppMode?'android-entry-mode':''}><AccountSelection lastAccountType={lastAccountType} onSelect={chooseAccount}/></div>;
-  return <div className={`app-shell${androidAppMode?' android-app-mode':''}`}>
+  return <div className={`app-shell${androidAppMode?` android-app-mode android-role-${accountType} android-tab-${activeTab}`:''}`}>
     <aside className="sidebar"><div className="brand"><img className="brand-logo" src={farmLogo} alt="स्वर्णभूमी सेंद्रिय शेतीचे चिन्ह"/></div><div className="nav-label">मुख्य मेनू</div>{currentAccount.tabs.map(tab=>{const item=NAV_ITEMS[tab],Icon=item.icon,label=accountTabLabel(currentAccount,tab);return <button type="button" key={tab} className={`nav ${activeTab===tab?'active':''}`} onClick={()=>setActiveTab(tab)} aria-label={label} title={label}><Icon size={18}/>{label}{tab==='profile'&&!accountProfile?.complete&&<span className="profile-completion-indicator">भरायचे</span>}</button>})}<div className="sidebar-tip"><Leaf size={19}/><b>आजची छोटी नोंद,<br/>उद्याची मोठी भरभराट.</b><span>तुमच्या शेताचा प्रत्येक दिवस जपून ठेवा.</span><div className="tip-leaves">✳　✳</div></div><button type="button" className="profile account-profile" onClick={logout} aria-label="लॉगआउट"><div className="avatar">{currentAccount.initials}</div><span><b>{currentAccount.label} खाते</b><small>{authUser.mobileNumber} · लॉगआउट</small></span><ChevronRight size={16}/></button></aside>
-    <main ref={mainRef} className="main"><header className="topbar"><div className="android-app-titlebar"><img src={farmLogo} alt=""/><div><span>स्वर्णभूमी</span><b>{accountTabLabel(currentAccount,activeTab)}</b></div></div><button type="button" className="android-app-profile" onClick={()=>currentAccount.tabs.includes('profile')?setActiveTab('profile'):setAndroidMoreOpen(true)} aria-label="प्रोफाइल उघडा"><UserRound size={20}/></button><div className="web-topbar-title"><span className="crumb">स्वर्णभूमी　/　</span><b>{accountTabLabel(currentAccount,activeTab)}</b></div><div className="today"><CalendarDays size={16}/>{new Date().toLocaleDateString('mr-IN',{weekday:'long',day:'numeric',month:'long'})}</div></header>
+    <main ref={mainRef} className="main"><header className="topbar"><div className="android-app-titlebar"><img src="/images/app-icon-192.png" alt=""/><div><span>स्वर्णभूमी · {currentAccount.label}</span><b>{androidBuyerTitle||accountTabLabel(currentAccount,activeTab)}</b></div></div><button type="button" className="android-app-profile" onClick={()=>currentAccount.tabs.includes('profile')?setActiveTab('profile'):setAndroidMoreOpen(true)} aria-label="प्रोफाइल उघडा"><UserRound size={20}/></button><div className="web-topbar-title"><span className="crumb">स्वर्णभूमी　/　</span><b>{accountTabLabel(currentAccount,activeTab)}</b></div><div className="today"><CalendarDays size={16}/>{new Date().toLocaleDateString('mr-IN',{weekday:'long',day:'numeric',month:'long'})}</div></header>
       {['farmer','seller','buyer'].includes(accountType)&&!accountProfile?.complete&&activeTab!=='profile'&&<div className="profile-reminder-banner" role="status"><Shield size={16}/><span>तुमचे प्रोफाइल अपूर्ण आहे. खरेदीदार आणि प्रशासकांसाठी माहिती पूर्ण करा.</span><button type="button" onClick={()=>setActiveTab('profile')}>प्रोफाइल पूर्ण करा <ArrowRight size={14}/></button></div>}
       {accountType==='farmer'&&<GovernmentSchemeBanner announcements={schemeFeed?.announcements||[]} onOpen={()=>setActiveTab('schemes')}/>}
       {activeTab==='entries'&&accountType==='farmer'&&<div className="entry-subtabs" role="tablist" aria-label="दैनिक नोंद विभाग"><button type="button" role="tab" aria-selected={entrySubTab==='entries'} className={`entry-subtab ${entrySubTab==='entries'?'active':''}`} onClick={()=>setEntrySubTab('entries')}><CalendarDays size={16}/> दैनिक नोंद</button><button type="button" role="tab" aria-selected={entrySubTab==='profits'} className={`entry-subtab ${entrySubTab==='profits'?'active':''}`} onClick={()=>setEntrySubTab('profits')}><Wallet size={16}/> शेतीचा नफा</button></div>}
@@ -357,12 +368,13 @@ function App(){
       {activeTab==='schemes'&&accountType==='farmer'&&<GovernmentSchemesPanel feed={schemeFeed} loading={schemeLoading} refreshing={schemeRefreshing} error={schemeError} onRefresh={()=>refreshSchemeFeed(false)}/>}
       {activeTab==='prices'&&<MarketPricesPanel apiFetch={apiFetch} apiBase={API} userId={authUser.id} onUnauthorized={logout}/>}
       {activeTab==='admin'&&<AdminOverview apiBase={API} apiFetch={apiFetch}/>}
-      {activeTab==='marketplace'&&<MarketplacePanel key={authUser.id} accountType={accountType} apiBase={API} auth={authToken} userId={authUser.id} buyerPhone={authUser.mobileNumber} profile={accountProfile} onUnauthorized={logout}/>}
+      {activeTab==='marketplace'&&<MarketplacePanel key={authUser.id} accountType={accountType} apiBase={API} auth={authToken} userId={authUser.id} buyerPhone={authUser.mobileNumber} profile={accountProfile} onUnauthorized={logout} requestedView={androidAppMode&&accountType==='buyer'?androidBuyerViewRequest:null} onViewChange={androidAppMode&&accountType==='buyer'?setAndroidBuyerView:undefined} onUnreadChange={androidAppMode&&accountType==='buyer'?setAndroidBuyerUnread:undefined}/>}
       {activeTab==='consultants'&&<ConsultantPanel apiBase={API} apiFetch={apiFetch} mobileNumber={authUser.mobileNumber}/>}
     </main>
     {['farmer','seller','buyer','admin'].includes(accountType)&&!open&&!supportOpen&&<button ref={supportFabRef} type="button" className="support-fab" onClick={()=>setSupportOpen(true)} aria-label={supportUnread?`मदत व संवाद, ${supportUnread} न वाचलेले संदेश`:'मदत व संवाद उघडा'}><MessageCircle size={18}/><span>मदत</span>{supportUnread>0&&<b>{supportUnread>99?'99+':supportUnread}</b>}</button>}
     {supportOpen&&<SupportChatDialog role={accountType} apiFetch={apiFetch} apiBase={API} onUnreadChange={setSupportUnread} onClose={closeSupport}/>}
-    {androidAppMode&&<><nav className="android-bottom-nav" aria-label="मुख्य अॅप नेव्हिगेशन">{androidPrimaryTabs.map(tab=>{const item=NAV_ITEMS[tab],Icon=item.icon,label=accountTabLabel(currentAccount,tab);return <button type="button" key={tab} className={`android-bottom-nav-item ${activeTab===tab?'active':''}`} onClick={()=>{setActiveTab(tab);setAndroidMoreOpen(false)}} aria-label={label} aria-current={activeTab===tab?'page':undefined}><span className="android-bottom-icon"><Icon size={21}/>{tab==='profile'&&!accountProfile?.complete&&<i/>}</span><span>{label}</span></button>})}<button type="button" className={`android-bottom-nav-item ${androidMoreOpen?'active':''}`} onClick={()=>setAndroidMoreOpen(value=>!value)} aria-expanded={androidMoreOpen} aria-label="अधिक पर्याय"><span className="android-bottom-icon"><MoreHorizontal size={22}/></span><span>अधिक</span></button></nav>{androidMoreOpen&&<div className="android-more-layer" onMouseDown={event=>{if(event.target===event.currentTarget)setAndroidMoreOpen(false)}}><section className="android-more-sheet" role="dialog" aria-modal="true" aria-label="अधिक पर्याय"><div className="android-sheet-handle"/><div className="android-more-heading"><div><span>स्वर्णभूमी</span><h2>अधिक पर्याय</h2></div><button type="button" onClick={()=>setAndroidMoreOpen(false)} aria-label="बंद करा"><X size={20}/></button></div><div className="android-more-list">{androidOverflowTabs.map(tab=>{const item=NAV_ITEMS[tab],Icon=item.icon,label=accountTabLabel(currentAccount,tab);return <button type="button" key={tab} onClick={()=>{setActiveTab(tab);setAndroidMoreOpen(false)}}><span className="android-more-icon"><Icon size={19}/></span><span>{label}</span><ChevronRight size={17}/></button>})}<button type="button" className="android-logout-item" onClick={logout}><span className="android-more-icon"><LogOut size={19}/></span><span>लॉगआउट</span><ChevronRight size={17}/></button></div><div className="android-account-caption"><span className="android-account-avatar">{currentAccount.initials}</span><span><b>{currentAccount.label} खाते</b><small>{authUser.mobileNumber}</small></span></div></section></div>}</>}
+    {androidAppMode&&accountType==='buyer'&&<AndroidBuyerNav activeTab={activeTab} view={androidBuyerView} unreadOrders={androidBuyerUnread} onOpenView={openAndroidBuyerView} onProfile={()=>setActiveTab('profile')} onLogout={logout}/>}
+    {androidAppMode&&accountType!=='buyer'&&<><nav className="android-bottom-nav" aria-label="मुख्य अॅप नेव्हिगेशन">{androidPrimaryTabs.map(tab=>{const item=NAV_ITEMS[tab],Icon=item.icon,label=accountTabLabel(currentAccount,tab);return <button type="button" key={tab} className={`android-bottom-nav-item ${activeTab===tab?'active':''}`} onClick={()=>{setActiveTab(tab);setAndroidMoreOpen(false)}} aria-label={label} aria-current={activeTab===tab?'page':undefined}><span className="android-bottom-icon"><Icon size={21}/>{tab==='profile'&&!accountProfile?.complete&&<i/>}</span><span>{label}</span></button>})}<button type="button" className={`android-bottom-nav-item ${androidMoreOpen?'active':''}`} onClick={()=>setAndroidMoreOpen(value=>!value)} aria-expanded={androidMoreOpen} aria-label="अधिक पर्याय"><span className="android-bottom-icon"><MoreHorizontal size={22}/></span><span>अधिक</span></button></nav>{androidMoreOpen&&<div className="android-more-layer" onMouseDown={event=>{if(event.target===event.currentTarget)setAndroidMoreOpen(false)}}><section className="android-more-sheet" role="dialog" aria-modal="true" aria-label="अधिक पर्याय"><div className="android-sheet-handle"/><div className="android-more-heading"><div><span>स्वर्णभूमी</span><h2>अधिक पर्याय</h2></div><button type="button" onClick={()=>setAndroidMoreOpen(false)} aria-label="बंद करा"><X size={20}/></button></div><div className="android-more-list">{androidOverflowTabs.map(tab=>{const item=NAV_ITEMS[tab],Icon=item.icon,label=accountTabLabel(currentAccount,tab);return <button type="button" key={tab} onClick={()=>{setActiveTab(tab);setAndroidMoreOpen(false)}}><span className="android-more-icon"><Icon size={19}/></span><span>{label}</span><ChevronRight size={17}/></button>})}<button type="button" className="android-logout-item" onClick={logout}><span className="android-more-icon"><LogOut size={19}/></span><span>लॉगआउट</span><ChevronRight size={17}/></button></div><div className="android-account-caption"><span className="android-account-avatar">{currentAccount.initials}</span><span><b>{currentAccount.label} खाते</b><small>{authUser.mobileNumber}</small></span></div></section></div>}</>}
     {showBackToTop&&!open&&!analyticsMetric&&<button type="button" className="back-to-top" onClick={()=>window.scrollTo({top:0,behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})} aria-label="पृष्ठाच्या वर जा"><ArrowUp size={17}/><span>वर जा</span></button>}
     {analyticsMetric&&<AnalyticsDialog metric={analyticsMetric} entries={entries} onClose={()=>setAnalyticsMetric(null)}/>}
     {open&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setOpen(false)}}><form className="dialog" onSubmit={save}><div className="dialog-head"><div><span className="eyebrow">शेताची रोजची डायरी</span><h2>{editingEntryId?'नोंद संपादित करा':'आजची नोंद लिहा'} <span>🌱</span></h2></div><button type="button" className="close" onClick={()=>setOpen(false)} aria-label="नोंद बंद करा"><X/></button></div><div className="form-scroll">
