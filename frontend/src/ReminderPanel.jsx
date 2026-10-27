@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Bell, BellOff, CalendarDays, CheckCircle2, CloudSun, LoaderCircle, Mic, MicOff, Plus, Repeat2, RotateCcw, Search, Trash2, Volume2, X } from 'lucide-react';
 import { disableBrowserPush, enableBrowserPush, getBrowserPushSubscriptionId } from './reminderNotifications.js';
 import SpeechTextInput from './SpeechTextInput.jsx';
+import { speechErrorNotice, speechRecognitionConstructor, speechUnavailableNotice } from './speechRecognition.js';
 import './reminders.css';
 
 function indiaDateTimeInput(date) {
@@ -64,6 +65,7 @@ export default function ReminderPanel({ apiFetch, apiBase, onUnauthorized, entri
   const [rescheduleDraft, setRescheduleDraft] = useState(null);
   const [rescheduleSaving, setRescheduleSaving] = useState(false);
   const recognitionRef = useRef(null);
+  const reasonInputRef = useRef(null);
 
   const cropOptions = useMemo(() => [...new Set(entries.map(entry => entry.farmSection?.trim()).filter(Boolean))].sort(), [entries]);
   const pincodeOptions = useMemo(() => [...new Set(entries.map(entry => entry.pincode).filter(pin => /^[1-9][0-9]{5}$/.test(pin || '')))], [entries]);
@@ -142,23 +144,43 @@ export default function ReminderPanel({ apiFetch, apiBase, onUnauthorized, entri
   }
 
   function startVoiceInput() {
-    if (listening) { recognitionRef.current?.stop(); return; }
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) { setVoiceNotice('आवाजातून मजकूर भरण्यासाठी Chrome वापरा.'); return; }
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'mr-IN'; recognition.continuous = false; recognition.interimResults = false;
+    if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} return; }
+    const SpeechRecognition = speechRecognitionConstructor();
+    if (!SpeechRecognition) { reasonInputRef.current?.focus(); setVoiceNotice(speechUnavailableNotice()); return; }
+    let recognition;
+    try { recognition = new SpeechRecognition(); }
+    catch { setVoiceNotice(speechUnavailableNotice()); return; }
+    let interim = '';
+    let receivedResult = false;
+    let hadError = false;
+    recognition.lang = 'mr-IN'; recognition.continuous = false; recognition.interimResults = true;
     recognition.onstart = () => { setListening(true); setVoiceNotice(''); };
     recognition.onresult = event => {
-      const transcript = Array.from(event.results).map(result => result[0]?.transcript || '').join(' ').trim();
-      if (transcript) setForm(current => ({ ...current, reason: `${current.reason ? `${current.reason} ` : ''}${transcript}`.slice(0, 300) }));
+      for (let index = event.resultIndex ?? 0; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const transcript = result?.[0]?.transcript?.trim() || '';
+        if (result?.isFinal && transcript && !receivedResult) {
+          receivedResult = true;
+          setForm(current => ({ ...current, reason: `${current.reason ? `${current.reason} ` : ''}${transcript}`.slice(0, 300) }));
+        } else if (!result?.isFinal) interim = transcript;
+      }
     };
     recognition.onerror = event => {
+      hadError = true;
       setListening(false);
-      setVoiceNotice(event.error === 'not-allowed' ? 'मायक्रोफोनची परवानगी द्या.' : 'आवाज समजला नाही; पुन्हा प्रयत्न करा.');
+      setVoiceNotice(speechErrorNotice(event.error));
     };
-    recognition.onend = () => setListening(false);
+    recognition.onend = () => {
+      if (!hadError && !receivedResult && interim) {
+        setForm(current => ({ ...current, reason: `${current.reason ? `${current.reason} ` : ''}${interim}`.slice(0, 300) }));
+      } else if (!hadError && !receivedResult) setVoiceNotice(speechErrorNotice('no-speech'));
+      setListening(false);
+      if (recognitionRef.current === recognition) recognitionRef.current = null;
+    };
     recognitionRef.current = recognition;
-    try { recognition.start(); } catch { setListening(false); setVoiceNotice('मायक्रोफोन सुरू झाला नाही.'); }
+    setListening(true);
+    setVoiceNotice('मायक्रोफोन सुरू करत आहे…');
+    try { recognition.start(); } catch { recognitionRef.current = null; setListening(false); setVoiceNotice('मायक्रोफोन सुरू झाला नाही. कीबोर्डवरील माइक वापरा.'); }
   }
 
   function speakReminder(item) {
@@ -278,7 +300,7 @@ export default function ReminderPanel({ apiFetch, apiBase, onUnauthorized, entri
       <form className="reminder-form" onSubmit={save}>
         <div className="reminder-section-title"><div><span>नवीन आठवण</span><h2>स्मरणपत्र तयार करा</h2></div><span className="reminder-step">IST</span></div>
         <label className="reminder-field"><span>तारीख आणि वेळ</span><input type="datetime-local" value={form.scheduledAt} min={indiaDateTimeInput(new Date(Date.now() + 60 * 1000))} onChange={event => set('scheduledAt', event.target.value)} required/><small>वेळ भारताच्या स्थानिक वेळेनुसार (IST) घेतली जाईल.</small></label>
-        <label className="reminder-field"><span>काम / तपासणी <small>मराठीत लिहा</small></span><textarea lang="mr" rows="3" maxLength={300} value={form.reason} onChange={event => set('reason', event.target.value)} placeholder="उदा. उद्या सकाळी कांद्याला पाणी द्यायचे आहे..." required/><small className="reminder-counter">{form.reason.length}/३००</small></label>
+        <label className="reminder-field"><span>काम / तपासणी <small>मराठीत लिहा</small></span><textarea ref={reasonInputRef} lang="mr" rows="3" maxLength={300} value={form.reason} onChange={event => set('reason', event.target.value)} placeholder="उदा. उद्या सकाळी कांद्याला पाणी द्यायचे आहे..." required/><small className="reminder-counter">{form.reason.length}/३००</small></label>
         <div className="reminder-voice-row"><button type="button" className={`reminder-voice-button${listening ? ' listening' : ''}`} onClick={startVoiceInput}>{listening ? <MicOff size={15}/> : <Mic size={15}/>} {listening ? 'ऐकत आहे…' : 'बोलून भरा'}</button>{voiceNotice && <span role="status">{voiceNotice}</span>}</div>
         <label className="reminder-field"><span>पीक / शेताचा विभाग <small>ऐच्छिक</small></span><SpeechTextInput><input list="reminder-crop-options" maxLength={120} value={form.cropOrPlot} onChange={event => set('cropOrPlot', event.target.value)} placeholder="उदा. कांदा — पूर्वेकडील शेत"/></SpeechTextInput><datalist id="reminder-crop-options">{cropOptions.map(option => <option key={option} value={option}/>)}</datalist></label>
         <label className="reminder-field"><span>पुनरावृत्ती</span><select value={form.repeatFrequency} onChange={event => setForm(current => ({ ...current, repeatFrequency: event.target.value, repeatUntil: event.target.value === 'NONE' ? '' : current.repeatUntil }))}><option value="NONE">एकदाच</option><option value="DAILY">दररोज</option><option value="WEEKLY">दर आठवड्याला</option></select></label>

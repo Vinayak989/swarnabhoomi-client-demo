@@ -21,10 +21,10 @@ function messageTime(value) {
 }
 
 function roleName(role) {
-  return role === 'seller' ? 'विक्रेता' : 'शेतकरी';
+  return role === 'seller' ? 'विक्रेता' : role === 'buyer' ? 'खरेदीदार' : 'शेतकरी';
 }
 
-function Conversation({ admin, title, subtitle, messages, draft, setDraft, onSend, sending, loading, error }) {
+function Conversation({ admin, role, title, subtitle, messages, draft, setDraft, onSend, sending, loading, error }) {
   const bottomRef = useRef(null);
   const lastMessageId = messages.at(-1)?.id;
 
@@ -45,7 +45,9 @@ function Conversation({ admin, title, subtitle, messages, draft, setDraft, onSen
         <h3>{admin ? 'संभाषण सुरू झालेले नाही' : 'अडचण सांगा, आम्ही मदतीसाठी आहोत'}</h3>
         <p>{admin ? 'शेतकरी किंवा विक्रेता संदेश पाठवल्यावर तो इथे दिसेल.' : 'अॅप वापरताना आलेली अडचण लिहा. प्रशासक तुमच्या संभाषणात उत्तर देतील.'}</p>
         {!admin && <div className="support-suggestions">
-          {['फोटो जोडताना अडचण', 'नोंद जतन होत नाही', 'शेतमाल विक्रीबाबत मदत'].map(text =>
+          {(role === 'buyer'
+            ? ['ऑर्डरबाबत मदत', 'पेमेंटमध्ये अडचण', 'खरेदीची माहिती हवी']
+            : ['फोटो जोडताना अडचण', 'नोंद जतन होत नाही', 'शेतमाल विक्रीबाबत मदत']).map(text =>
             <button type="button" key={text} onClick={() => setDraft(text)}>{text}</button>)}
         </div>}
       </div>}
@@ -76,7 +78,7 @@ function Conversation({ admin, title, subtitle, messages, draft, setDraft, onSen
   </section>;
 }
 
-function ParticipantSupport({ apiFetch, apiBase, onUnreadChange }) {
+function ParticipantSupport({ role, apiFetch, apiBase, onUnreadChange }) {
   const [chat, setChat] = useState({ messages: [] });
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(true);
@@ -129,7 +131,7 @@ function ParticipantSupport({ apiFetch, apiBase, onUnreadChange }) {
       <p>अॅप वापरताना काही अडचण आली तर इथे संदेश पाठवा. उत्तर याच संभाषणात दिसेल.</p>
       <button type="button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={15}/> संदेश तपासा</button>
     </header>
-    <Conversation admin={false} title="स्वर्णभूमी मदत" subtitle="तुमचे संदेश फक्त तुम्हाला आणि प्रशासकांना दिसतात"
+    <Conversation admin={false} role={role} title="स्वर्णभूमी मदत" subtitle="तुमचे संदेश फक्त तुम्हाला आणि प्रशासकांना दिसतात"
       messages={chat.messages || []} draft={draft} setDraft={setDraft} onSend={send}
       sending={sending} loading={loading} error={error}/>
   </main>;
@@ -224,7 +226,7 @@ function AdminSupport({ apiFetch, apiBase, onUnreadChange }) {
   return <main className="support-page support-admin-page" lang="mr">
     <header className="support-page-hero">
       <span><Headphones size={17}/> प्रशासक मदत कक्ष</span>
-      <h1>शेतकरी आणि विक्रेता संदेश</h1>
+      <h1>शेतकरी, विक्रेता आणि खरेदीदार संदेश</h1>
       <p>वापरकर्त्यांच्या अडचणी वाचा आणि त्यांना थेट उत्तर द्या.</p>
       <button type="button" onClick={() => setRefreshKey(current => current + 1)} disabled={loading}>
         <RefreshCw size={15}/> रिफ्रेश करा
@@ -269,7 +271,7 @@ function AdminSupport({ apiFetch, apiBase, onUnreadChange }) {
 export default function SupportChatPanel({ role, apiFetch, apiBase, onUnreadChange }) {
   return role === 'admin'
     ? <AdminSupport apiFetch={apiFetch} apiBase={apiBase} onUnreadChange={onUnreadChange}/>
-    : <ParticipantSupport apiFetch={apiFetch} apiBase={apiBase} onUnreadChange={onUnreadChange}/>;
+    : <ParticipantSupport role={role} apiFetch={apiFetch} apiBase={apiBase} onUnreadChange={onUnreadChange}/>;
 }
 
 export function SupportChatDialog({ role, apiFetch, apiBase, onUnreadChange, onClose }) {

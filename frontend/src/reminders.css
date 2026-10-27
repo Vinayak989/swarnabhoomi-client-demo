@@ -21,7 +21,7 @@
 .reminder-weather-result>a{align-self:end;color:#4b8051;font-size:9px;font-weight:700}
 .reminder-weather-error{color:#a34d45;font-size:9px}
 .reminder-voice-row{display:flex;align-items:center;gap:8px;margin:-8px 0 13px}
-.reminder-voice-button{min-height:31px;display:inline-flex;align-items:center;gap:6px;padding:0 9px;border:1px solid #dce8d8;border-radius:7px;background:#f8fbf6;color:#527b56;font:inherit;font-size:9px;font-weight:700;cursor:pointer}
+.reminder-voice-button{min-height:40px;display:inline-flex;align-items:center;gap:6px;padding:0 11px;border:1px solid #dce8d8;border-radius:7px;background:#f8fbf6;color:#527b56;font:inherit;font-size:10px;font-weight:700;cursor:pointer;touch-action:manipulation}
 .reminder-voice-button.listening{border-color:#e6bcb3;background:#fff3ef;color:#ac574a}
 .reminder-voice-row>span{color:#987c65;font-size:8px}
 .reminder-field select{min-height:38px;padding:8px 10px;border:1px solid #e1e8de;border-radius:8px;background:#fff;color:#384d3d;font:inherit;font-size:11px}

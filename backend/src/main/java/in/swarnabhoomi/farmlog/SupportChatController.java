@@ -88,7 +88,11 @@ public class SupportChatController {
             AppUser participant = userById.get(thread.getParticipantUserId());
             AccountProfile profile = profileByUserId.get(thread.getParticipantUserId());
             SupportMessage last = messages.findTopByThreadIdOrderByIdDesc(thread.getId()).orElse(null);
-            String fallback = "seller".equals(thread.getParticipantRole()) ? "विक्रेता" : "शेतकरी";
+            String fallback = switch (thread.getParticipantRole()) {
+                case "seller" -> "विक्रेता";
+                case "buyer" -> "खरेदीदार";
+                default -> "शेतकरी";
+            };
             String name = profile != null && profile.getFullName() != null && !profile.getFullName().isBlank()
                     ? profile.getFullName()
                     : fallback + " #" + thread.getParticipantUserId();
@@ -145,8 +149,9 @@ public class SupportChatController {
     }
 
     private static void requireParticipant(AppUser user) {
-        if (!"farmer".equals(user.getRole()) && !"seller".equals(user.getRole())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "ही सुविधा शेतकरी व विक्रेत्यांसाठी आहे.");
+        if (!"farmer".equals(user.getRole()) && !"seller".equals(user.getRole())
+                && !"buyer".equals(user.getRole())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "ही सुविधा शेतकरी, विक्रेता व खरेदीदारांसाठी आहे.");
         }
     }
 

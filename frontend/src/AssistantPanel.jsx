@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { BellPlus, Bot, Camera, CheckCircle2, ImagePlus, LoaderCircle, Mic, MicOff, Send, Sprout, Volume2, X } from 'lucide-react';
 import { getBrowserPushSubscriptionId } from './reminderNotifications.js';
 import SpeechTextInput from './SpeechTextInput.jsx';
+import { speechErrorNotice, speechRecognitionConstructor, speechUnavailableNotice } from './speechRecognition.js';
 import './assistant.css';
 
 const MAX_ORIGINAL_PHOTO_SIZE = 10_000_000;
@@ -74,6 +75,7 @@ export default function AssistantPanel({ apiFetch, apiBase, messages, setMessage
   const [reminderError, setReminderError] = useState('');
   const [savedReminderIndices, setSavedReminderIndices] = useState(() => new Set());
   const recognitionRef = useRef(null);
+  const questionInputRef = useRef(null);
   const conversationRef = useRef(null);
   const cameraInputRef = useRef(null);
   const libraryInputRef = useRef(null);
@@ -171,37 +173,59 @@ export default function AssistantPanel({ apiFetch, apiBase, messages, setMessage
   }
 
   function toggleMicrophone() {
-    if (listening) {
-      recognitionRef.current?.stop();
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
       return;
     }
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = speechRecognitionConstructor();
     if (!SpeechRecognition) {
-      setNotice('आवाजातून प्रश्न विचारण्यासाठी Chrome वापरा; किंवा खाली प्रश्न लिहा.');
+      questionInputRef.current?.focus();
+      setNotice(speechUnavailableNotice());
       return;
     }
-    const recognition = new SpeechRecognition();
+    let recognition;
+    try { recognition = new SpeechRecognition(); }
+    catch { setNotice(speechUnavailableNotice()); return; }
+    let interim = '';
+    let sent = false;
+    let hadError = false;
     recognition.lang = 'mr-IN';
     recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     recognition.onstart = () => {
       setListening(true);
       setNotice('ऐकत आहे… मराठीत तुमचा प्रश्न विचारा.');
     };
     recognition.onresult = event => {
-      const transcript = event.results?.[0]?.[0]?.transcript?.trim();
-      if (transcript) void sendQuestion(transcript, true);
+      for (let index = event.resultIndex ?? 0; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const transcript = result?.[0]?.transcript?.trim() || '';
+        if (result?.isFinal && transcript && !sent) {
+          sent = true;
+          void sendQuestion(transcript, true);
+        } else if (!result?.isFinal) interim = transcript;
+      }
     };
     recognition.onerror = event => {
-      if (event.error === 'not-allowed') setNotice('मायक्रोफोन वापरण्यासाठी ब्राउझरची परवानगी द्या.');
-      else if (event.error !== 'aborted') setNotice('आवाज ओळखता आला नाही; पुन्हा प्रयत्न करा.');
+      hadError = true;
+      setListening(false);
+      setNotice(speechErrorNotice(event.error));
     };
-    recognition.onend = () => setListening(false);
+    recognition.onend = () => {
+      if (!hadError && !sent && interim) { sent = true; void sendQuestion(interim, true); }
+      else if (!hadError && !sent) setNotice(speechErrorNotice('no-speech'));
+      setListening(false);
+      if (recognitionRef.current === recognition) recognitionRef.current = null;
+    };
     recognitionRef.current = recognition;
+    setListening(true);
+    setNotice('मायक्रोफोन सुरू करत आहे…');
     try {
       recognition.start();
     } catch {
-      setNotice('मायक्रोफोन सुरू करता आला नाही; पुन्हा प्रयत्न करा.');
+      recognitionRef.current = null;
+      setListening(false);
+      setNotice('मायक्रोफोन सुरू करता आला नाही; पुन्हा प्रयत्न करा किंवा कीबोर्डवरील माइक वापरा.');
     }
   }
 
@@ -312,6 +336,7 @@ export default function AssistantPanel({ apiFetch, apiBase, messages, setMessage
           <button type="button" onClick={() => setPhoto(null)} aria-label="फोटो काढून टाका" title="फोटो काढून टाका"><X size={15}/></button>
         </div>}
         <textarea
+          ref={questionInputRef}
           aria-label="शेतीविषयक प्रश्न"
           value={question}
           onChange={event => setQuestion(event.target.value)}

@@ -31,10 +31,10 @@ class SupportChatControllerTest {
     @Autowired private PasswordEncoder passwords;
 
     @Test
-    void farmerAndSellerConversationsStayPrivateWhileAdminCanReply() throws Exception {
+    void farmerSellerAndBuyerConversationsStayPrivateWhileAdminCanReply() throws Exception {
         AppUser farmer = users.save(new AppUser("+919876543210", "farmer", passwords.encode(PASSWORD)));
         users.save(new AppUser("+919876543211", "seller", passwords.encode(PASSWORD)));
-        users.save(new AppUser("+919876543212", "buyer", passwords.encode(PASSWORD)));
+        AppUser buyer = users.save(new AppUser("+919876543212", "buyer", passwords.encode(PASSWORD)));
         users.save(new AppUser("+919876543213", "admin", passwords.encode(PASSWORD)));
         AccountProfile farmerProfile = new AccountProfile(farmer.getId());
         farmerProfile.setFullName("शेतकरी मदत चाचणी");
@@ -47,7 +47,8 @@ class SupportChatControllerTest {
 
         mvc.perform(get("/api/support/my")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/support/my").header("Authorization", bearer(buyerToken)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.messages", hasSize(0)));
         mvc.perform(post("/api/support/my/messages").header("Authorization", bearer(farmerToken))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"body\":\"फोटो जोडता येत नाही\"}"))
                 .andExpect(status().isOk())
@@ -56,25 +57,47 @@ class SupportChatControllerTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"body\":\"विक्री नोंद अडली\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.senderRole").value("seller"));
+        mvc.perform(post("/api/support/my/messages").header("Authorization", bearer(buyerToken))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"body\":\"खरेदी ऑर्डर दिसत नाही\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.senderRole").value("buyer"));
 
         Long farmerThreadId = threads.findByParticipantUserId(farmer.getId()).orElseThrow().getId();
+        Long buyerThreadId = threads.findByParticipantUserId(buyer.getId()).orElseThrow().getId();
         mvc.perform(get("/api/support/my").header("Authorization", bearer(sellerToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.messages", hasSize(1)))
                 .andExpect(jsonPath("$.messages[0].body").value("विक्री नोंद अडली"));
+        mvc.perform(get("/api/support/my").header("Authorization", bearer(buyerToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.messages", hasSize(1)))
+                .andExpect(jsonPath("$.messages[0].body").value("खरेदी ऑर्डर दिसत नाही"));
         mvc.perform(get("/api/support/admin/threads").header("Authorization", bearer(farmerToken)))
                 .andExpect(status().isForbidden());
         mvc.perform(get("/api/support/admin/threads").header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content", hasSize(2)));
+                .andExpect(jsonPath("$.content", hasSize(3)));
         mvc.perform(get("/api/support/unread").header("Authorization", bearer(adminToken)))
-                .andExpect(jsonPath("$.count").value(2));
+                .andExpect(jsonPath("$.count").value(3));
         mvc.perform(get("/api/support/admin/threads/{id}", farmerThreadId)
                 .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.messages[0].body").value("फोटो जोडता येत नाही"));
         mvc.perform(get("/api/support/unread").header("Authorization", bearer(adminToken)))
+                .andExpect(jsonPath("$.count").value(2));
+
+        mvc.perform(post("/api/support/admin/threads/{id}/messages", buyerThreadId)
+                .header("Authorization", bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"body\":\"ऑर्डर विभाग पुन्हा उघडा\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/support/unread").header("Authorization", bearer(buyerToken)))
                 .andExpect(jsonPath("$.count").value(1));
+        mvc.perform(get("/api/support/my").header("Authorization", bearer(buyerToken)))
+                .andExpect(jsonPath("$.messages", hasSize(2)))
+                .andExpect(jsonPath("$.messages[1].body").value("ऑर्डर विभाग पुन्हा उघडा"));
+        mvc.perform(get("/api/support/unread").header("Authorization", bearer(buyerToken)))
+                .andExpect(jsonPath("$.count").value(0));
 
         mvc.perform(post("/api/support/admin/threads/{id}/messages", farmerThreadId)
                 .header("Authorization", bearer(adminToken))
