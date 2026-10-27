@@ -68,11 +68,21 @@ body:has(.android-entry-mode) {
   border: 1px solid #e4e9dc;
   border-bottom: 0;
   border-radius: 20px 20px 0 0;
+  justify-content: flex-start;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: #93b799 transparent;
+  touch-action: pan-x;
   background: rgb(255 255 253 / 98%);
   box-shadow: 0 -10px 30px rgb(25 66 38 / 11%);
   transform: translateX(-50%);
 }
 .android-app-mode .android-bottom-nav-item {
+  flex: 1 0 88px;
+  min-width: 88px;
   min-height: 62px;
   padding: 3px 2px;
   gap: 3px;
@@ -81,7 +91,11 @@ body:has(.android-entry-mode) {
   font-size: clamp(9px, 2.6vw, 11px);
   font-weight: 700;
   touch-action: manipulation;
+  scroll-snap-align: start;
 }
+.android-app-mode .android-bottom-nav::-webkit-scrollbar { height: 3px; }
+.android-app-mode .android-bottom-nav::-webkit-scrollbar-thumb { border-radius: 9px; background: #93b799; }
+.android-app-mode .android-bottom-nav-item:focus-visible { outline: 2px solid var(--app-green); outline-offset: -3px; }
 .android-app-mode .android-bottom-icon {
   width: min(53px, 100%);
   height: 34px;
@@ -107,6 +121,46 @@ body:has(.android-entry-mode) {
   color: white;
   font-size: 10px;
   line-height: 1;
+}
+
+body:has(.android-app-mode .daily-entry-overlay) { overflow: hidden; }
+.android-app-mode .daily-entry-overlay {
+  z-index: 120;
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+  overflow: hidden;
+}
+.android-app-mode .daily-entry-overlay .dialog {
+  height: min(100%, 900px);
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.android-app-mode .daily-entry-overlay .dialog-head,
+.android-app-mode .daily-entry-overlay .dialog-footer { flex: 0 0 auto; }
+.android-app-mode .daily-entry-overlay .form-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scroll-padding-block: 16px;
+}
+.android-app-mode .daily-entry-overlay .dialog-footer {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px 16px;
+}
+.android-app-mode .daily-entry-overlay .dialog-footer > span {
+  max-width: none;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.android-app-mode .daily-entry-overlay .dialog-footer .primary {
+  min-height: 48px;
+  justify-content: center;
+  font-size: 13px;
 }
 
 .android-app-mode .market-page,

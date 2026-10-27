@@ -1,4 +1,5 @@
 import { ClipboardList, LogOut, ShoppingBasket, ShoppingCart, UserRound } from 'lucide-react';
+import AndroidScrollableNav from './AndroidScrollableNav.jsx';
 
 const ITEMS = [
   { id: 'browse', label: 'खरेदी', icon: ShoppingBasket },
@@ -9,7 +10,7 @@ const ITEMS = [
 ];
 
 export default function AndroidBuyerNav({ activeTab, view, unreadOrders = 0, onOpenView, onProfile, onLogout }) {
-  return <nav className="android-bottom-nav android-buyer-nav" aria-label="खरेदीदार अॅप नेव्हिगेशन">
+  return <AndroidScrollableNav activeKey={`${activeTab}:${view}`} className="android-buyer-nav" ariaLabel="खरेदीदार अॅप नेव्हिगेशन">
     {ITEMS.map(item => {
       const Icon = item.icon;
       const active = item.id === 'profile' ? activeTab === 'profile'
@@ -23,5 +24,5 @@ export default function AndroidBuyerNav({ activeTab, view, unreadOrders = 0, onO
         <span>{item.label}</span>
       </button>;
     })}
-  </nav>;
+  </AndroidScrollableNav>;
 }
