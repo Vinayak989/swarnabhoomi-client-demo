@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'swarnabhoomi-shell-v1';
+const SHELL_CACHE = 'swarnabhoomi-shell-v2';
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(SHELL_CACHE).then(cache => cache.add('/')).catch(() => {}));

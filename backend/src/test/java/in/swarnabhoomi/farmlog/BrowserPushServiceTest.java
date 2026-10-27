@@ -57,4 +57,20 @@ class BrowserPushServiceTest {
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode().value()).isEqualTo(404));
         verify(service, never()).deliver(any(), any());
     }
+
+    @Test void appleHomeScreenPushEndpointIsAccepted() {
+        AppUser owner = new AppUser("+919800000010", "farmer", "test");
+        ReflectionTestUtils.setField(owner, "id", 10L);
+        when(repository.save(any())).thenAnswer(invocation -> {
+            BrowserPushSubscription saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 10L);
+            return saved;
+        });
+        byte[] publicKey = new byte[65]; publicKey[0] = 4;
+        var encoder = java.util.Base64.getUrlEncoder().withoutPadding();
+        var request = new BrowserPushService.SubscriptionRequest("https://web.push.apple.com/test-device",
+                new BrowserPushService.PushKeys(encoder.encodeToString(publicKey), encoder.encodeToString(new byte[16])), false);
+        assertThat(service.subscribe(request, owner).id()).isEqualTo(10L);
+        verify(repository).save(argThat(saved -> saved.getOwner() == owner && !saved.isAndroidApp()));
+    }
 }

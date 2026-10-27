@@ -58,6 +58,22 @@ test('permission is requested from the user click before network access', async 
   }, '/api', null, 7);
 });
 
+test('Safari users are directed to install the Home Screen app before enabling iPhone push', async () => {
+  navigator.userAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)';
+  window.location.search = '?app=1';
+  await assert.rejects(enableBrowserPush(apiFetch, '/api', null, 7), /Add to Home Screen/);
+  assert.equal(permissionCalls, 0);
+  assert.equal(posts.length, 0);
+});
+
+test('installed iPhone app can register notifications without an Android launch link', async () => {
+  navigator.userAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)';
+  navigator.standalone = true;
+  window.location.search = '?app=1';
+  assert.equal(await enableBrowserPush(apiFetch, '/api', null, 7), 42);
+  assert.equal(posts[0].androidApp, false);
+});
+
 test('denied permission clears stale enabled state and does not send subscription requests', async () => {
   storage.set('swarnabhoomi-push-subscription-id:7', '42');
   Notification.permission = 'denied';

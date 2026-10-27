@@ -1,0 +1,34 @@
+/* iPhone and iPad additions to the shared installed-app layout. */
+.iphone-install-link { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 12px 0 18px; padding: 13px 15px; border: 1px solid #cfe1c9; border-radius: 13px; background: #eff7e9; color: #205a38; font-size: 13px; font-weight: 700; text-decoration: none; }
+html[data-app-platform='ios'] { -webkit-text-size-adjust: 100%; }
+.ios-app-mode .android-bottom-nav,
+.ios-app-mode .form-scroll,
+.ios-app-mode .android-more-sheet { -webkit-overflow-scrolling: touch; }
+.ios-app-mode :is(input, select, textarea),
+.ios-entry-mode :is(input, select, textarea) { font-size: 16px; }
+.ios-app-mode :is(button, a),
+.ios-entry-mode :is(button, a) { touch-action: manipulation; }
+.ios-app-mode .android-app-titlebar b { letter-spacing: -.02em; }
+.ios-app-mode .daily-entry-overlay,
+.ios-app-mode .reminder-modal-backdrop,
+html[data-app-platform='ios'] .support-modal-backdrop {
+  top: var(--app-visible-top, 0px);
+  bottom: auto;
+  height: var(--app-visible-height, 100dvh);
+  max-height: var(--app-visible-height, 100dvh);
+}
+html[data-app-platform='ios'] .support-modal-backdrop {
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+}
+html[data-app-platform='ios'] .support-modal {
+  max-height: 100%;
+  height: min(760px, 100%);
+}
+.ios-app-mode .reminder-modal-backdrop { overflow-y: auto; }
+.ios-app-mode .entry-card,
+.ios-app-mode .market-listing-card { -webkit-tap-highlight-color: transparent; }
+@media (max-width: 600px) {
+  .ios-app-mode .android-bottom-nav-item { min-height: 62px; }
+  .ios-app-mode .profile-reminder-banner { flex-wrap: wrap; }
+}

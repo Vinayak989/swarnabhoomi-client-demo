@@ -1,3 +1,5 @@
+import { getAppEnvironment } from './appEnvironment.js';
+
 const PUSH_SUBSCRIPTION_KEY = 'swarnabhoomi-push-subscription-id';
 const subscriptionKey = userId => `${PUSH_SUBSCRIPTION_KEY}:${userId}`;
 const disabledKey = userId => `swarnabhoomi-push-disabled:${userId}`;
@@ -53,7 +55,7 @@ function completeSubscription(subscription) {
 async function saveSubscription(subscription, apiFetch, apiBase, onUnauthorized, userId) {
   const saved = await responseBody(await apiFetch(`${apiBase}/push/subscriptions`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...subscriptionDetails(subscription), androidApp: new URLSearchParams(window.location.search).get('androidApp') === '1' })
+    body: JSON.stringify({ ...subscriptionDetails(subscription), androidApp: getAppEnvironment().androidApp })
   }), onUnauthorized);
   if (!Number.isSafeInteger(Number(saved?.id)) || Number(saved.id) < 1) throw Error('सूचना सदस्यता जतन झाली नाही.');
   try { window.localStorage.setItem(subscriptionKey(userId), String(saved.id)); } catch {}
@@ -93,8 +95,14 @@ async function responseBody(response, onUnauthorized) {
 }
 
 export async function enableBrowserPush(apiFetch, apiBase, onUnauthorized, userId) {
+  const environment = getAppEnvironment();
+  if (environment.isIOS && !environment.standalone) {
+    throw Error('iPhone वर Safari → Share → Add to Home Screen मधून अॅप जोडा. नंतर होम स्क्रीनवरील स्वर्णभूमी उघडून सूचना सुरू करा. यासाठी iOS 16.4 किंवा पुढील आवृत्ती आवश्यक आहे.');
+  }
   if (!pushSupported()) {
-    throw Error('या ब्राउझरमध्ये डिव्हाइस सूचना उपलब्ध नाहीत. HTTPS व Chrome वापरून पुन्हा प्रयत्न करा.');
+    throw Error(environment.isIOS
+      ? 'या iPhone वर सूचना उपलब्ध नाहीत. iOS 16.4 किंवा पुढील आवृत्ती वापरा आणि होम स्क्रीनवरील स्वर्णभूमी अॅप उघडा.'
+      : 'या ब्राउझरमध्ये डिव्हाइस सूचना उपलब्ध नाहीत. HTTPS व अद्ययावत ब्राउझर वापरून पुन्हा प्रयत्न करा.');
   }
 
   // Ask directly from the button click, before any network request consumes user activation.

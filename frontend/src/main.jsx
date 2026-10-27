@@ -1,7 +1,10 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
+import { registerAppServiceWorker } from './appEnvironment.js';
 import './styles.css';
 import './experience.css';
 import './androidExperience.css';
+import './iosExperience.css';
 createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);
+void registerAppServiceWorker();
