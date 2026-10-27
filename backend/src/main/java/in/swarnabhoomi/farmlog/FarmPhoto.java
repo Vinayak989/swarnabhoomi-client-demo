@@ -16,7 +16,7 @@ public class FarmPhoto {
     @Column(length = 36, nullable = false)
     private String id;
 
-    @Column(name = "photo_data")
+    @Column(name = "photo_data", length = 10_000_000)
     private byte[] data;
 
     @Column(name = "s3_key", length = 512)

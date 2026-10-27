@@ -276,7 +276,18 @@ function App(){
   async function getWeather(){setWeatherBusy(true);setWeatherError('');try{const r=await apiFetch(`${API}/weather/${form.pincode}`);const contentType=r.headers.get('content-type')||'';if(!contentType.toLowerCase().includes('json'))throw Error('हवामान सर्व्हरकडून JSON प्रतिसाद मिळाला नाही. Java सर्व्हर सुरू आहे का ते तपासा.');let d;try{d=await r.json()}catch{throw Error('हवामान सर्व्हरकडून वाचता न येणारा प्रतिसाद मिळाला.')}if(!r.ok)throw Error(d.message||(r.status>=500?'IMD हवामान सेवा सध्या उपलब्ध नाही. हवामान हाताने निवडा.':'हवामान माहिती मिळाली नाही.'));set('weatherDetails',JSON.stringify(d));}catch(e){setWeatherError(e instanceof TypeError?'हवामान सर्व्हरशी संपर्क होऊ शकला नाही. Java सर्व्हर सुरू आहे का ते तपासा.':e.message)}finally{setWeatherBusy(false)}}
   async function upload(file){
     if(!file)return;
+    photoUploadRef.current=null;
+    setPhotoUploading(false);
     setPhotoError('');
+    setPreview('');
+    if(!file.type.startsWith('image/')){
+      setPhotoError('कृपया फोटो फाइल निवडा.');
+      return;
+    }
+    if(file.size>10_000_000){
+      setPhotoError('फोटो १० MB पेक्षा लहान निवडा.');
+      return;
+    }
     setPreview(URL.createObjectURL(file));
     setPhotoUploading(true);
     const task=uploadEntryPhoto(apiFetch,file);
@@ -289,6 +300,13 @@ function App(){
     }finally{
       if(photoUploadRef.current===task)setPhotoUploading(false);
     }
+  }
+  function clearPhoto(){
+    photoUploadRef.current=null;
+    setPhotoUploading(false);
+    setPhotoError('');
+    set('photoUrl','');
+    setPreview('');
   }
   async function remove(id){if(!confirm('ही नोंद हटवायची आहे का?'))return;await apiFetch(`${API}/entries/${id}`,{method:'DELETE'});load()}
   if(!authUser||!authToken){
@@ -335,8 +353,19 @@ function App(){
       <section className="form-section"><h3><Boxes size={18}/> उत्पादन व विक्री</h3><div className="form-grid three"><Field label="उत्पादन (किलो)"><input type="number" min="0" value={form.productionKg} onChange={e=>set('productionKg',e.target.value)} placeholder="०"/></Field><Field label="विक्री (किलो)"><input type="number" min="0" value={form.soldKg} onChange={e=>set('soldKg',e.target.value)} placeholder="०"/></Field><Field label="विक्रीतून पैसे (₹)"><input type="number" min="0" value={form.saleIncome} onChange={e=>set('saleIncome',e.target.value)} placeholder="०"/></Field></div><div className="calculation">आजचा खर्च <b>{money(Number(form.laborCost||0)+Number(form.materialsCost||0)+Number(form.otherCost||0))}</b><span>•</span> निव्वळ उत्पन्न <b>{money(Number(form.saleIncome||0)-Number(form.laborCost||0)-Number(form.materialsCost||0)-Number(form.otherCost||0))}</b></div></section>
       <section className="form-section crop-soil-observations"><h3><Sprout size={18}/> पीक व माती निरीक्षण</h3><div className="form-grid"><Field label="पिकाची सद्यस्थिती"><textarea rows="2" value={form.cropCondition} onChange={e=>set('cropCondition',e.target.value)} placeholder="पिकाची वाढ, कीड, फुलोरा..."/></Field><Field label="माती व सेंद्रिय शेती निरीक्षण"><textarea rows="2" value={form.soilNotes} onChange={e=>set('soilNotes',e.target.value)} placeholder="मातीतील ओलावा, गांडूळखत..."/></Field></div></section><IssueTrackingFields form={form} set={set} apiFetch={apiFetch} apiBase={API} userId={authUser.id}/><Field label="उद्याची नियोजित कामे"><input value={form.tomorrowPlan} onChange={e=>set('tomorrowPlan',e.target.value)} placeholder="उद्या कोणते काम करायचे?"/></Field>
       <Field label="विशेष नोंद"><textarea rows="2" value={form.specialNote} onChange={e=>set('specialNote',e.target.value)} placeholder="काही विशेष सांगायचे असल्यास..."/></Field>
-      <div className="photo-upload"><label><input type="file" accept="image/*" capture="environment" onChange={e=>{void upload(e.target.files?.[0]);e.target.value=''}}/><ImagePlus size={22}/><b>{photoUploading?'फोटो अपलोड होत आहे…':form.photoUrl?'फोटो बदला':'शेताचा फोटो जोडा'}</b><small>एक फोटो · कमाल १० MB</small></label>{preview?<img src={preview} alt="निवडलेला फोटो"/>:form.photoUrl&&<ProtectedPhoto src={form.photoUrl} auth={authToken} alt="नोंदीतील शेत फोटो"/>}{form.photoUrl&&<button type="button" className="remove-entry-photo" onClick={()=>{photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');set('photoUrl','');setPreview('')}}>फोटो काढा</button>}{photoError&&<small className="error" role="alert">{photoError}</small>}</div>
-    </div><div className="dialog-footer"><span><Leaf size={16}/> तुमची नोंद सुरक्षित जतन केली जाईल</span><button className="primary" disabled={loading||photoUploading||!!photoError}>{loading||photoUploading?<LoaderCircle className="spin" size={17}/>:<Save size={17}/>} {editingEntryId?'बदल जतन करा':'नोंद जतन करा'}</button></div></form></div>}
+      <div className="photo-upload">
+        <label>
+          <input type="file" accept="image/*" onChange={e=>{void upload(e.target.files?.[0]);e.target.value=''}}/>
+          <ImagePlus size={22}/>
+          <span className="photo-picker-copy"><b>{photoUploading?'फोटो अपलोड होत आहे…':form.photoUrl?'फोटो बदला':'शेताचा फोटो जोडा'}</b><small>कॅमेरा किंवा गॅलरी · कमाल १० MB</small></span>
+        </label>
+        {preview?<img src={preview} alt="निवडलेला फोटो"/>:form.photoUrl&&<ProtectedPhoto src={form.photoUrl} auth={authToken} alt="नोंदीतील शेत फोटो"/>}
+        {(form.photoUrl||preview||photoError)&&<button type="button" className="remove-entry-photo" onClick={clearPhoto}>फोटो काढा</button>}
+        {photoUploading&&<small className="photo-upload-status" role="status">फोटो अपलोड होत आहे…</small>}
+        {!photoUploading&&form.photoUrl&&!photoError&&<small className="photo-upload-status" role="status">फोटो जोडला आहे</small>}
+        {photoError&&<small className="error" role="alert">{photoError} दुसरा फोटो निवडा किंवा “फोटो काढा” वापरा.</small>}
+      </div>
+    </div><div className="dialog-footer"><span><Leaf size={16}/> {photoUploading?'फोटो अपलोड होईपर्यंत थांबा':'तुमची नोंद सुरक्षित जतन केली जाईल'}</span><button className="primary" disabled={loading||photoUploading||!!photoError}>{loading||photoUploading?<LoaderCircle className="spin" size={17}/>:<Save size={17}/>} {photoUploading?'फोटो अपलोड होत आहे…':editingEntryId?'बदल जतन करा':'नोंद जतन करा'}</button></div></form></div>}
   </div>
 }
 function AnalyticsDialog({metric,entries,onClose}){
@@ -381,7 +410,7 @@ function RecordDetails({entry:e,apiFetch,userId}){
 }
 function ProtectedPhoto({src,auth,alt}){
   const [image,setImage]=useState(''),[imageType,setImageType]=useState('image/jpeg'),[expanded,setExpanded]=useState(false);
-  useEffect(()=>{let active=true,objectUrl='';const source=src.startsWith('http://localhost:8080/')?`/api/photos/${src.slice('http://localhost:8080/'.length)}`:src;const headers=auth?{Authorization:`Bearer ${auth}`}:{ };fetch(source,{headers}).then(r=>{if(!r.ok)throw Error();return r.blob()}).then(blob=>{if(active){objectUrl=URL.createObjectURL(blob);setImage(objectUrl);setImageType(blob.type||'image/jpeg')}}).catch(()=>{});return()=>{active=false;if(objectUrl)URL.revokeObjectURL(objectUrl)}},[src,auth]);
+  useEffect(()=>{let active=true,objectUrl='';const source=entryPhotoApiUrl(src);const headers=auth?{Authorization:`Bearer ${auth}`}:{ };fetch(source,{headers}).then(r=>{if(!r.ok)throw Error();return r.blob()}).then(blob=>{if(active){objectUrl=URL.createObjectURL(blob);setImage(objectUrl);setImageType(blob.type||'image/jpeg')}}).catch(()=>{});return()=>{active=false;if(objectUrl)URL.revokeObjectURL(objectUrl)}},[src,auth]);
   useEffect(()=>{if(!expanded)return;const onKeyDown=event=>{if(event.key==='Escape')setExpanded(false)};window.addEventListener('keydown',onKeyDown);return()=>window.removeEventListener('keydown',onKeyDown)},[expanded]);
   const extension=imageType.includes('jpeg')||imageType.includes('jpg')?'jpg':imageType.split('/')[1]?.split('+')[0]||'jpg';
   if(!image)return null;

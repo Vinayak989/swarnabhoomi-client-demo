@@ -7,6 +7,10 @@
 .entry-actions .edit-entry:focus-visible,.entry-actions .delete:focus-visible{outline:2px solid #74a879;outline-offset:2px}
 .photo-upload .photo-thumb-trigger{display:block;flex:none;padding:0;border:0;border-radius:8px;background:transparent;overflow:hidden;cursor:pointer}
 .photo-upload .photo-thumb-trigger img{display:block;width:50px;height:50px;object-fit:cover}
+.photo-upload{flex-wrap:wrap}
+.photo-upload .photo-picker-copy{display:flex;flex-direction:column;gap:3px}
+.photo-upload .photo-upload-status{color:#357348;font-weight:700}
+.photo-upload .error{flex-basis:100%;margin:0;color:#ad5146}
 .remove-entry-photo{padding:6px 9px;border:1px solid #eed8d3;border-radius:7px;background:#fff6f3;color:#9e5b50;font:700 9px inherit;cursor:pointer}
 .remove-entry-photo:hover{background:#ffede8}
 @media(max-width:700px){.entry-list .entry-card{grid-template-columns:minmax(0,1fr)}.entry-list .entry-actions{grid-column:1;grid-row:auto;justify-content:flex-end;padding-top:8px;border-top:1px solid #edf1eb}}
