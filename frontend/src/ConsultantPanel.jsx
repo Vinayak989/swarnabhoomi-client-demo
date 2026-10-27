@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, LoaderCircle, MapPin, MessageCircle, MessageSquareText, Phone, Search, Sprout, X } from 'lucide-react';
+import { ArrowRight, CheckCircle2, LoaderCircle, LockKeyhole, MapPin, MessageCircle, MessageSquareText, Phone, Search, ShieldCheck, Sprout, X } from 'lucide-react';
 import SpeechTextInput from './SpeechTextInput.jsx';
 import './consultant.css';
 
@@ -176,18 +176,20 @@ function ConsultantPanel({ apiBase, apiFetch, mobileNumber }) {
 
   return <section className="consultant-page" lang="mr">
     <div className="consultant-hero">
-      <div>
+      <div className="consultant-hero-copy">
         <span className="consultant-eyebrow"><Sprout size={14}/> सेंद्रिय शेतीसाठी शेतकरी ते शेतकरी मार्गदर्शन</span>
         <h1>सेंद्रिय शेती सल्लागार</h1>
-        <p>तुमच्या भागातील सल्लागारांचे कौशल्य, अनुभव आणि संपर्क तपशील पाहा.</p>
+        <p>तुमच्या पिकासाठी योग्य मार्गदर्शन शोधा. तज्ज्ञता, अनुभव आणि सेवा क्षेत्र पाहून सल्लागार निवडा.</p>
+        <div className="consultant-hero-points"><span><MapPin size={14}/>{serviceAreas.length.toLocaleString('mr-IN')} सेवा क्षेत्रे</span><span><ShieldCheck size={14}/>पेमेंटनंतर सुरक्षित संपर्क</span></div>
       </div>
+      <div className="consultant-hero-art" aria-hidden="true"><div className="consultant-hero-sun"/><div className="consultant-hero-plant"><Sprout size={72}/></div><div className="consultant-hero-art-card"><span>सेंद्रिय शेती</span><b>योग्य सल्ला,<br/>चांगले पीक</b><i><ArrowRight size={15}/></i></div></div>
     </div>
 
     {error && <div className="consultant-message consultant-error" role="alert">{error}</div>}
     {notice && <div className="consultant-message consultant-success" role="status"><CheckCircle2 size={16}/>{notice}</div>}
 
-    <div className="consultant-directory-head">
-      <div><span>समुदायातील मार्गदर्शक · {filteredConsultants.length.toLocaleString('mr-IN')} सल्लागार</span><h2>सल्लागार शोधा</h2></div>
+    <div className="consultant-directory-head" id="consultant-directory">
+      <div><span>समुदायातील मार्गदर्शक</span><h2>तुमच्यासाठी योग्य सल्लागार</h2><small>{filteredConsultants.length.toLocaleString('mr-IN')} सल्लागार उपलब्ध</small></div>
       <label className="consultant-search"><Search size={16}/><SpeechTextInput><input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="नाव, जिल्हा किंवा तज्ज्ञता शोधा" aria-label="सल्लागार शोधा"/></SpeechTextInput></label>
     </div>
 
@@ -202,9 +204,9 @@ function ConsultantPanel({ apiBase, apiFetch, mobileNumber }) {
       : filteredConsultants.length ? <div className="consultant-grid">{filteredConsultants.map(consultant => {
         const links = consultant.phone ? phoneLinks(consultant.phone) : null;
         return <article className="consultant-card" key={consultant.id}>
-          <div className="consultant-card-top"><div className="consultant-avatar"><Sprout size={21}/></div><span className="consultant-experience">{consultant.experienceYears.toLocaleString('mr-IN')} वर्षांचा अनुभव</span></div>
+          <div className="consultant-card-top"><div className="consultant-avatar"><Sprout size={22}/></div><span className="consultant-experience">{consultant.experienceYears.toLocaleString('mr-IN')} वर्षांचा अनुभव</span></div>
           <h3>{consultant.name}</h3>
-          <p className="consultant-expertise">{consultant.expertise}</p>
+          <p className="consultant-expertise"><Sprout size={13}/>{consultant.expertise}</p>
           <div className="consultant-area"><MapPin size={15}/><span>{consultant.serviceArea}</span></div>
           {consultant.introduction && <p className="consultant-introduction">{consultant.introduction}</p>}
           {links ? <>
@@ -215,7 +217,8 @@ function ConsultantPanel({ apiBase, apiFetch, mobileNumber }) {
             </div>
             <button type="button" className="consultant-request-button" onClick={() => openConsultationRequest(consultant)}><MessageSquareText size={14}/> सल्ला विनंती पाठवा</button>
           </> : <div className="consultant-paywall">
-            <p>कॉल, SMS आणि WhatsApp संपर्क उघडण्यासाठी एकदाच ₹९९ भरा.</p>
+            <div className="consultant-paywall-heading"><span><LockKeyhole size={15}/></span><div><b>थेट संपर्क उघडा</b><small>कॉल · SMS · WhatsApp</small></div><strong>₹९९</strong></div>
+            <p>या सल्लागाराचे संपर्क पर्याय उघडण्यासाठी एकदाच पेमेंट करा.</p>
             <button type="button" className="consultant-request-button consultant-unlock-button"
               onClick={() => unlockConsultantContact(consultant)}
               disabled={!consultant.contactPaymentEnabled || payingConsultantId !== null}>
@@ -226,7 +229,7 @@ function ConsultantPanel({ apiBase, apiFetch, mobileNumber }) {
         </article>;
       })}</div>
       : <div className="consultant-empty"><div className="consultant-empty-icon"><Sprout size={22}/></div><b>{hasConsultantFilters ? 'या फिल्टरसाठी सल्लागार सापडले नाहीत' : 'अजून सल्लागार नोंदणीकृत नाहीत'}</b><span>{hasConsultantFilters ? 'शोध, सेवा क्षेत्र किंवा अनुभवाची अट बदलून पाहा.' : 'प्रशासक सल्लागार प्रोफाइल जोडताच ती येथे दिसेल.'}</span></div>}
-    <p className="consultant-privacy-note">विक्रेत्यांसाठी ₹९९ भरल्यानंतर निवडलेल्या सल्लागाराचे सर्व संपर्क पर्याय उघडतात. पेमेंट Razorpay द्वारे तपासल्यानंतरच संपर्क माहिती दाखवली जाते.</p>
+    <div className="consultant-privacy-note"><ShieldCheck size={16}/><span>विक्रेत्यांसाठी ₹९९ पेमेंट यशस्वी झाल्यानंतर निवडलेल्या सल्लागाराचे संपर्क पर्याय उघडतात. पेमेंट तपासल्यानंतरच माहिती दाखवली जाते.</span></div>
 
     {requestingConsultant && <div className="consultant-request-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setRequestingConsultant(null); }}>
       <form className="consultant-form consultant-request-modal" onSubmit={sendConsultationRequest}>
