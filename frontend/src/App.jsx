@@ -17,6 +17,7 @@ import FarmProfitPanel from './FarmProfitPanel.jsx';
 import { Landmark } from 'lucide-react';
 import { FollowUpReminderButton, IssueTrackingFields, OfflineQueueStatus, PlotSeasonFields, QuickEntryTemplates, ReceiptGallery, downloadEntriesCsv, uploadEntryPhoto } from './DailyEntryFeatures.jsx';
 import { queueFarmEntry } from './offlineEntrySync.js';
+import { createDailyEntryPdf } from './dailyEntryPdf.js';
 import './brand.css';
 import './auth.css';
 import './adminMarketplace.css';
@@ -39,7 +40,6 @@ const money = n => `₹${Number(n||0).toLocaleString('en-IN')}`;
 const day = s => s ? new Date(`${s}T00:00:00`).toLocaleDateString('mr-IN',{day:'numeric',month:'short',year:'numeric'}) : 'दिनांक नाही';
 const entryCost = e => Number(e.laborCost||0)+Number(e.materialsCost||0)+Number(e.otherCost||0);
 const weatherDetailText = raw => {if(!raw)return '';try{const d=typeof raw==='string'?JSON.parse(raw):raw;return [d.district,d.state,d.warning,d.note].filter(Boolean).join(' · ')}catch{return String(raw)}};
-const hasPrintValue = value => value!==null&&value!==undefined&&!(typeof value==='string'&&!value.trim());
 const entryPrintPhotos = entry => {
   const photos=[];
   if(entry.photoUrl)photos.push({url:entry.photoUrl,label:'शेताचा फोटो'});
@@ -54,6 +54,7 @@ const entryPhotoApiUrl = value => {
   if(!source)return '';
   try{
     const parsed=new URL(source,window.location.origin);
+    if(parsed.hostname==='localhost'&&parsed.port==='8080')return `${API}/photos/${parsed.pathname.replace(/^\/(?:api\/photos\/)?/,'')}${parsed.search}`;
     if(parsed.pathname.startsWith('/api/photos/'))return `${API}${parsed.pathname.slice('/api'.length)}${parsed.search}`;
     return parsed.href;
   }catch{return source}
@@ -110,9 +111,10 @@ function App(){
   const [androidMoreOpen,setAndroidMoreOpen]=useState(false);
   const [schemeFeed,setSchemeFeed]=useState(null),[schemeLoading,setSchemeLoading]=useState(false),[schemeRefreshing,setSchemeRefreshing]=useState(false),[schemeError,setSchemeError]=useState('');
   const mainRef=useRef(null);
+  const photoUploadRef=useRef(null);
   const [quickTemplatesOpen,setQuickTemplatesOpen]=useState(false),[weatherOpen,setWeatherOpen]=useState(false);
-  const [entries,setEntries]=useState([]),[form,setForm]=useState(fresh),[open,setOpen]=useState(false),[editingEntryId,setEditingEntryId]=useState(null),[search,setSearch]=useState(''),[loading,setLoading]=useState(false),[weatherBusy,setWeatherBusy]=useState(false),[weatherError,setWeatherError]=useState(''),[preview,setPreview]=useState(''),[printing,setPrinting]=useState(false),[pdfBusy,setPdfBusy]=useState(false),[printEntries,setPrintEntries]=useState([]),[printPhotos,setPrintPhotos]=useState({}),[activeRecord,setActiveRecord]=useState(null),[analyticsMetric,setAnalyticsMetric]=useState(null),[assistantMessages,setAssistantMessages]=useState([]);
-  const [pdfBusyEntryId,setPdfBusyEntryId]=useState(null),[printSearch,setPrintSearch]=useState('');
+  const [entries,setEntries]=useState([]),[form,setForm]=useState(fresh),[open,setOpen]=useState(false),[editingEntryId,setEditingEntryId]=useState(null),[search,setSearch]=useState(''),[loading,setLoading]=useState(false),[weatherBusy,setWeatherBusy]=useState(false),[weatherError,setWeatherError]=useState(''),[preview,setPreview]=useState(''),[pdfBusy,setPdfBusy]=useState(false),[photoUploading,setPhotoUploading]=useState(false),[photoError,setPhotoError]=useState(''),[activeRecord,setActiveRecord]=useState(null),[analyticsMetric,setAnalyticsMetric]=useState(null),[assistantMessages,setAssistantMessages]=useState([]);
+  const [pdfBusyEntryId,setPdfBusyEntryId]=useState(null);
   const currentAccount=ACCOUNT_TYPES.find(account=>account.id===accountType)||ACCOUNT_TYPES[0];
   const androidPrimaryTabs=currentAccount.tabs.slice(0,4);
   const androidOverflowTabs=currentAccount.tabs.slice(4);
@@ -178,52 +180,7 @@ function App(){
   },[accountType,authUser?.id,refreshSchemeFeed]);
   useEffect(()=>{const main=mainRef.current;if(!main)return;window.scrollTo({top:0,behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});main.classList.remove('tab-entering');void main.offsetWidth;main.classList.add('tab-entering')},[activeTab,accountType]);
   useEffect(()=>{const updateVisibility=()=>setShowBackToTop(window.scrollY>480);updateVisibility();window.addEventListener('scroll',updateVisibility,{passive:true});return()=>window.removeEventListener('scroll',updateVisibility)},[]);
-  useEffect(()=>{
-    if(!printing)return;
-    const originalTitle=document.title;
-    let active=true;
-    document.title=printEntries.length===1?`Swarnabhoomi-Dainik-Nond-${printEntries[0].entryDate||''}-${printEntries[0].id}`:'Swarnabhoomi-Dainik-Sheti-Nondi';
-    const finish=()=>{
-      if(!active)return;
-      active=false;
-      document.title=originalTitle;
-      setPrinting(false);
-      setPdfBusyEntryId(null);
-    };
-    const timer=window.setTimeout(async()=>{
-      const images=Array.from(document.querySelectorAll('#print-report img'));
-      await Promise.all(images.map(image=>new Promise(resolve=>{
-        let settled=false;
-        const timeout=window.setTimeout(done,8000);
-        function done(){
-          if(settled)return;
-          settled=true;
-          window.clearTimeout(timeout);
-          image.removeEventListener('load',done);
-          image.removeEventListener('error',done);
-          resolve();
-        }
-        if(image.complete){
-          if(typeof image.decode==='function')image.decode().catch(()=>{}).finally(done);
-          else done();
-        }else{
-          image.addEventListener('load',done,{once:true});
-          image.addEventListener('error',done,{once:true});
-        }
-      })));
-      if(active)window.print();
-    },80);
-    window.addEventListener('afterprint',finish);
-    return()=>{
-      active=false;
-      window.clearTimeout(timer);
-      window.removeEventListener('afterprint',finish);
-      document.title=originalTitle;
-    };
-  },[printing,printEntries]);
-  useEffect(()=>()=>{
-    Object.values(printPhotos).flat().forEach(photo=>{if(photo?.src)URL.revokeObjectURL(photo.src)});
-  },[printPhotos]);
+  useEffect(()=>()=>{if(preview?.startsWith('blob:'))URL.revokeObjectURL(preview)},[preview]);
   const totals=useMemo(()=>entries.reduce((a,e)=>({cost:a.cost+Number(e.laborCost||0)+Number(e.materialsCost||0)+Number(e.otherCost||0),income:a.income+Number(e.saleIncome||0),production:a.production+Number(e.productionKg||0)}),{cost:0,income:0,production:0}),[entries]);
   const assistantFarmData=useMemo(()=>{
     const recentEntries=[...entries].sort((a,b)=>String(b.entryDate||'').localeCompare(String(a.entryDate||''))).slice(0,5).map(entry=>{
@@ -253,42 +210,86 @@ function App(){
     return {summary,recentEntries,context:JSON.stringify({summary,recentEntries})};
   },[entries,totals]);
   const filtered=entries.filter(e=>`${e.farmSection||''} ${e.workDone||''} ${e.entryDate||''}`.toLowerCase().includes(search.toLowerCase()));
-  const filteredTotals=filtered.reduce((a,e)=>({cost:a.cost+entryCost(e),income:a.income+Number(e.saleIncome||0),production:a.production+Number(e.productionKg||0)}),{cost:0,income:0,production:0});
-  const printHasExpenseData=printEntries.some(e=>['laborCost','materialsCost','otherCost'].some(key=>hasPrintValue(e[key])));
-  const printHasIncomeData=printEntries.some(e=>hasPrintValue(e.saleIncome));
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
-  async function downloadPdf(selectedEntries,busyEntryId=null,reportSearch=''){
-    if(pdfBusy||printing||!selectedEntries.length)return;
+  async function downloadPdf(selectedEntries,busyEntryId=null){
+    if(pdfBusy||!selectedEntries.length)return;
     const exportEntries=[...selectedEntries];
     setPdfBusy(true);
     setPdfBusyEntryId(busyEntryId);
-    setPrintSearch(reportSearch);
-    setPrintEntries(exportEntries);
-    setPrintPhotos({});
     try{
-      const photos=await Promise.all(exportEntries.map(async entry=>{
-        const loaded=await Promise.all(entryPrintPhotos(entry).map(async photo=>{
-          try{
-            const response=await apiFetch(entryPhotoApiUrl(photo.url));
-            const contentType=response.headers.get('content-type')||'';
-            if(!response.ok||!contentType.toLowerCase().startsWith('image/'))return {...photo,src:''};
-            const blob=await response.blob();
-            if(!blob.size)return {...photo,src:''};
-            return {...photo,src:URL.createObjectURL(blob)};
-          }catch{return {...photo,src:''}}
-        }));
-        return [entry.id,loaded];
-      }));
-      setPrintPhotos(Object.fromEntries(photos.filter(([,items])=>items.length)));
+      const pdf=await createDailyEntryPdf(exportEntries,{
+        photoForEntry:entryPrintPhotos,
+        loadPhoto:async url=>{
+          const response=await apiFetch(entryPhotoApiUrl(url));
+          const type=(response.headers.get('content-type')||'').toLowerCase();
+          if(!response.ok||!type.startsWith('image/'))throw new Error('PDF_PHOTO_UNAVAILABLE');
+          const blob=await response.blob();
+          if(!blob.size)throw new Error('PDF_PHOTO_UNAVAILABLE');
+          return blob;
+        }
+      });
+      const fileName=exportEntries.length===1
+        ? `Swarnabhoomi-Dainik-Nond-${String(exportEntries[0].entryDate||'').replace(/[^0-9-]/g,'')}-${String(exportEntries[0].id||'record').replace(/[^0-9A-Za-z_-]/g,'')}.pdf`
+        : 'Swarnabhoomi-Dainik-Sheti-Nondi.pdf';
+      const url=URL.createObjectURL(pdf);
+      const link=document.createElement('a');
+      link.href=url;
+      link.download=fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+    }catch(error){
+      alert(String(error?.code||error?.message||'').startsWith('PDF_PHOTO_')
+        ? 'जोडलेला फोटो PDF साठी मिळाला नाही. इंटरनेट कनेक्शन तपासून पुन्हा प्रयत्न करा.'
+        : 'PDF डाउनलोड करता आला नाही. कृपया पुन्हा प्रयत्न करा.');
     }finally{
       setPdfBusy(false);
-      setPrinting(true);
+      setPdfBusyEntryId(null);
     }
   }
-  function editEntry(entry){const [cropLabel='',...plotParts]=String(entry.farmSection||'').split(/\s+—\s+/);const knownCrop=Object.values(CROP_GROUPS).flat().includes(cropLabel);const nextForm=fresh();Object.keys(nextForm).forEach(key=>{if(key in entry&&key!=='clientRequestId')nextForm[key]=entry[key]===null||entry[key]===undefined?'':String(entry[key])});nextForm.clientRequestId=entry.clientRequestId||nextForm.clientRequestId;nextForm.cropName=knownCrop?cropLabel:cropLabel?'इतर':'';nextForm.cropCustom=knownCrop?'':cropLabel;nextForm.plotName=plotParts.join(' — ');setForm(nextForm);setEditingEntryId(entry.id);setPreview('');setWeatherError('');setWeatherOpen(Boolean(entry.weather||entry.weatherDetails||entry.pincode));setQuickTemplatesOpen(false);setOpen(true)}
-  async function save(e){e.preventDefault();setLoading(true);try{const {cropName,cropCustom,plotName,...record}=form;const crop=cropName==='इतर'?(cropCustom||'').trim():cropName;record.farmSection=[crop,plotName].filter(Boolean).join(' — ')||null;const r=await apiFetch(editingEntryId?`${API}/entries/${editingEntryId}`:`${API}/entries`,{method:editingEntryId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(Object.entries(record).map(([k,v])=>[k,v===''?null:v])))});if(!r.ok)throw Error();setForm(fresh());setEditingEntryId(null);setOpen(false);setPreview('');await load()}catch{alert('नोंद जतन करता आली नाही. Java सर्व्हर सुरू आहे का ते तपासा.')}finally{setLoading(false)}}
+  function editEntry(entry){const [cropLabel='',...plotParts]=String(entry.farmSection||'').split(/\s+—\s+/);const knownCrop=Object.values(CROP_GROUPS).flat().includes(cropLabel);const nextForm=fresh();Object.keys(nextForm).forEach(key=>{if(key in entry&&key!=='clientRequestId')nextForm[key]=entry[key]===null||entry[key]===undefined?'':String(entry[key])});nextForm.clientRequestId=entry.clientRequestId||nextForm.clientRequestId;nextForm.cropName=knownCrop?cropLabel:cropLabel?'इतर':'';nextForm.cropCustom=knownCrop?'':cropLabel;nextForm.plotName=plotParts.join(' — ');setForm(nextForm);setEditingEntryId(entry.id);setPreview('');photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');setWeatherError('');setWeatherOpen(Boolean(entry.weather||entry.weatherDetails||entry.pincode));setQuickTemplatesOpen(false);setOpen(true)}
+  async function save(e){
+    e.preventDefault();
+    if(loading)return;
+    setLoading(true);
+    try{
+      const pendingPhoto=photoUploadRef.current;
+      const photoUrl=pendingPhoto?await pendingPhoto:form.photoUrl;
+      const {cropName,cropCustom,plotName,...record}=form;
+      const crop=cropName==='इतर'?(cropCustom||'').trim():cropName;
+      record.farmSection=[crop,plotName].filter(Boolean).join(' — ')||null;
+      record.photoUrl=photoUrl||null;
+      const r=await apiFetch(editingEntryId?`${API}/entries/${editingEntryId}`:`${API}/entries`,{
+        method:editingEntryId?'PUT':'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(Object.fromEntries(Object.entries(record).map(([key,value])=>[key,value===''?null:value])))
+      });
+      if(!r.ok)throw Error();
+      photoUploadRef.current=null;
+      setForm(fresh());setEditingEntryId(null);setOpen(false);setPreview('');setPhotoError('');
+      await load();
+    }catch(error){
+      alert(error?.message==='Photo upload failed.'?'फोटो अपलोड झाला नाही. कृपया फोटो पुन्हा निवडा.':'नोंद जतन करता आली नाही. Java सर्व्हर सुरू आहे का ते तपासा.');
+    }finally{setLoading(false)}
+  }
   async function getWeather(){setWeatherBusy(true);setWeatherError('');try{const r=await apiFetch(`${API}/weather/${form.pincode}`);const contentType=r.headers.get('content-type')||'';if(!contentType.toLowerCase().includes('json'))throw Error('हवामान सर्व्हरकडून JSON प्रतिसाद मिळाला नाही. Java सर्व्हर सुरू आहे का ते तपासा.');let d;try{d=await r.json()}catch{throw Error('हवामान सर्व्हरकडून वाचता न येणारा प्रतिसाद मिळाला.')}if(!r.ok)throw Error(d.message||(r.status>=500?'IMD हवामान सेवा सध्या उपलब्ध नाही. हवामान हाताने निवडा.':'हवामान माहिती मिळाली नाही.'));set('weatherDetails',JSON.stringify(d));}catch(e){setWeatherError(e instanceof TypeError?'हवामान सर्व्हरशी संपर्क होऊ शकला नाही. Java सर्व्हर सुरू आहे का ते तपासा.':e.message)}finally{setWeatherBusy(false)}}
-  async function upload(file){if(!file)return;setPreview(URL.createObjectURL(file));const data=new FormData();data.append('file',file);try{const r=await apiFetch(`${API}/photos`,{method:'POST',body:data});if(!r.ok)throw Error();const d=await r.json();set('photoUrl',d.url)}catch{setWeatherError('फोटो अपलोड झाला नाही. Java सर्व्हर तपासा.')}}
+  async function upload(file){
+    if(!file)return;
+    setPhotoError('');
+    setPreview(URL.createObjectURL(file));
+    setPhotoUploading(true);
+    const task=uploadEntryPhoto(apiFetch,file);
+    photoUploadRef.current=task;
+    try{
+      const url=await task;
+      if(photoUploadRef.current===task){set('photoUrl',url);setPreview('')}
+    }catch{
+      if(photoUploadRef.current===task){setPhotoError('फोटो अपलोड झाला नाही. कृपया पुन्हा प्रयत्न करा.');setPreview('')}
+    }finally{
+      if(photoUploadRef.current===task)setPhotoUploading(false);
+    }
+  }
   async function remove(id){if(!confirm('ही नोंद हटवायची आहे का?'))return;await apiFetch(`${API}/entries/${id}`,{method:'DELETE'});load()}
   if(!authUser||!authToken){
     if(!selectedAccount)return <div className={androidAppMode?'android-entry-mode':''}><AccountSelection lastAccountType={lastAccountType} onSelect={chooseAccount}/></div>;
@@ -302,12 +303,11 @@ function App(){
       {accountType==='farmer'&&<GovernmentSchemeBanner announcements={schemeFeed?.announcements||[]} onOpen={()=>setActiveTab('schemes')}/>}
       {activeTab==='entries'&&accountType==='farmer'&&<div className="entry-subtabs" role="tablist" aria-label="दैनिक नोंद विभाग"><button type="button" role="tab" aria-selected={entrySubTab==='entries'} className={`entry-subtab ${entrySubTab==='entries'?'active':''}`} onClick={()=>setEntrySubTab('entries')}><CalendarDays size={16}/> दैनिक नोंद</button><button type="button" role="tab" aria-selected={entrySubTab==='profits'} className={`entry-subtab ${entrySubTab==='profits'?'active':''}`} onClick={()=>setEntrySubTab('profits')}><Wallet size={16}/> शेतीचा नफा</button></div>}
       {activeTab==='entries'&&entrySubTab==='entries'?<>
-      <section className="welcome"><div><span className="eyebrow"><span className="pulse"/> तुमच्या शेताची डायरी</span><h1>नमस्कार, शेतकरी मित्रा! <span>🌱</span></h1><p>आज शेतात काय घडलं? तुमची नोंद इथे जतन करा.</p></div><button className="primary" onClick={()=>{setForm(fresh());setEditingEntryId(null);setPreview('');setQuickTemplatesOpen(false);setWeatherOpen(false);setOpen(true)}}><Plus size={19}/> आजची नोंद लिहा</button><div className="welcome-art"><span>☀️</span><div>〰️〰️</div></div></section>
+      <section className="welcome"><div><span className="eyebrow"><span className="pulse"/> तुमच्या शेताची डायरी</span><h1>नमस्कार, शेतकरी मित्रा! <span>🌱</span></h1><p>आज शेतात काय घडलं? तुमची नोंद इथे जतन करा.</p></div><button className="primary" onClick={()=>{setForm(fresh());setEditingEntryId(null);setPreview('');photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');setQuickTemplatesOpen(false);setWeatherOpen(false);setOpen(true)}}><Plus size={19}/> आजची नोंद लिहा</button><div className="welcome-art"><span>☀️</span><div>〰️〰️</div></div></section>
       <section className="stats"><Stat icon={<Wallet/>} label="एकूण खर्च" value={<AnimatedMetric value={totals.cost} format="money"/>} tone="peach" analyticsKey="cost" onAnalytics={setAnalyticsMetric}/><Stat icon={<TrendingUp/>} label="एकूण उत्पन्न" value={<AnimatedMetric value={totals.income} format="money"/>} tone="green" analyticsKey="income" onAnalytics={setAnalyticsMetric}/><Stat icon={<Boxes/>} label="एकूण उत्पादन" value={<AnimatedMetric value={totals.production} format="quantity"/>} tone="blue" analyticsKey="production" onAnalytics={setAnalyticsMetric}/><div className="stat-card net"><div className="net-label">निव्वळ शिल्लक</div><strong><AnimatedMetric value={totals.income-totals.cost} format="money"/></strong><span>आतापर्यंतची कमाई</span><div className="net-icon">↗</div></div></section>
       <OfflineQueueStatus ownerId={authUser.id}/>
-      <section className="entries-head"><div><h2>शेतातील नोंदी</h2><p>तुमच्या रोजच्या कामांचा लेखाजोखा</p></div><div className="tools"><div className="search"><Search size={17}/><SpeechTextInput><input placeholder="नोंदी शोधा..." value={search} onChange={e=>setSearch(e.target.value)}/></SpeechTextInput></div><button className="outline pdf-export" onClick={()=>downloadPdf(filtered,null,search)} disabled={!filtered.length||pdfBusy||printing} title="दिसणाऱ्या नोंदींची PDF तयार करा">{pdfBusy||printing?<LoaderCircle className="spin" size={15}/>:<FileDown size={15}/>} PDF डाउनलोड</button><button type="button" className="outline csv-export" onClick={() => downloadEntriesCsv(filtered)} disabled={!filtered.length} title="दिसणाऱ्या नोंदी Excel किंवा CSV मध्ये डाउनलोड करा"><FileSpreadsheet size={15}/> CSV डाउनलोड</button><button className="filter">सर्व नोंदी⌄</button></div></section>
-      {!filtered.length?<div className="empty"><div className="empty-icon">🌾</div><h3>{entries.length?'नोंद सापडली नाही':'तुमची पहिली नोंद लिहा'}</h3><p>शेतातल्या छोट्या-मोठ्या गोष्टी नोंदवा. त्या पुढच्या हंगामात उपयोगी पडतील.</p><button className="primary" onClick={()=>{setForm(fresh());setEditingEntryId(null);setPreview('');setQuickTemplatesOpen(false);setWeatherOpen(false);setOpen(true)}}><Plus size={18}/> नवी नोंद</button></div>:<div className="entry-list">{filtered.map(e=><article className={`entry-card ${activeRecord===e.id?'details-open':''}`} key={e.id} tabIndex={0} aria-describedby={`record-details-${e.id}`} onClick={()=>{if(window.matchMedia?.('(hover: none)').matches)setActiveRecord(current=>current===e.id?null:e.id)}} onKeyDown={event=>{if(event.key==='Escape')setActiveRecord(null)}}><div className="entry-date"><div className="date-icon"><CalendarDays size={18}/></div><div><b>{day(e.entryDate)}</b><small>{e.weather||'हवामान नोंदले नाही'}</small></div></div><div className="entry-crop"><small>पीक / विभाग</small><b>{e.farmSection||'—'}</b></div><div className="entry-work"><small>आजची कामे</small><b>{e.workDone||'—'}</b></div><div className="entry-money"><small>खर्च　·　उत्पन्न</small><b>{money(entryCost(e))} <span>·</span> {money(e.saleIncome)}</b></div><div className="entry-actions">{e.photoUrl&&<ProtectedPhoto src={e.photoUrl} auth={authToken} alt="शेत फोटो"/>}<button type="button" className="entry-pdf-download" title="या नोंदीचा PDF डाउनलोड करा" aria-label={`दिनांक ${day(e.entryDate)} च्या नोंदीचा PDF डाउनलोड करा`} disabled={pdfBusy||printing} onClick={event=>{event.stopPropagation();void downloadPdf([e],e.id)}}>{pdfBusyEntryId===e.id?<LoaderCircle className="spin" size={15}/>:<FileDown size={15}/>}<span>PDF डाउनलोड</span></button><button type="button" className="edit-entry" title="नोंद संपादित करा" aria-label="नोंद संपादित करा" onClick={event=>{event.stopPropagation();editEntry(e)}}><Pencil size={15}/></button><button type="button" className="delete" title="नोंद हटवा" aria-label="नोंद हटवा" onClick={event=>{event.stopPropagation();remove(e.id)}}><Trash2 size={16}/></button></div><div className="record-details-popup" id={`record-details-${e.id}`} role="tooltip" onClick={event=>event.stopPropagation()}><RecordDetails entry={e} apiFetch={apiFetch} userId={authUser.id}/></div></article>)}</div>}
-      {printEntries.length>0&&<section id="print-report" className={!printing?'print-report':''} lang="mr"><header className="print-header"><div className="print-brand"><Sprout size={24}/> स्वर्णभूमी</div><h1>दैनिक शेती नोंदवही</h1><p>तयार केल्याची वेळ: {new Date().toLocaleString('mr-IN',{dateStyle:'medium',timeStyle:'short'})}{printSearch&&<>　·　शोध: “{printSearch}”</>}</p></header><div className="print-summary"><div><span>एकूण नोंदी</span><b>{printEntries.length.toLocaleString('mr-IN')}</b></div>{printHasExpenseData&&<div><span>एकूण खर्च</span><b>{money(printEntries.reduce((sum,e)=>sum+entryCost(e),0))}</b></div>}{printHasIncomeData&&<div><span>एकूण उत्पन्न</span><b>{money(printEntries.reduce((sum,e)=>sum+Number(e.saleIncome||0),0))}</b></div>}{(printHasExpenseData||printHasIncomeData)&&<div><span>निव्वळ उत्पन्न</span><b>{money(printEntries.reduce((sum,e)=>sum+Number(e.saleIncome||0)-entryCost(e),0))}</b></div>}</div>{printEntries.map((e,index)=>{const cost=entryCost(e);return <article className="print-entry" key={e.id}><div className="print-entry-heading"><h2>नोंद {String(index+1).toLocaleString('mr-IN')}</h2><b>{day(e.entryDate)}</b></div><div className="print-grid"><PrintField label="पीक / शेताचा विभाग" value={e.farmSection}/><PrintField label="हंगाम" value={e.seasonName}/><PrintField label="क्षेत्र (एकर)" value={e.plotAreaAcres}/><PrintField label="हवामान" value={e.weather}/>{e.pincode&&<PrintField label="पिनकोड" value={e.pincode}/ >}{weatherDetailText(e.weatherDetails)&&<PrintField label="हवामान माहिती" value={weatherDetailText(e.weatherDetails)}/>}<PrintField label="आज केलेली कामे" value={e.workDone}/><PrintField label="वापरलेले साहित्य / खते" value={e.materials}/><PrintField label="पाणी (लिटर)" value={e.waterLitres}/><PrintField label="निविष्ठेचा प्रकार" value={e.applicationKind}/><PrintField label="निविष्ठा" value={e.applicationName}/><PrintField label="प्रमाण" value={e.applicationAmount ? e.applicationAmount + " " + (e.applicationUnit || "") : ""}/><PrintField label="मजूर संख्या" value={e.workerCount}/><PrintField label="मजुरी खर्च" value={money(e.laborCost)} show={hasPrintValue(e.laborCost)}/><PrintField label="खते / साहित्य खर्च" value={money(e.materialsCost)} show={hasPrintValue(e.materialsCost)}/><PrintField label="इतर खर्च" value={money(e.otherCost)} show={hasPrintValue(e.otherCost)}/><PrintField label="एकूण खर्च" value={money(cost)} show={['laborCost','materialsCost','otherCost'].some(key=>hasPrintValue(e[key]))}/><PrintField label="उत्पादन" value={hasPrintValue(e.productionKg)?`${Number(e.productionKg).toLocaleString('mr-IN')} किलो`:''}/><PrintField label="विक्री" value={hasPrintValue(e.soldKg)?`${Number(e.soldKg).toLocaleString('mr-IN')} किलो`:''}/><PrintField label="विक्रीतून मिळालेले पैसे" value={money(e.saleIncome)} show={hasPrintValue(e.saleIncome)}/><PrintField label="निव्वळ उत्पन्न" value={money(Number(e.saleIncome||0)-cost)} show={hasPrintValue(e.saleIncome)||['laborCost','materialsCost','otherCost'].some(key=>hasPrintValue(e[key]))}/><PrintField label="पिकाची सद्यस्थिती" value={e.cropCondition}/><PrintField label="माती व सेंद्रिय शेती निरीक्षण" value={e.soilNotes}/><PrintField label="कीड / रोग" value={e.pestDisease}/><PrintField label="तीव्रता" value={e.issueSeverity}/><PrintField label="केलेला उपाय" value={e.intervention}/><PrintField label="पुढील पाहणी" value={e.followUpDate ? day(e.followUpDate) : ""}/><PrintField label="उद्याची नियोजित कामे" value={e.tomorrowPlan}/><PrintField label="विशेष नोंद" value={e.specialNote}/></div>{entryPrintPhotos(e).map((photo,photoIndex)=>{const loadedPhoto=printPhotos[e.id]?.[photoIndex];return loadedPhoto?.src?<figure className="print-photo" key={`${e.id}-photo-${photoIndex}`}><img src={loadedPhoto.src} alt={photo.label}/><figcaption>{photo.label}</figcaption></figure>:<p className="print-photo-missing" key={`${e.id}-photo-${photoIndex}`}>{photo.label} PDF मध्ये लोड झाला नाही.</p>})}</article>})}<footer className="print-footer">स्वर्णभूमी · तुमच्या कष्टांची नोंद</footer></section>}
+      <section className="entries-head"><div><h2>शेतातील नोंदी</h2><p>तुमच्या रोजच्या कामांचा लेखाजोखा</p></div><div className="tools"><div className="search"><Search size={17}/><SpeechTextInput><input placeholder="नोंदी शोधा..." value={search} onChange={e=>setSearch(e.target.value)}/></SpeechTextInput></div><button className="outline pdf-export" onClick={()=>void downloadPdf(filtered)} disabled={!filtered.length||pdfBusy} title="दिसणाऱ्या नोंदींची PDF तयार करा">{pdfBusy?<LoaderCircle className="spin" size={15}/>:<FileDown size={15}/>} PDF डाउनलोड</button><button type="button" className="outline csv-export" onClick={() => downloadEntriesCsv(filtered)} disabled={!filtered.length} title="दिसणाऱ्या नोंदी Excel किंवा CSV मध्ये डाउनलोड करा"><FileSpreadsheet size={15}/> CSV डाउनलोड</button><button className="filter">सर्व नोंदी⌄</button></div></section>
+      {!filtered.length?<div className="empty"><div className="empty-icon">🌾</div><h3>{entries.length?'नोंद सापडली नाही':'तुमची पहिली नोंद लिहा'}</h3><p>शेतातल्या छोट्या-मोठ्या गोष्टी नोंदवा. त्या पुढच्या हंगामात उपयोगी पडतील.</p><button className="primary" onClick={()=>{setForm(fresh());setEditingEntryId(null);setPreview('');photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');setQuickTemplatesOpen(false);setWeatherOpen(false);setOpen(true)}}><Plus size={18}/> नवी नोंद</button></div>:<div className="entry-list">{filtered.map(e=><article className={`entry-card ${activeRecord===e.id?'details-open':''}`} key={e.id} tabIndex={0} aria-describedby={`record-details-${e.id}`} onClick={()=>{if(window.matchMedia?.('(hover: none)').matches)setActiveRecord(current=>current===e.id?null:e.id)}} onKeyDown={event=>{if(event.key==='Escape')setActiveRecord(null)}}><div className="entry-date"><div className="date-icon"><CalendarDays size={18}/></div><div><b>{day(e.entryDate)}</b><small>{e.weather||'हवामान नोंदले नाही'}</small></div></div><div className="entry-crop"><small>पीक / विभाग</small><b>{e.farmSection||'—'}</b></div><div className="entry-work"><small>आजची कामे</small><b>{e.workDone||'—'}</b></div><div className="entry-money"><small>खर्च　·　उत्पन्न</small><b>{money(entryCost(e))} <span>·</span> {money(e.saleIncome)}</b></div><div className="entry-actions">{e.photoUrl&&<ProtectedPhoto src={e.photoUrl} auth={authToken} alt="शेत फोटो"/>}<button type="button" className="entry-pdf-download" title="या नोंदीचा PDF डाउनलोड करा" aria-label={`दिनांक ${day(e.entryDate)} च्या नोंदीचा PDF डाउनलोड करा`} disabled={pdfBusy} onClick={event=>{event.stopPropagation();void downloadPdf([e],e.id)}}>{pdfBusyEntryId===e.id?<LoaderCircle className="spin" size={15}/>:<FileDown size={15}/>}<span>PDF डाउनलोड</span></button><button type="button" className="edit-entry" title="नोंद संपादित करा" aria-label="नोंद संपादित करा" onClick={event=>{event.stopPropagation();editEntry(e)}}><Pencil size={15}/></button><button type="button" className="delete" title="नोंद हटवा" aria-label="नोंद हटवा" onClick={event=>{event.stopPropagation();remove(e.id)}}><Trash2 size={16}/></button></div><div className="record-details-popup" id={`record-details-${e.id}`} role="tooltip" onClick={event=>event.stopPropagation()}><RecordDetails entry={e} apiFetch={apiFetch} userId={authUser.id}/></div></article>)}</div>}
       <footer>🌿　तुमच्या कष्टांना योग्य नोंद — स्वर्णभूमी</footer></>:activeTab==='entries'&&entrySubTab==='profits'?<FarmProfitPanel entries={entries}/>:activeTab==='reminders'?<ReminderPanel apiFetch={apiFetch} apiBase={API} entries={entries} userId={authUser.id} onUnauthorized={logout}/>:null}
       <div hidden={activeTab!=='assistant'}><AssistantPanel apiFetch={apiFetch} apiBase={API} messages={assistantMessages} setMessages={setAssistantMessages} farmData={assistantFarmData} onUnauthorized={logout}/></div>
       {activeTab==='information'&&<InformationPanel/>}
@@ -335,8 +335,8 @@ function App(){
       <section className="form-section"><h3><Boxes size={18}/> उत्पादन व विक्री</h3><div className="form-grid three"><Field label="उत्पादन (किलो)"><input type="number" min="0" value={form.productionKg} onChange={e=>set('productionKg',e.target.value)} placeholder="०"/></Field><Field label="विक्री (किलो)"><input type="number" min="0" value={form.soldKg} onChange={e=>set('soldKg',e.target.value)} placeholder="०"/></Field><Field label="विक्रीतून पैसे (₹)"><input type="number" min="0" value={form.saleIncome} onChange={e=>set('saleIncome',e.target.value)} placeholder="०"/></Field></div><div className="calculation">आजचा खर्च <b>{money(Number(form.laborCost||0)+Number(form.materialsCost||0)+Number(form.otherCost||0))}</b><span>•</span> निव्वळ उत्पन्न <b>{money(Number(form.saleIncome||0)-Number(form.laborCost||0)-Number(form.materialsCost||0)-Number(form.otherCost||0))}</b></div></section>
       <section className="form-section crop-soil-observations"><h3><Sprout size={18}/> पीक व माती निरीक्षण</h3><div className="form-grid"><Field label="पिकाची सद्यस्थिती"><textarea rows="2" value={form.cropCondition} onChange={e=>set('cropCondition',e.target.value)} placeholder="पिकाची वाढ, कीड, फुलोरा..."/></Field><Field label="माती व सेंद्रिय शेती निरीक्षण"><textarea rows="2" value={form.soilNotes} onChange={e=>set('soilNotes',e.target.value)} placeholder="मातीतील ओलावा, गांडूळखत..."/></Field></div></section><IssueTrackingFields form={form} set={set} apiFetch={apiFetch} apiBase={API} userId={authUser.id}/><Field label="उद्याची नियोजित कामे"><input value={form.tomorrowPlan} onChange={e=>set('tomorrowPlan',e.target.value)} placeholder="उद्या कोणते काम करायचे?"/></Field>
       <Field label="विशेष नोंद"><textarea rows="2" value={form.specialNote} onChange={e=>set('specialNote',e.target.value)} placeholder="काही विशेष सांगायचे असल्यास..."/></Field>
-      <div className="photo-upload"><label><input type="file" accept="image/*" capture="environment" onChange={e=>upload(e.target.files?.[0])}/><ImagePlus size={22}/><b>{form.photoUrl?'फोटो बदला':'शेताचा फोटो जोडा'}</b><small>एक फोटो · कमाल १० MB</small></label>{preview?<img src={preview} alt="निवडलेला फोटो"/>:form.photoUrl&&<ProtectedPhoto src={form.photoUrl} auth={authToken} alt="नोंदीतील शेत फोटो"/>}{form.photoUrl&&<button type="button" className="remove-entry-photo" onClick={()=>{set('photoUrl','');setPreview('')}}>फोटो काढा</button>}</div>
-    </div><div className="dialog-footer"><span><Leaf size={16}/> तुमची नोंद सुरक्षित जतन केली जाईल</span><button className="primary" disabled={loading}>{loading?<LoaderCircle className="spin" size={17}/>:<Save size={17}/>} {editingEntryId?'बदल जतन करा':'नोंद जतन करा'}</button></div></form></div>}
+      <div className="photo-upload"><label><input type="file" accept="image/*" capture="environment" onChange={e=>{void upload(e.target.files?.[0]);e.target.value=''}}/><ImagePlus size={22}/><b>{photoUploading?'फोटो अपलोड होत आहे…':form.photoUrl?'फोटो बदला':'शेताचा फोटो जोडा'}</b><small>एक फोटो · कमाल १० MB</small></label>{preview?<img src={preview} alt="निवडलेला फोटो"/>:form.photoUrl&&<ProtectedPhoto src={form.photoUrl} auth={authToken} alt="नोंदीतील शेत फोटो"/>}{form.photoUrl&&<button type="button" className="remove-entry-photo" onClick={()=>{photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');set('photoUrl','');setPreview('')}}>फोटो काढा</button>}{photoError&&<small className="error" role="alert">{photoError}</small>}</div>
+    </div><div className="dialog-footer"><span><Leaf size={16}/> तुमची नोंद सुरक्षित जतन केली जाईल</span><button className="primary" disabled={loading||photoUploading||!!photoError}>{loading||photoUploading?<LoaderCircle className="spin" size={17}/>:<Save size={17}/>} {editingEntryId?'बदल जतन करा':'नोंद जतन करा'}</button></div></form></div>}
   </div>
 }
 function AnalyticsDialog({metric,entries,onClose}){
@@ -359,7 +359,6 @@ function AnalyticsDialog({metric,entries,onClose}){
   useEffect(()=>{const onKeyDown=event=>{if(event.key==='Escape')onClose()};window.addEventListener('keydown',onKeyDown);return()=>window.removeEventListener('keydown',onKeyDown)},[onClose]);
   return <div className="analytics-overlay" onMouseDown={event=>{if(event.target===event.currentTarget)onClose()}}><section className={`analytics-dialog analytics-${metric}`} role="dialog" aria-modal="true" aria-labelledby="analytics-title"><header className="analytics-dialog-head"><div className="analytics-heading-icon"><Activity size={19}/></div><div><span>नोंदींचे विश्लेषण</span><h2 id="analytics-title">{config.label}</h2></div><button className="close" onClick={onClose} aria-label="विश्लेषण बंद करा"><X size={19}/></button></header><div className="analytics-kpis"><div><span>एकूण</span><strong>{config.format(total)}</strong></div><div><span>प्रति नोंद सरासरी</span><strong>{averageText}</strong></div><div><span>सर्वाधिक नोंद</span><strong>{peak?config.format(peakValue):'—'}</strong><small>{peak?day(peak.entryDate):'नोंदी नाहीत'}</small></div></div><div className="analytics-chart-section"><div className="analytics-chart-title"><h3>अलीकडील नोंदी</h3><span>शेवटच्या {chart.length.toLocaleString('mr-IN')} नोंदी</span></div>{chart.length?<div className="analytics-chart-wrap"><svg className="analytics-chart" viewBox={`0 0 ${plot.width} ${plot.height}`} role="img" aria-label={`${config.label} — अलीकडील नोंदींचा आलेख`}><defs><linearGradient id={`analytics-fill-${metric}`} x1="0" x2="0" y1="0" y2="1"><stop offset="0%" className="analytics-gradient-top"/><stop offset="100%" className="analytics-gradient-bottom"/></linearGradient></defs>{ticks.map(({value,y},index)=><g key={index}><line className="analytics-grid-line" x1={plot.left} x2={plot.width-plot.right} y1={y} y2={y}/><text className="analytics-axis-label" x={plot.left-9} y={y+3} textAnchor="end">{compact(value)}</text></g>)}<line className="analytics-axis-line" x1={plot.left} x2={plot.left} y1={plot.top} y2={plot.top+plotHeight}/><line className="analytics-axis-line" x1={plot.left} x2={plot.width-plot.right} y1={plot.top+plotHeight} y2={plot.top+plotHeight}/>{areaPath&&<path className="analytics-area" d={areaPath} fill={`url(#analytics-fill-${metric})`}/ >}{graphPoints.length>1&&<path className="analytics-line" d={linePath}/ >}{graphPoints.map(({entry,value,x,y})=><g className="analytics-point-group" key={entry.id||entry.entryDate}><title>{`${day(entry.entryDate)}: ${config.format(value)}`}</title><circle className="analytics-point-halo" cx={x} cy={y} r="8"/><circle className="analytics-point" cx={x} cy={y} r="4"/><text className="analytics-x-label" x={x} y={plot.height-13} textAnchor="middle">{entry.entryDate?new Date(`${entry.entryDate}T00:00:00`).toLocaleDateString('mr-IN',{day:'numeric',month:'short'}):'—'}</text></g>)}</svg><div className="analytics-chart-legend"><span className="analytics-legend-line"/><b>{config.label}</b><small>रक्कम / किलो</small></div></div>:<div className="analytics-empty">विश्लेषणासाठी नोंदी उपलब्ध नाहीत.</div>}</div><p className="analytics-note">जतन केलेल्या {entries.length.toLocaleString('mr-IN')} शेती नोंदींवर आधारित</p></section></div>
 }
-function PrintField({label,value,show=true}){if(!show||!hasPrintValue(value))return null;return <div className="print-field"><dt>{label}</dt><dd>{value}</dd></div>}
 function RecordDetails({entry:e,apiFetch,userId}){
   const fields=[
     ['दिनांक',day(e.entryDate)],['पीक / शेताचा विभाग',e.farmSection],['हंगाम',e.seasonName],
