@@ -21,6 +21,26 @@ const EMPTY_FORM = {
   description: ''
 };
 
+function profileAddress(profile) {
+  const savedAddress = String(profile?.address || '').trim();
+  const locality = [profile?.village, profile?.taluka, profile?.district, profile?.state, profile?.pincode]
+    .map(value => String(value || '').trim())
+    .filter(Boolean);
+  const addressParts = savedAddress ? [savedAddress] : [];
+  locality.forEach(part => {
+    const normalizedPart = part.toLocaleLowerCase('mr-IN');
+    if (!addressParts.some(existing => existing.toLocaleLowerCase('mr-IN').includes(normalizedPart))) {
+      addressParts.push(part);
+    }
+  });
+  return addressParts.join(', ');
+}
+
+function prefillValue(currentValue, previousPrefill, nextPrefill) {
+  if (!nextPrefill) return currentValue;
+  return !currentValue || currentValue === previousPrefill ? nextPrefill : currentValue;
+}
+
 const CATEGORIES = ['भाजीपाला', 'फळे', 'धान्य', 'कडधान्ये', 'मसाले', 'दुग्धजन्य', 'मध व इतर', 'इतर'];
 const UNITS = [
   ['kg', 'किलो'],
@@ -153,7 +173,7 @@ function ProductPhoto({ apiBase, photoUrl, authorization, productName }) {
     : <div className="market-product-photo market-photo-placeholder"><Wheat size={30}/><span>फोटो नाही</span></div>;
 }
 
-function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyerPhone = '', onUnauthorized }) {
+function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyerPhone = '', profile, onUnauthorized }) {
   const [view, setView] = useState('browse');
   const [listings, setListings] = useState([]);
   const [marketPriceFeed, setMarketPriceFeed] = useState(null);
@@ -216,6 +236,16 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   const [sellerStockAdds, setSellerStockAdds] = useState({});
   const [sellerError, setSellerError] = useState('');
   const [sellerNotice, setSellerNotice] = useState('');
+  const sellerProfileDefaults = useMemo(() => ({
+    sellerName: String(profile?.fullName || profile?.businessName || '').trim(),
+    phone: String(buyerPhone || '').trim(),
+    address: profileAddress(profile)
+  }), [profile, buyerPhone]);
+  const buyerProfileDefaults = useMemo(() => ({
+    buyerName: String(profile?.fullName || profile?.businessName || '').trim(),
+    address: profileAddress(profile)
+  }), [profile]);
+  const profilePrefillsRef = useRef({ seller: {}, buyer: {} });
   const fileInputRef = useRef(null);
   const formRef = useRef(form);
   const photoRef = useRef(photo);
@@ -226,6 +256,24 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
 
   useEffect(() => setAuthorization(auth), [auth]);
   useEffect(() => setView(accountType === 'seller' ? 'seller' : 'browse'), [accountType]);
+  useEffect(() => {
+    if (view !== 'register' || !['seller', 'farmer'].includes(accountType)) return;
+    const previous = profilePrefillsRef.current.seller;
+    setForm(current => ({
+      ...current,
+      sellerName: prefillValue(current.sellerName, previous.sellerName, sellerProfileDefaults.sellerName),
+      phone: prefillValue(current.phone, previous.phone, sellerProfileDefaults.phone),
+      address: prefillValue(current.address, previous.address, sellerProfileDefaults.address)
+    }));
+    profilePrefillsRef.current.seller = sellerProfileDefaults;
+  }, [accountType, sellerProfileDefaults, view]);
+  useEffect(() => {
+    if (view !== 'cart' || accountType !== 'buyer') return;
+    const previous = profilePrefillsRef.current.buyer;
+    setBuyerName(current => prefillValue(current, previous.buyerName, buyerProfileDefaults.buyerName));
+    setBuyerDeliveryAddress(current => prefillValue(current, previous.address, buyerProfileDefaults.address));
+    profilePrefillsRef.current.buyer = buyerProfileDefaults;
+  }, [accountType, buyerProfileDefaults, view]);
   useEffect(() => {
     try {
       window.localStorage.setItem(`swarnabhoomi-market-cart:${userId}`, JSON.stringify(cart));
@@ -1120,9 +1168,10 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
           })}</div>
           <form className="market-checkout-card" onSubmit={submitCheckout}>
             <div className="market-card-heading"><div><span>ऑर्डर</span><h2>खरेदी ऑर्डर</h2></div><ShoppingBag size={19}/></div>
+            {(buyerProfileDefaults.buyerName || buyerProfileDefaults.address) && <div className="market-message market-success" role="status"><Check size={15}/>प्रोफाइलमधील नाव आणि उपलब्ध पत्ता भरला आहे. ऑर्डर देण्यापूर्वी तपशील तपासा.</div>}
             <label className="market-field"><span>तुमचे नाव *</span><SpeechTextInput><input value={buyerName} onChange={event => setBuyerName(event.target.value)} maxLength={100} required autoComplete="name"/></SpeechTextInput></label>
             <label className="market-field"><span>नोंदणीकृत मोबाईल</span><input value={buyerPhone} readOnly/><small>तुमचा संपर्क क्रमांक फक्त प्रशासक पाहू शकतो.</small></label>
-            <label className="market-field"><span>माल कसा हवा?</span><select value={buyerFulfillment} onChange={event => { setBuyerFulfillment(event.target.value); if (event.target.value !== 'DELIVERY') setBuyerDeliveryAddress(''); }}><option value="PICKUP">मी घेऊन जाईन</option><option value="DELIVERY">पोहोचवून हवा</option></select></label>
+            <label className="market-field"><span>माल कसा हवा?</span><select value={buyerFulfillment} onChange={event => { setBuyerFulfillment(event.target.value); if (event.target.value !== 'DELIVERY') setBuyerDeliveryAddress(''); else if (!buyerDeliveryAddress.trim()) setBuyerDeliveryAddress(buyerProfileDefaults.address); }}><option value="PICKUP">मी घेऊन जाईन</option><option value="DELIVERY">पोहोचवून हवा</option></select></label>
             {buyerFulfillment === 'DELIVERY' && <label className="market-field"><span>वितरणाचा पूर्ण पत्ता *</span><SpeechTextInput><textarea value={buyerDeliveryAddress} onChange={event => setBuyerDeliveryAddress(event.target.value)} maxLength={500} rows="3" required autoComplete="street-address" placeholder="घर / शेत क्रमांक, रस्ता, गाव, तालुका, जिल्हा आणि पिनकोड"/></SpeechTextInput><small>हा पत्ता या ऑर्डरच्या विक्रेत्याला फक्त वितरणासाठी दिसेल.</small></label>}
             <label className="market-field"><span>विक्रेत्यांसाठी संदेश <small>ऐच्छिक</small></span><SpeechTextInput><textarea maxLength={500} value={buyerNote} onChange={event => setBuyerNote(event.target.value)} placeholder="सोयीची वेळ किंवा इतर माहिती"/></SpeechTextInput></label>
             <fieldset className="market-payment-options">
@@ -1167,6 +1216,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     </section> : view === 'register' ? <section className="market-form-card">
       <div className="market-card-heading"><div><span>विक्रेत्याची माहिती</span><h2>तुमचा उपलब्ध शेतमाल जोडा</h2></div><div className="market-private-badge"><ShieldCheck size={14}/> संपर्क माहिती सुरक्षित</div></div>
       <p className="market-form-intro">तुमची विक्रीची माहिती आणि अचूक पत्ता नोंदवा. नकाशावरील स्थान तुमच्या ब्राउझरमधून घ्या किंवा निर्देशांक भरा.</p>
+      {(sellerProfileDefaults.sellerName || sellerProfileDefaults.phone || sellerProfileDefaults.address) && <div className="market-message market-success" role="status"><Check size={15}/>प्रोफाइलमधील नाव, मोबाईल आणि पत्ता भरला आहे. गरज असल्यास ते बदलू शकता.</div>}
       <form className="market-form" onSubmit={submitListing}>
         <div className="market-form-section-title"><UserRound size={16}/> विक्रेता आणि संपर्क</div>
         <div className="market-form-grid">
