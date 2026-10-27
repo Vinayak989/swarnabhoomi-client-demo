@@ -23,10 +23,37 @@ function pushSupported() {
     && 'PushManager' in window && 'Notification' in window;
 }
 
+function encodePushKey(value) {
+  return window.btoa(Array.from(new Uint8Array(value), byte => String.fromCharCode(byte)).join(''))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function subscriptionDetails(subscription) {
+  const serialized = subscription.toJSON?.() || {};
+  const key = name => {
+    try {
+      const raw = subscription.getKey?.(name);
+      if (raw) return encodePushKey(raw);
+      const value = serialized.keys?.[name];
+      return value ? encodePushKey(decodeApplicationServerKey(value)) : '';
+    } catch { return ''; }
+  };
+  return { endpoint: subscription.endpoint || serialized.endpoint, keys: { p256dh: key('p256dh'), auth: key('auth') } };
+}
+
+function completeSubscription(subscription) {
+  if (!subscription) return false;
+  const details = subscriptionDetails(subscription);
+  try {
+    return Boolean(details.endpoint) && decodeApplicationServerKey(details.keys.p256dh).length === 65
+      && decodeApplicationServerKey(details.keys.auth).length === 16;
+  } catch { return false; }
+}
+
 async function saveSubscription(subscription, apiFetch, apiBase, onUnauthorized, userId) {
   const saved = await responseBody(await apiFetch(`${apiBase}/push/subscriptions`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...subscription.toJSON(), androidApp: new URLSearchParams(window.location.search).get('androidApp') === '1' })
+    body: JSON.stringify({ ...subscriptionDetails(subscription), androidApp: new URLSearchParams(window.location.search).get('androidApp') === '1' })
   }), onUnauthorized);
   if (!Number.isSafeInteger(Number(saved?.id)) || Number(saved.id) < 1) throw Error('सूचना सदस्यता जतन झाली नाही.');
   try { window.localStorage.setItem(subscriptionKey(userId), String(saved.id)); } catch {}
@@ -38,7 +65,7 @@ export async function restoreBrowserPush(apiFetch, apiBase, onUnauthorized, user
   if (!pushSupported() || Notification.permission !== 'granted') { forgetSubscription(userId); return null; }
   const registration = await navigator.serviceWorker.getRegistration('/');
   const subscription = await registration?.pushManager?.getSubscription();
-  if (!subscription || (subscription.expirationTime && subscription.expirationTime <= Date.now())) {
+  if (!completeSubscription(subscription) || (subscription.expirationTime && subscription.expirationTime <= Date.now())) {
     forgetSubscription(userId);
     return null;
   }
@@ -56,7 +83,12 @@ async function responseBody(response, onUnauthorized) {
     throw Error('पुन्हा लॉगिन करा.');
   }
   const body = await response.json().catch(() => null);
-  if (!response.ok) throw Error(body?.detail || body?.message || 'वेब सूचना सेट करता आली नाही.');
+  if (!response.ok) {
+    const error = new Error(body?.detail || body?.message || `डिव्हाइस सूचना सेट करता आल्या नाहीत (HTTP ${response.status}). पुन्हा प्रयत्न करा.`);
+    error.status = response.status;
+    error.code = body?.code;
+    throw error;
+  }
   return body;
 }
 
@@ -82,7 +114,7 @@ export async function enableBrowserPush(apiFetch, apiBase, onUnauthorized, userI
   const oldKey = subscription?.options?.applicationServerKey;
   const keyChanged = oldKey && (new Uint8Array(oldKey).length !== applicationServerKey.length
     || new Uint8Array(oldKey).some((value, index) => value !== applicationServerKey[index]));
-  if (subscription && (keyChanged || (subscription.expirationTime && subscription.expirationTime <= Date.now()))) {
+  if (subscription && (!completeSubscription(subscription) || keyChanged || (subscription.expirationTime && subscription.expirationTime <= Date.now()))) {
     await subscription.unsubscribe();
     subscription = null;
   }
@@ -93,7 +125,16 @@ export async function enableBrowserPush(apiFetch, apiBase, onUnauthorized, userI
     });
   }
 
-  const id = await saveSubscription(subscription, apiFetch, apiBase, onUnauthorized, userId);
+  let id;
+  try {
+    id = await saveSubscription(subscription, apiFetch, apiBase, onUnauthorized, userId);
+  } catch (error) {
+    // A stored browser subscription may predate the current encryption or provider setup.
+    if (error.status !== 400) throw error;
+    await subscription.unsubscribe();
+    subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
+    id = await saveSubscription(subscription, apiFetch, apiBase, onUnauthorized, userId);
+  }
   try { window.localStorage.removeItem(disabledKey(userId)); } catch {}
   return id;
 }

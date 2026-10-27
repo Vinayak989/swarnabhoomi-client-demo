@@ -66,9 +66,11 @@ public class BrowserPushService {
     @Transactional
     public SubscriptionResponse subscribe(SubscriptionRequest request, AppUser user) {
         requireConfigured();
-        if (request == null || request.endpoint() == null || request.endpoint().length() > 2048
-                || request.keys() == null || blank(request.keys().p256dh()) || blank(request.keys().auth())) {
-            throw badRequest("वेब सूचना सदस्यता तपशील अवैध आहेत.");
+        if (request == null || blank(request.endpoint()) || request.endpoint().length() > 2048) {
+            throw badRequest("फोनवरील सूचना नोंदणीचा पत्ता अवैध आहे. अॅप पुन्हा उघडून सूचना सुरू करा.");
+        }
+        if (request.keys() == null || blank(request.keys().p256dh()) || blank(request.keys().auth())) {
+            throw badRequest("फोनवरील सूचना नोंदणी अपूर्ण आहे. जुनी नोंदणी बदलून पुन्हा प्रयत्न करा.");
         }
         validateEndpoint(request.endpoint());
         try {
@@ -213,6 +215,7 @@ public class BrowserPushService {
     }
 
     private ResponseStatusException badRequest(String message) {
+        log.warn("Push subscription registration rejected: {}", message);
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
     }
 

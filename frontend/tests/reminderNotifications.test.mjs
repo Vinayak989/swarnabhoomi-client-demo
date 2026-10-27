@@ -15,7 +15,10 @@ const apiFetch = async (url, options) => {
 
 beforeEach(() => {
   storage = new Map(); permissionCalls = 0; subscribeCalls = 0; posts = [];
-  currentSubscription = { toJSON: () => ({ endpoint: 'https://fcm.googleapis.com/test', keys: {} }) };
+  currentSubscription = {
+    toJSON: () => ({ endpoint: 'https://fcm.googleapis.com/test', keys: { p256dh: publicKey, auth: Buffer.alloc(16, 1).toString('base64url') } }),
+    unsubscribe: async () => true
+  };
   const notification = { permission: 'granted', requestPermission: async () => { permissionCalls++; return 'granted'; } };
   registration = { pushManager: {
     getSubscription: async () => null,
@@ -28,6 +31,7 @@ beforeEach(() => {
   globalThis.window = {
     isSecureContext: true, PushManager: {}, Notification: notification,
     atob: value => Buffer.from(value, 'base64').toString('binary'), location: { search: '?androidApp=1' },
+    btoa: value => Buffer.from(value, 'binary').toString('base64'),
     localStorage: { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) }
   };
 });
@@ -89,6 +93,61 @@ test('explicitly disabled notifications stay off until the user enables them aga
   assert.equal(await restoreBrowserPush(apiFetch, '/api', null, 7), null);
   await enableBrowserPush(apiFetch, '/api', null, 7);
   assert.equal(isBrowserPushDisabled(7), false);
+});
+
+test('Android subscriptions use native encryption keys when JSON metadata is incomplete', async () => {
+  currentSubscription.toJSON = () => ({ endpoint: 'https://fcm.googleapis.com/wp/android-device' });
+  currentSubscription.getKey = name => Buffer.alloc(name === 'auth' ? 16 : 65, 4);
+  registration.pushManager.getSubscription = async () => currentSubscription;
+  await enableBrowserPush(apiFetch, '/api', null, 7);
+  assert.equal(Buffer.from(posts[0].keys.p256dh, 'base64url').length, 65);
+  assert.equal(Buffer.from(posts[0].keys.auth, 'base64url').length, 16);
+  assert.equal(subscribeCalls, 0);
+});
+
+test('incomplete stored subscriptions are replaced before sending registration', async () => {
+  let removed = 0;
+  registration.pushManager.getSubscription = async () => ({ toJSON: () => ({ endpoint: 'https://fcm.googleapis.com/old' }), unsubscribe: async () => { removed++; } });
+  await enableBrowserPush(apiFetch, '/api', null, 7);
+  assert.equal(removed, 1);
+  assert.equal(subscribeCalls, 1);
+  assert.equal(posts.length, 1);
+});
+
+test('a rejected Android registration is refreshed once and saved', async () => {
+  let attempts = 0, removed = 0;
+  currentSubscription.unsubscribe = async () => { removed++; };
+  registration.pushManager.getSubscription = async () => currentSubscription;
+  const api = async (url, options) => {
+    if (!url.endsWith('/public-key') && ++attempts === 1) return new Response(JSON.stringify({ code: 'PUSH_SUBSCRIPTION_INVALID', message: 'Old registration' }), { status: 400 });
+    return apiFetch(url, options);
+  };
+  assert.equal(await enableBrowserPush(api, '/api', null, 7), 42);
+  assert.equal(attempts, 2);
+  assert.equal(removed, 1);
+  assert.equal(subscribeCalls, 1);
+});
+
+test('repeated registration errors stop after one refresh and preserve the actual server message', async () => {
+  let attempts = 0;
+  const api = async (url, options) => {
+    if (url.endsWith('/public-key')) return apiFetch(url, options);
+    attempts++;
+    return new Response(JSON.stringify({ code: 'PUSH_SUBSCRIPTION_INVALID', message: 'फोनवरील नोंदणी अवैध आहे.' }), { status: 400 });
+  };
+  await assert.rejects(enableBrowserPush(api, '/api', null, 7), error => error.status === 400 && error.message === 'फोनवरील नोंदणी अवैध आहे.');
+  assert.equal(attempts, 2);
+});
+
+test('a different-account conflict is shown without replacing the existing subscription', async () => {
+  let removed = 0;
+  currentSubscription.unsubscribe = async () => { removed++; };
+  registration.pushManager.getSubscription = async () => currentSubscription;
+  const api = async (url, options) => url.endsWith('/public-key') ? apiFetch(url, options)
+    : new Response(JSON.stringify({ message: 'हे डिव्हाइस दुसऱ्या खात्याशी जोडलेले आहे.' }), { status: 409 });
+  await assert.rejects(enableBrowserPush(api, '/api', null, 7), error => error.status === 409 && error.message.includes('दुसऱ्या खात्याशी'));
+  assert.equal(removed, 0);
+  assert.equal(subscribeCalls, 0);
 });
 
 test('background push shows a tagged Android notification and opens the reminder app route', async () => {
