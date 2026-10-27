@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Bell, BellOff, CalendarDays, CheckCircle2, CloudSun, LoaderCircle, Mic, MicOff, Plus, Repeat2, RotateCcw, Search, Trash2, Volume2, X } from 'lucide-react';
-import { disableBrowserPush, enableBrowserPush, getBrowserPushSubscriptionId } from './reminderNotifications.js';
+import { disableBrowserPush, enableBrowserPush, isBrowserPushDisabled, restoreBrowserPush, sendBrowserPushTest } from './reminderNotifications.js';
 import SpeechTextInput from './SpeechTextInput.jsx';
 import { speechErrorNotice, speechRecognitionConstructor, speechUnavailableNotice } from './speechRecognition.js';
 import './reminders.css';
@@ -48,8 +48,9 @@ export default function ReminderPanel({ apiFetch, apiBase, onUnauthorized, entri
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [completingId, setCompletingId] = useState(null);
-  const [pushBusy, setPushBusy] = useState(false);
-  const [pushEnabled, setPushEnabled] = useState(() => Boolean(getBrowserPushSubscriptionId(userId)));
+  const [pushBusy, setPushBusy] = useState(true);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushWarning, setPushWarning] = useState('');
   const [listening, setListening] = useState(false);
   const [voiceNotice, setVoiceNotice] = useState('');
   const [error, setError] = useState('');
@@ -87,6 +88,15 @@ export default function ReminderPanel({ apiFetch, apiBase, onUnauthorized, entri
 
   useEffect(() => { void load(); }, [apiFetch]);
   useEffect(() => {
+    let active = true;
+    setPushBusy(true);
+    restoreBrowserPush(apiFetch, apiBase, onUnauthorized, userId)
+      .then(id => { if (active) setPushEnabled(Boolean(id)); })
+      .catch(() => { if (active) setPushEnabled(false); })
+      .finally(() => { if (active) setPushBusy(false); });
+    return () => { active = false; };
+  }, [apiFetch, apiBase, onUnauthorized, userId]);
+  useEffect(() => {
     if (!reminders.some(item => item.status === 'PENDING' || item.status === 'SENDING')) return undefined;
     const timer = window.setTimeout(() => { void load(true); }, 15000);
     return () => window.clearTimeout(timer);
@@ -100,22 +110,32 @@ export default function ReminderPanel({ apiFetch, apiBase, onUnauthorized, entri
 
   async function save(event) {
     event.preventDefault();
-    setSaving(true); setError(''); setNotice('');
+    setSaving(true); setError(''); setNotice(''); setPushWarning('');
     try {
+      let subscriptionId = null;
+      if (!isBrowserPushDisabled(userId)) {
+        try {
+          subscriptionId = await enableBrowserPush(apiFetch, apiBase, onUnauthorized, userId);
+          setPushEnabled(true);
+        } catch (notificationError) {
+          setPushEnabled(false);
+          setPushWarning(notificationError.message || 'फोनवर सूचना मिळवण्यासाठी डिव्हाइस सूचना सुरू करा.');
+        }
+      }
       const response = await apiFetch(`${apiBase}/reminders`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
           cropOrPlot: form.cropOrPlot.trim(),
           repeatUntil: form.repeatUntil || null,
-          browserSubscriptionId: pushEnabled ? getBrowserPushSubscriptionId(userId) : null
+          browserSubscriptionId: subscriptionId
         })
       });
       if (response.status === 401) { onUnauthorized(); return; }
       const result = await response.json().catch(() => null);
       if (!response.ok) throw Error(getBodyError(result, 'स्मरणपत्र जतन करता आले नाही.'));
       setForm({ scheduledAt: indiaDateTimeInput(new Date(Date.now() + 30 * 60 * 1000)), reason: '', cropOrPlot: '', repeatFrequency: 'NONE', repeatUntil: '' });
-      setNotice(pushEnabled ? 'स्मरणपत्र आणि डिव्हाइस सूचना जतन झाल्या.' : 'स्मरणपत्र जतन झाले. सूचना मिळवण्यासाठी डिव्हाइस सूचना सुरू करा.');
+      setNotice(subscriptionId ? 'स्मरणपत्र जतन झाले. ठरलेल्या वेळी फोनवर सूचना पाठवली जाईल.' : 'स्मरणपत्र जतन झाले. फोनवर सूचना मिळवण्यासाठी परवानगी सुरू करा.');
       await load();
     } catch (exception) {
       setError(exception.message || 'स्मरणपत्र जतन करता आले नाही.');
@@ -125,7 +145,7 @@ export default function ReminderPanel({ apiFetch, apiBase, onUnauthorized, entri
   }
 
   async function togglePush() {
-    setPushBusy(true); setError(''); setNotice('');
+    setPushBusy(true); setError(''); setNotice(''); setPushWarning('');
     try {
       if (pushEnabled) {
         await disableBrowserPush(apiFetch, apiBase, onUnauthorized, userId);
@@ -134,13 +154,23 @@ export default function ReminderPanel({ apiFetch, apiBase, onUnauthorized, entri
       } else {
         await enableBrowserPush(apiFetch, apiBase, onUnauthorized, userId);
         setPushEnabled(true);
-        setNotice('या डिव्हाइसवर शेतीकामाच्या सूचना सुरू झाल्या.');
+        setNotice('या डिव्हाइसवर सूचना सुरू झाल्या. आधी जतन केलेली प्रलंबित स्मरणपत्रेही यात समाविष्ट आहेत.');
       }
     } catch (exception) {
       setError(exception.message || 'डिव्हाइस सूचना सेट करता आल्या नाहीत.');
     } finally {
       setPushBusy(false);
     }
+  }
+
+  async function testPush() {
+    setPushBusy(true); setNotice(''); setPushWarning('');
+    try {
+      await sendBrowserPushTest(apiFetch, apiBase, onUnauthorized, userId);
+      setNotice('चाचणी सूचना पाठवली. फोनवरील सूचना तपासा.');
+    } catch (exception) {
+      setPushWarning(exception.message || 'चाचणी सूचना पाठवता आली नाही.');
+    } finally { setPushBusy(false); }
   }
 
   function startVoiceInput() {
@@ -277,13 +307,19 @@ export default function ReminderPanel({ apiFetch, apiBase, onUnauthorized, entri
     <div className="reminder-hero">
       <div className="reminder-hero-icon"><Bell size={22}/></div>
       <div className="reminder-hero-copy"><span className="eyebrow">शेतीकामासाठी वेळेवर आठवण</span><h1>स्मरणपत्रे</h1><p>पीकनिहाय कामे ठरवा, सूचना मिळवा आणि पूर्ण झालेली कामे नोंदवा.</p></div>
-      <button type="button" className={`reminder-push-toggle${pushEnabled ? ' enabled' : ''}`} onClick={togglePush} disabled={pushBusy}>
+      <button type="button" className={`reminder-push-toggle${pushEnabled ? ' enabled' : ''}`} onClick={togglePush} disabled={pushBusy || saving}>
         {pushBusy ? <LoaderCircle className="spin" size={16}/> : pushEnabled ? <BellOff size={16}/> : <Bell size={16}/>}
         {pushBusy ? 'सेट होत आहे' : pushEnabled ? 'सूचना बंद करा' : 'डिव्हाइस सूचना सुरू करा'}
       </button>
     </div>
     {error && <div className="reminder-error" role="alert">{error}</div>}
     {notice && <div className="reminder-success" role="status"><CheckCircle2 size={16}/>{notice}</div>}
+    <section className="reminder-notification-status" aria-label="फोनवरील सूचना">
+      <div><b><Bell size={16}/>{pushEnabled ? 'फोनवरील सूचना सुरू आहेत' : 'स्मरणपत्राची सूचना फोनवर मिळवा'}</b><p>{pushEnabled
+        ? 'अॅप बंद असतानाही सूचना येऊ शकते. फोनला इंटरनेट असणे आणि Settings मध्ये स्वर्णभूमीच्या Notifications सुरू असणे आवश्यक आहे.'
+        : '“डिव्हाइस सूचना सुरू करा” निवडा आणि फोनवर परवानगी द्या. स्मरणपत्र जतन करतानाही ही परवानगी देता येईल.'}</p>{pushWarning && <p className="reminder-notification-warning" role="alert">{pushWarning}</p>}</div>
+      {pushEnabled && <button type="button" className="reminder-push-toggle" onClick={testPush} disabled={pushBusy || saving}>{pushBusy ? <LoaderCircle className="spin" size={15}/> : <Bell size={15}/>} चाचणी सूचना</button>}
+    </section>
 
     <section className="reminder-weather-card" aria-label="हवामानानुसार शेतीकाम">
       <div className="reminder-weather-heading"><div className="reminder-weather-icon"><CloudSun size={18}/></div><div><span>हवामान तपासणी</span><h2>आज बाहेरची कामे ठरवण्यापूर्वी जिल्ह्याचा इशारा पाहा</h2></div></div>
@@ -305,8 +341,8 @@ export default function ReminderPanel({ apiFetch, apiBase, onUnauthorized, entri
         <label className="reminder-field"><span>पीक / शेताचा विभाग <small>ऐच्छिक</small></span><SpeechTextInput><input list="reminder-crop-options" maxLength={120} value={form.cropOrPlot} onChange={event => set('cropOrPlot', event.target.value)} placeholder="उदा. कांदा — पूर्वेकडील शेत"/></SpeechTextInput><datalist id="reminder-crop-options">{cropOptions.map(option => <option key={option} value={option}/>)}</datalist></label>
         <label className="reminder-field"><span>पुनरावृत्ती</span><select value={form.repeatFrequency} onChange={event => setForm(current => ({ ...current, repeatFrequency: event.target.value, repeatUntil: event.target.value === 'NONE' ? '' : current.repeatUntil }))}><option value="NONE">एकदाच</option><option value="DAILY">दररोज</option><option value="WEEKLY">दर आठवड्याला</option></select></label>
         {form.repeatFrequency !== 'NONE' && <label className="reminder-field"><span>पुनरावृत्तीची शेवटची तारीख <small>ऐच्छिक</small></span><input type="date" min={form.scheduledAt.slice(0, 10)} value={form.repeatUntil} onChange={event => set('repeatUntil', event.target.value)}/><small>रिकामे ठेवल्यास, थांबवेपर्यंत पुनरावृत्ती सुरू राहील.</small></label>}
-        <small className="reminder-notification-note"><Bell size={13}/>{pushEnabled ? 'ठरलेल्या वेळी या डिव्हाइसवर सूचना पाठवली जाईल.' : 'सूचना मिळवण्यासाठी वरून डिव्हाइस सूचना सुरू करा; अन्यथा स्मरणपत्र यादीत राहील.'}</small>
-        <button className="primary reminder-submit" disabled={saving}>{saving ? <LoaderCircle className="spin" size={17}/> : <Plus size={17}/>} स्मरणपत्र जतन करा</button>
+        <small className="reminder-notification-note"><Bell size={13}/>{pushEnabled ? 'ठरलेल्या वेळी या डिव्हाइसवर सूचना पाठवली जाईल.' : isBrowserPushDisabled(userId) ? 'फोनवरील सूचना बंद आहेत. आठवण मिळवण्यासाठी सूचना सुरू करा.' : 'जतन करताना फोनवरील सूचनांची परवानगी मागितली जाईल.'}</small>
+        <button className="primary reminder-submit" disabled={saving || pushBusy}>{saving ? <LoaderCircle className="spin" size={17}/> : <Plus size={17}/>} स्मरणपत्र जतन करा</button>
       </form>
 
       <div className="reminder-list-section">

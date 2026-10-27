@@ -35,6 +35,9 @@ public class FarmReminder {
 
     private LocalDateTime sentAt;
 
+    private Integer deliveryAttempts;
+    private LocalDateTime nextDeliveryAt;
+
     @ManyToOne
     private BrowserPushSubscription browserSubscription;
 
@@ -65,6 +68,10 @@ public class FarmReminder {
     public void setDeliveryNote(String value) { deliveryNote = value; }
     public LocalDateTime getSentAt() { return sentAt; }
     public void setSentAt(LocalDateTime value) { sentAt = value; }
+    public int getDeliveryAttempts() { return deliveryAttempts == null ? 0 : deliveryAttempts; }
+    public void setDeliveryAttempts(int value) { deliveryAttempts = value; }
+    public LocalDateTime getNextDeliveryAt() { return nextDeliveryAt; }
+    public void setNextDeliveryAt(LocalDateTime value) { nextDeliveryAt = value; }
     public BrowserPushSubscription getBrowserSubscription() { return browserSubscription; }
     public void setBrowserSubscription(BrowserPushSubscription value) { browserSubscription = value; }
     public AppUser getOwner() { return owner; }

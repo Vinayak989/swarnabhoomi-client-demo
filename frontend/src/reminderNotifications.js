@@ -1,10 +1,48 @@
 const PUSH_SUBSCRIPTION_KEY = 'swarnabhoomi-push-subscription-id';
 const subscriptionKey = userId => `${PUSH_SUBSCRIPTION_KEY}:${userId}`;
+const disabledKey = userId => `swarnabhoomi-push-disabled:${userId}`;
+
+export function isBrowserPushDisabled(userId) {
+  try { return window.localStorage.getItem(disabledKey(userId)) === 'true'; } catch { return false; }
+}
 
 export function getBrowserPushSubscriptionId(userId) {
   if (!userId) return null;
-  const id = Number(window.localStorage.getItem(subscriptionKey(userId)));
-  return Number.isSafeInteger(id) && id > 0 ? id : null;
+  try {
+    const id = Number(window.localStorage.getItem(subscriptionKey(userId)));
+    return Number.isSafeInteger(id) && id > 0 ? id : null;
+  } catch { return null; }
+}
+
+function forgetSubscription(userId) {
+  try { window.localStorage.removeItem(subscriptionKey(userId)); } catch {}
+}
+
+function pushSupported() {
+  return window.isSecureContext && 'serviceWorker' in navigator
+    && 'PushManager' in window && 'Notification' in window;
+}
+
+async function saveSubscription(subscription, apiFetch, apiBase, onUnauthorized, userId) {
+  const saved = await responseBody(await apiFetch(`${apiBase}/push/subscriptions`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...subscription.toJSON(), androidApp: new URLSearchParams(window.location.search).get('androidApp') === '1' })
+  }), onUnauthorized);
+  if (!Number.isSafeInteger(Number(saved?.id)) || Number(saved.id) < 1) throw Error('सूचना सदस्यता जतन झाली नाही.');
+  try { window.localStorage.setItem(subscriptionKey(userId), String(saved.id)); } catch {}
+  return Number(saved.id);
+}
+
+export async function restoreBrowserPush(apiFetch, apiBase, onUnauthorized, userId) {
+  if (isBrowserPushDisabled(userId)) return null;
+  if (!pushSupported() || Notification.permission !== 'granted') { forgetSubscription(userId); return null; }
+  const registration = await navigator.serviceWorker.getRegistration('/');
+  const subscription = await registration?.pushManager?.getSubscription();
+  if (!subscription || (subscription.expirationTime && subscription.expirationTime <= Date.now())) {
+    forgetSubscription(userId);
+    return null;
+  }
+  return saveSubscription(subscription, apiFetch, apiBase, onUnauthorized, userId);
 }
 
 function decodeApplicationServerKey(value) {
@@ -23,35 +61,47 @@ async function responseBody(response, onUnauthorized) {
 }
 
 export async function enableBrowserPush(apiFetch, apiBase, onUnauthorized, userId) {
-  if (!window.isSecureContext || !('serviceWorker' in navigator)
-      || !('PushManager' in window) || !('Notification' in window)) {
+  if (!pushSupported()) {
     throw Error('या ब्राउझरमध्ये डिव्हाइस सूचना उपलब्ध नाहीत. HTTPS व Chrome वापरून पुन्हा प्रयत्न करा.');
   }
 
+  // Ask directly from the button click, before any network request consumes user activation.
+  const permission = Notification.permission === 'default' ? await Notification.requestPermission() : Notification.permission;
+  if (permission !== 'granted') {
+    forgetSubscription(userId);
+    throw Error('फोनच्या Settings मध्ये स्वर्णभूमी → Notifications सुरू करा आणि पुन्हा “डिव्हाइस सूचना सुरू करा” निवडा.');
+  }
   const keyResponse = await apiFetch(`${apiBase}/push/subscriptions/public-key`);
   const { publicKey } = await responseBody(keyResponse, onUnauthorized);
   if (!publicKey) throw Error('वेब सूचना सर्व्हरवर कॉन्फिगर नाहीत.');
 
-  const permission = await Notification.requestPermission();
-  if (permission !== 'granted') throw Error('डिव्हाइस सूचनांची परवानगी द्या.');
-
-  const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+  const applicationServerKey = decodeApplicationServerKey(publicKey);
+  await navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' });
+  const registration = await navigator.serviceWorker.ready;
   let subscription = await registration.pushManager.getSubscription();
+  const oldKey = subscription?.options?.applicationServerKey;
+  const keyChanged = oldKey && (new Uint8Array(oldKey).length !== applicationServerKey.length
+    || new Uint8Array(oldKey).some((value, index) => value !== applicationServerKey[index]));
+  if (subscription && (keyChanged || (subscription.expirationTime && subscription.expirationTime <= Date.now()))) {
+    await subscription.unsubscribe();
+    subscription = null;
+  }
   if (!subscription) {
     subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: decodeApplicationServerKey(publicKey)
+      applicationServerKey
     });
   }
 
-  const saved = await responseBody(await apiFetch(`${apiBase}/push/subscriptions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(subscription.toJSON())
-  }), onUnauthorized);
-  if (!Number.isSafeInteger(Number(saved?.id)) || Number(saved.id) < 1) throw Error('सूचना सदस्यता जतन झाली नाही.');
-  window.localStorage.setItem(subscriptionKey(userId), String(saved.id));
-  return Number(saved.id);
+  const id = await saveSubscription(subscription, apiFetch, apiBase, onUnauthorized, userId);
+  try { window.localStorage.removeItem(disabledKey(userId)); } catch {}
+  return id;
+}
+
+export async function sendBrowserPushTest(apiFetch, apiBase, onUnauthorized, userId) {
+  const id = getBrowserPushSubscriptionId(userId);
+  if (!id) throw Error('या डिव्हाइसवरील सूचना आधी सुरू करा.');
+  await responseBody(await apiFetch(`${apiBase}/push/subscriptions/${id}/test`, { method: 'POST' }), onUnauthorized);
 }
 
 export async function disableBrowserPush(apiFetch, apiBase, onUnauthorized, userId) {
@@ -71,5 +121,6 @@ export async function disableBrowserPush(apiFetch, apiBase, onUnauthorized, user
   const registration = await navigator.serviceWorker?.getRegistration('/');
   const subscription = await registration?.pushManager?.getSubscription();
   if (subscription) await subscription.unsubscribe();
-  if (userId) window.localStorage.removeItem(subscriptionKey(userId));
+  if (userId) forgetSubscription(userId);
+  try { window.localStorage.setItem(disabledKey(userId), 'true'); } catch {}
 }

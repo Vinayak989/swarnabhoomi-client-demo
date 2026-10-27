@@ -2,13 +2,17 @@ package in.swarnabhoomi.farmlog;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.security.Security;
 import java.util.Base64;
-import java.util.Map;
+import java.time.ZoneId;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import nl.martijndwars.webpush.Notification;
 import nl.martijndwars.webpush.PushService;
+import nl.martijndwars.webpush.Urgency;
 import org.apache.http.HttpResponse;
+import org.apache.http.util.EntityUtils;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,6 +94,7 @@ public class BrowserPushService {
         subscription.setP256dhKey(request.keys().p256dh());
         subscription.setAuthKey(request.keys().auth());
         subscription.setActive(true);
+        subscription.setAndroidApp(subscription.isAndroidApp() || request.androidApp());
         subscription.setOwner(user);
         return new SubscriptionResponse(repository.save(subscription).getId());
     }
@@ -103,20 +108,34 @@ public class BrowserPushService {
     }
 
     public boolean send(FarmReminder reminder) {
-        BrowserPushSubscription subscription = reminder.getBrowserSubscription();
-        if (subscription == null) return false;
-        if (!subscription.isActive()) return false;
-        requireConfigured();
-
-        return send(subscription, "स्वर्णभूमी स्मरणपत्र", reminder.getReason(), "/?tab=reminders");
+        if (reminder.getOwner() == null) return false;
+        String body = (blank(reminder.getCropOrPlot()) ? "" : reminder.getCropOrPlot() + ": ") + reminder.getReason();
+        return notifyUser(reminder.getOwner().getId(), new PushMessage("स्वर्णभूमी स्मरणपत्र", body,
+                "/?tab=reminders", "reminder-" + reminder.getId(),
+                reminder.getScheduledAt().atZone(ZoneId.of("Asia/Kolkata")).toInstant().toEpochMilli()));
     }
 
     public boolean notifyUser(Long userId, String title, String body, String url) {
+        return notifyUser(userId, new PushMessage(title, body, url, UUID.randomUUID().toString(), System.currentTimeMillis()));
+    }
+
+    public void sendTest(Long id, AppUser user) {
+        requireConfigured();
+        BrowserPushSubscription subscription = repository.findByIdAndOwnerIdAndActiveTrue(id, user.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "या डिव्हाइसवरील सूचना पुन्हा सुरू करा."));
+        if (!deliver(subscription, forDevice(subscription, new PushMessage("स्वर्णभूमी चाचणी सूचना",
+                "सूचना सुरू आहेत. जतन केलेल्या स्मरणपत्रांची आठवण याच ठिकाणी मिळेल.",
+                "/?tab=reminders", "reminder-test", System.currentTimeMillis())))) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "चाचणी सूचना पाठवता आली नाही. सूचना पुन्हा सुरू करा.");
+        }
+    }
+
+    private boolean notifyUser(Long userId, PushMessage message) {
         if (userId == null || !isConfigured()) return false;
         boolean delivered = false;
         for (BrowserPushSubscription subscription : repository.findAllByOwnerIdAndActiveTrue(userId)) {
             try {
-                delivered |= send(subscription, title, body, url);
+                delivered |= deliver(subscription, forDevice(subscription, message));
             } catch (RuntimeException exception) {
                 log.warn("Web push notification could not be delivered to subscription {}", subscription.getId(), exception);
             }
@@ -124,19 +143,27 @@ public class BrowserPushService {
         return delivered;
     }
 
-    private boolean send(BrowserPushSubscription subscription, String title, String body, String url) {
+    private PushMessage forDevice(BrowserPushSubscription subscription, PushMessage message) {
+        String url = subscription.isAndroidApp()
+                ? org.springframework.web.util.UriComponentsBuilder.fromUriString(message.url())
+                    .replaceQueryParam("androidApp", "1").build().toUriString()
+                : message.url();
+        return new PushMessage(message.title(), message.body(), url, message.tag(), message.timestamp());
+    }
 
-        String payload;
+    boolean deliver(BrowserPushSubscription subscription, PushMessage message) {
         try {
-            payload = objectMapper.writeValueAsString(Map.of(
-                    "title", title,
-                    "body", body,
-                    "url", url));
+            String payload = objectMapper.writeValueAsString(message);
             PushService pushService = new PushService(publicKey, privateKey, subject);
-            HttpResponse response = pushService.send(new Notification(subscription.getEndpoint(),
-                    subscription.getP256dhKey(), subscription.getAuthKey(),
-                    payload.getBytes(StandardCharsets.UTF_8), PUSH_TTL_SECONDS));
+            var pending = pushService.sendAsync(Notification.builder()
+                    .endpoint(subscription.getEndpoint()).userPublicKey(subscription.getP256dhKey())
+                    .userAuth(subscription.getAuthKey()).payload(payload).ttl(PUSH_TTL_SECONDS)
+                    .urgency(Urgency.HIGH).build());
+            HttpResponse response;
+            try { response = pending.get(15, TimeUnit.SECONDS); }
+            catch (TimeoutException exception) { pending.cancel(true); throw exception; }
             int status = response.getStatusLine().getStatusCode();
+            EntityUtils.consumeQuietly(response.getEntity());
             if (status == 404 || status == 410) {
                 deactivate(subscription);
                 log.warn("Web push subscription {} expired with status {}", subscription.getId(), status);
@@ -190,7 +217,8 @@ public class BrowserPushService {
     }
 
     public record PushKeys(String p256dh, String auth) {}
-    public record SubscriptionRequest(String endpoint, PushKeys keys) {}
+    public record SubscriptionRequest(String endpoint, PushKeys keys, boolean androidApp) {}
     public record PublicKeyResponse(String publicKey) {}
     public record SubscriptionResponse(Long id) {}
+    record PushMessage(String title, String body, String url, String tag, long timestamp) {}
 }

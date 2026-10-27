@@ -38,6 +38,11 @@ self.addEventListener('push', event => {
 
   event.waitUntil(self.registration.showNotification(payload.title || 'स्वर्णभूमी स्मरणपत्र', {
     body: payload.body || 'तुमच्यासाठी शेतीकामाचे स्मरणपत्र आहे.',
+    icon: '/images/app-icon-192.png',
+    badge: '/images/notification-badge.png',
+    tag: payload.tag || undefined,
+    timestamp: Number.isFinite(payload.timestamp) ? payload.timestamp : Date.now(),
+    renotify: Boolean(payload.tag),
     vibrate: [300, 100, 300, 100, 500],
     requireInteraction: true,
     data: { url: payload.url || '/' }

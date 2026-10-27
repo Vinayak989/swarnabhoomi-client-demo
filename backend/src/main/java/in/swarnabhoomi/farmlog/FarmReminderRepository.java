@@ -14,6 +14,12 @@ public interface FarmReminderRepository extends JpaRepository<FarmReminder, Long
     @Query("update FarmReminder r set r.browserSubscription = null where r.browserSubscription.id = :subscriptionId and r.owner is null")
     int detachLegacyReminders(@Param("subscriptionId") Long subscriptionId);
     List<FarmReminder> findAllByStatus(String status);
-    List<FarmReminder> findTop50ByStatusAndOwnerIsNotNullAndScheduledAtLessThanEqualAndBrowserSubscriptionIsNotNullOrderByScheduledAtAsc(
-            String status, LocalDateTime scheduledAt);
+    @Query("""
+            select r from FarmReminder r
+            where r.status = 'PENDING' and r.owner is not null and r.scheduledAt <= :now
+              and (r.nextDeliveryAt is null or r.nextDeliveryAt <= :now)
+              and exists (select s.id from BrowserPushSubscription s where s.owner = r.owner and s.active = true)
+            order by r.scheduledAt asc
+            """)
+    List<FarmReminder> findDueReminders(@Param("now") LocalDateTime now, org.springframework.data.domain.Pageable pageable);
 }

@@ -42,4 +42,13 @@ public class BrowserPushController {
                 HttpStatus.FORBIDDEN, "हे वैशिष्ट्य शेतकरी खात्यासाठी आहे.");
         service.unsubscribe(id, user);
     }
+
+    @PostMapping("/{id}/test")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void test(@PathVariable Long id,
+            @org.springframework.web.bind.annotation.RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
+        if (!"farmer".equals(user.getRole())) throw new org.springframework.web.server.ResponseStatusException(
+                HttpStatus.FORBIDDEN, "हे वैशिष्ट्य शेतकरी खात्यासाठी आहे.");
+        service.sendTest(id, user);
+    }
 }

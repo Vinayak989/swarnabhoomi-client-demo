@@ -3,6 +3,12 @@
 .reminder-push-toggle{min-height:38px;flex:none;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 12px;border:1px solid #d8e6d4;border-radius:8px;background:#fff;color:#47794e;font:inherit;font-size:10px;font-weight:700;cursor:pointer}
 .reminder-push-toggle.enabled{border-color:#cfe2cc;background:#f0f8ed;color:#39784a}
 .reminder-push-toggle:disabled{opacity:.65;cursor:wait}
+.reminder-notification-status{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:14px;padding:14px 16px;border:1px solid #dce8d8;border-radius:13px;background:#f4f9f0}
+.reminder-notification-status b{display:flex;align-items:center;gap:7px;color:#386744;font-size:13px}
+.reminder-notification-status p{max-width:680px;margin:6px 0 0;color:#66776a;font-size:12px;line-height:1.7}
+.reminder-notification-status .reminder-push-toggle{min-height:44px;margin:0}
+.reminder-notification-status .reminder-notification-warning{color:#a3402a}
+@media(max-width:600px){.reminder-notification-status{align-items:stretch;flex-direction:column}.reminder-notification-status .reminder-push-toggle{width:100%}}
 .reminder-weather-card{display:grid;grid-template-columns:1fr;gap:11px;margin-top:14px;padding:15px 17px;border:1px solid #e4ebe0;border-radius:12px;background:#fbfdf9}
 .reminder-weather-heading{display:flex;align-items:center;gap:10px}
 .reminder-weather-icon{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:10px;background:#edf5e9;color:#5b8a5e}

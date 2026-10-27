@@ -17,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class FarmReminderService {
     private static final Logger log = LoggerFactory.getLogger(FarmReminderService.class);
     private static final ZoneId FARM_TIME_ZONE = ZoneId.of("Asia/Kolkata");
+    private static final int MAX_DELIVERY_ATTEMPTS = 5;
     private final FarmReminderRepository repository;
     private final BrowserPushSubscriptionRepository pushSubscriptionRepository;
     private final BrowserPushService browserPushService;
@@ -101,6 +102,8 @@ public class FarmReminderService {
         }
         reminder.setScheduledAt(request.scheduledAt());
         reminder.setDeliveryNote("वेळ बदलली; सूचनेसाठी प्रतीक्षेत.");
+        reminder.setDeliveryAttempts(0);
+        reminder.setNextDeliveryAt(null);
         return view(repository.save(reminder));
     }
 
@@ -115,23 +118,23 @@ public class FarmReminderService {
         return view(repository.save(reminder));
     }
 
-    @Scheduled(fixedDelayString = "${app.reminders.poll-interval-ms:15000}")
+    @Scheduled(fixedDelayString = "${app.reminders.poll-interval-ms:5000}")
     public synchronized void sendDueReminders() {
+        if (!browserPushService.isConfigured()) return;
         LocalDateTime now = LocalDateTime.now(FARM_TIME_ZONE);
-        List<FarmReminder> due = repository
-                .findTop50ByStatusAndOwnerIsNotNullAndScheduledAtLessThanEqualAndBrowserSubscriptionIsNotNullOrderByScheduledAtAsc(
-                        "PENDING", now);
+        List<FarmReminder> due = repository.findDueReminders(now, org.springframework.data.domain.PageRequest.of(0, 50));
         for (FarmReminder reminder : due) {
             reminder.setStatus("SENDING");
             reminder.setDeliveryNote("सूचना पाठवत आहे");
+            reminder.setDeliveryAttempts(reminder.getDeliveryAttempts() + 1);
             repository.saveAndFlush(reminder);
             boolean delivered = false;
             String deliveryNote;
             try {
-                delivered = reminder.getBrowserSubscription() != null && browserPushService.send(reminder);
+                delivered = browserPushService.send(reminder);
                 deliveryNote = delivered
                         ? "डिव्हाइस सूचनेसाठी पाठवण्याची विनंती स्वीकारली."
-                        : "या स्मरणपत्राचे सूचना डिव्हाइस उपलब्ध नाही. पुन्हा सूचना सुरू करून नवे स्मरणपत्र तयार करा.";
+                        : "सूचना मिळाली नाही. डिव्हाइसवरील सूचना सुरू आहेत का ते तपासा.";
             } catch (RuntimeException exception) {
                 log.warn("Failed to send push reminder {}", reminder.getId(), exception);
                 deliveryNote = "डिव्हाइस सूचना पाठवताना तांत्रिक अडचण आली.";
@@ -140,20 +143,26 @@ public class FarmReminderService {
                 reminder.setStatus("SENT");
                 reminder.setDeliveryNote(deliveryNote);
                 reminder.setSentAt(LocalDateTime.now(FARM_TIME_ZONE));
+                reminder.setNextDeliveryAt(null);
+            } else if (reminder.getDeliveryAttempts() < MAX_DELIVERY_ATTEMPTS) {
+                reminder.setStatus("PENDING");
+                reminder.setNextDeliveryAt(now.plusSeconds(60L << (reminder.getDeliveryAttempts() - 1)));
+                reminder.setDeliveryNote("सूचना पाठवता आली नाही; पुन्हा प्रयत्न केला जाईल.");
             } else {
                 reminder.setStatus("FAILED");
                 reminder.setDeliveryNote(deliveryNote);
             }
             repository.save(reminder);
-            createNextOccurrence(reminder);
+            if (!"PENDING".equals(reminder.getStatus())) createNextOccurrence(reminder);
         }
     }
 
     @PostConstruct
     void markInterruptedSends() {
         for (FarmReminder reminder : repository.findAllByStatus("SENDING")) {
-            reminder.setStatus("FAILED");
-            reminder.setDeliveryNote("सर्व्हर थांबल्यामुळे पाठवण्याची स्थिती तपासता आली नाही.");
+            reminder.setStatus("PENDING");
+            reminder.setNextDeliveryAt(null);
+            reminder.setDeliveryNote("सर्व्हर पुन्हा सुरू झाला; सूचना पुन्हा पाठवली जाईल.");
             repository.save(reminder);
         }
     }

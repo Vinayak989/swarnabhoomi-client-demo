@@ -27,6 +27,9 @@ public class BrowserPushSubscription {
     @Column(nullable = false)
     private boolean active = true;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean androidApp;
+
     @JsonIgnore
     @jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
     @jakarta.persistence.JoinColumn(name = "owner_id")
@@ -41,6 +44,8 @@ public class BrowserPushSubscription {
     public void setAuthKey(String value) { authKey = value; }
     public boolean isActive() { return active; }
     public void setActive(boolean value) { active = value; }
+    public boolean isAndroidApp() { return androidApp; }
+    public void setAndroidApp(boolean value) { androidApp = value; }
     public AppUser getOwner() { return owner; }
     public void setOwner(AppUser value) { owner = value; }
 }
