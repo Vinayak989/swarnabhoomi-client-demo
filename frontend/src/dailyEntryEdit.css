@@ -1,0 +1,7 @@
+.entry-actions .edit-entry{display:grid;place-items:center;padding:6px;border:0;border-radius:7px;background:transparent;color:#7e9b80;cursor:pointer}
+.entry-actions .edit-entry:hover{background:#edf5eb;color:#39784a}
+.entry-actions .edit-entry:focus-visible,.entry-actions .delete:focus-visible{outline:2px solid #74a879;outline-offset:2px}
+.photo-upload .photo-thumb-trigger{display:block;flex:none;padding:0;border:0;border-radius:8px;background:transparent;overflow:hidden;cursor:pointer}
+.photo-upload .photo-thumb-trigger img{display:block;width:50px;height:50px;object-fit:cover}
+.remove-entry-photo{padding:6px 9px;border:1px solid #eed8d3;border-radius:7px;background:#fff6f3;color:#9e5b50;font:700 9px inherit;cursor:pointer}
+.remove-entry-photo:hover{background:#ffede8}

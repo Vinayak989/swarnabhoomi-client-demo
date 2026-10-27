@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle2, ExternalLink, Leaf, LoaderCircle, Save, ShieldCheck, UserRound } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Leaf, LoaderCircle, Pencil, Save, ShieldCheck, UserRound } from 'lucide-react';
 import './accountProfile.css';
+import './accountProfileSummary.css';
 import SpeechTextInput from './SpeechTextInput.jsx';
 
 const ORGANIC_SOURCES = [
@@ -34,14 +35,17 @@ const STATUS_LABELS = {
 
 function AccountProfilePanel({ accountType, mobileNumber, profile, profileLoading, onSaved, apiFetch }) {
   const [form, setForm] = useState(() => blankForm(profile));
+  const [editing, setEditing] = useState(() => !profile?.profileId);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const isSeller = accountType === 'seller' || accountType === 'farmer';
+  const hasSavedProfile = Boolean(profile?.profileId);
   const accountLabel = accountType === 'farmer' ? 'शेतकरी' : accountType === 'seller' ? 'विक्रेता' : 'खरेदीदार';
 
   useEffect(() => {
     setForm(blankForm(profile));
+    setEditing(!profile?.profileId);
   }, [profile?.profileId, profile?.updatedAt, profile?.complete]);
 
   function updateField(event) {
@@ -72,6 +76,7 @@ function AccountProfilePanel({ accountType, mobileNumber, profile, profileLoadin
       if (!response.ok) throw new Error(result.message || 'प्रोफाइल जतन करता आली नाही.');
       setForm(blankForm(result));
       onSaved(result);
+      setEditing(false);
       setNotice('प्रोफाइल जतन झाले.');
     } catch (saveError) {
       setError(saveError.message || 'प्रोफाइल जतन करता आली नाही.');
@@ -81,6 +86,17 @@ function AccountProfilePanel({ accountType, mobileNumber, profile, profileLoadin
   }
 
   const verificationStatus = profile?.organicVerificationStatus || 'NOT_CLAIMED';
+  const profileRows = [
+    ['पूर्ण नाव', profile?.fullName], ['मोबाईल क्रमांक', mobileNumber],
+    ['व्यवसाय / शेताचे नाव', profile?.businessName], ['गाव', profile?.village],
+    ['तालुका', profile?.taluka], ['जिल्हा', profile?.district], ['राज्य', profile?.state],
+    ['पिनकोड', profile?.pincode], ['पत्ता', profile?.address], ['परिचय', profile?.about],
+    ...(isSeller ? [
+      ['सेंद्रिय प्रमाणपत्र प्रणाली', profile?.organicCertificationSystem === 'PGS_INDIA' ? 'PGS-India' : profile?.organicCertificationSystem === 'NPOP_APEDA' ? 'NPOP / APEDA' : 'प्रमाणपत्र जोडलेले नाही'],
+      ['प्रमाणपत्र क्रमांक', profile?.organicCertificationNumber], ['वैधता', profile?.organicCertificateValidUntil],
+      ['पडताळणी स्थिती', STATUS_LABELS[verificationStatus] || verificationStatus]
+    ] : [])
+  ].filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '');
 
   return <section className="account-profile-page" lang="mr">
     <header className="account-profile-hero">
@@ -95,7 +111,13 @@ function AccountProfilePanel({ accountType, mobileNumber, profile, profileLoadin
     {error && <div className="account-profile-message error" role="alert">{error}</div>}
     {notice && <div className="account-profile-message success" role="status">{notice}</div>}
 
-    {profileLoading ? <div className="account-profile-loading"><LoaderCircle className="spin" size={19}/> प्रोफाइल उघडत आहे…</div> : <form className="account-profile-form" onSubmit={saveProfile}>
+    {profileLoading ? <div className="account-profile-loading"><LoaderCircle className="spin" size={19}/> प्रोफाइल उघडत आहे…</div> : hasSavedProfile && !editing ? <div className="account-profile-summary">
+      <section className="account-profile-section">
+        <div className="account-profile-section-heading"><span><UserRound size={17}/></span><div><h2>प्रोफाइल तपशील</h2><p>जतन केलेली माहिती</p></div></div>
+        <dl className="account-profile-summary-grid">{profileRows.map(([label, value]) => <div className={label === 'पत्ता' || label === 'परिचय' ? 'wide' : ''} key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+      </section>
+      <div className="account-profile-footer"><p>{profile?.complete ? 'तुमचे प्रोफाइल जतन झाले आहे. माहिती बदलण्यासाठी संपादित करा.' : 'प्रोफाइल अपूर्ण आहे. आवश्यक तपशील पूर्ण करण्यासाठी संपादित करा.'}</p><button type="button" onClick={() => { setForm(blankForm(profile)); setEditing(true); setNotice(''); setError(''); }}><Pencil size={16}/> प्रोफाइल संपादित करा</button></div>
+    </div> : <form className="account-profile-form" onSubmit={saveProfile}>
       <section className="account-profile-section">
         <div className="account-profile-section-heading"><span><UserRound size={17}/></span><div><h2>मूलभूत माहिती</h2><p>तुमची ओळख आणि परिसर</p></div></div>
         <div className="account-profile-grid">
@@ -135,7 +157,7 @@ function AccountProfilePanel({ accountType, mobileNumber, profile, profileLoadin
         </>}
       </section>}
 
-      <div className="account-profile-footer"><p>{profile?.complete ? 'प्रोफाइल पूर्ण आहे. माहिती बदलल्यास पुन्हा जतन करा.' : 'तुमचा प्रोफाइल निर्देशक पूर्ण करण्यासाठी नाव, गाव, जिल्हा आणि राज्य भरा.'}</p><button type="submit" disabled={saving}>{saving ? <LoaderCircle className="spin" size={16}/> : <Save size={16}/>} {saving ? 'जतन होत आहे…' : 'प्रोफाइल जतन करा'}</button></div>
+      <div className="account-profile-footer"><p>{hasSavedProfile ? 'माहिती अद्ययावत करण्यासाठी बदल जतन करा.' : 'तुमचा प्रोफाइल निर्देशक पूर्ण करण्यासाठी नाव, गाव, जिल्हा आणि राज्य भरा.'}</p><div className="account-profile-footer-actions">{hasSavedProfile && <button type="button" className="account-profile-cancel" onClick={() => { setForm(blankForm(profile)); setEditing(false); setNotice(''); setError(''); }}>रद्द करा</button>}<button type="submit" disabled={saving}>{saving ? <LoaderCircle className="spin" size={16}/> : <Save size={16}/>} {saving ? 'जतन होत आहे…' : hasSavedProfile ? 'बदल जतन करा' : 'प्रोफाइल जतन करा'}</button></div></div>
     </form>}
   </section>;
 }

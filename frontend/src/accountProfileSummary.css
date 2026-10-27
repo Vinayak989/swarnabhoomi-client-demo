@@ -1,0 +1,10 @@
+.account-profile-summary{display:grid;gap:13px;margin-top:13px}
+.account-profile-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0}
+.account-profile-summary-grid>div{min-width:0;padding:11px 12px;border:1px solid #edf1eb;border-radius:10px;background:#fbfcfa}
+.account-profile-summary-grid>div.wide{grid-column:1/-1}
+.account-profile-summary-grid dt{margin-bottom:5px;color:#89958a;font-size:9px;font-weight:700}
+.account-profile-summary-grid dd{margin:0;color:#354d3a;font-size:11px;line-height:1.65;overflow-wrap:anywhere;white-space:pre-wrap}
+.account-profile-footer-actions{display:flex;align-items:center;gap:8px;flex:none}
+.account-profile-footer .account-profile-cancel{border:1px solid #dfe8dc;background:#fff;color:#657767}
+.account-profile-footer .account-profile-cancel:hover:not(:disabled){background:#f5f8f3}
+@media(max-width:700px){.account-profile-summary-grid{grid-template-columns:1fr}.account-profile-summary-grid>div.wide{grid-column:auto}.account-profile-footer-actions{width:100%;flex-direction:column-reverse}.account-profile-footer-actions button{width:100%}}
