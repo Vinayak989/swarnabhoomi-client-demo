@@ -317,11 +317,13 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     }
   }, [request]);
 
-  const loadSellerListings = useCallback(async () => {
+  const loadSellerListings = useCallback(async (silent = false) => {
     const entries = Object.entries(sellerListingTokens);
-    setSellerLoading(true);
-    setSellerError('');
-    setSellerNotice('');
+    if (!silent) {
+      setSellerLoading(true);
+      setSellerError('');
+      setSellerNotice('');
+    }
     try {
       const rows = await Promise.all(entries.map(async ([id, sellerToken]) => {
         const headers = { 'X-Seller-Token': sellerToken };
@@ -338,11 +340,11 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       setSellerListings(validRows);
       if (!validRows.length && entries.length) {
         setSellerError('या ब्राउझरमध्ये जतन केलेली विक्रेता प्रवेश माहिती कालबाह्य किंवा अमान्य आहे.');
-      }
+      } else setSellerError('');
     } catch (loadError) {
       setSellerError(loadError.message || 'विक्रेता माहिती मिळाली नाही.');
     } finally {
-      setSellerLoading(false);
+      if (!silent) setSellerLoading(false);
     }
   }, [request, sellerListingTokens]);
 
@@ -391,7 +393,10 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   }, [loadPaymentOptions]);
 
   useEffect(() => {
-    if (view === 'seller') loadSellerListings();
+    if (view !== 'seller') return undefined;
+    void loadSellerListings();
+    const timer = window.setInterval(() => { void loadSellerListings(true); }, 30000);
+    return () => window.clearInterval(timer);
   }, [view, loadSellerListings]);
 
   useEffect(() => {
@@ -1026,7 +1031,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       </>}
       {accountType !== 'buyer' && accountType !== 'admin' && <>
         <button type="button" role="tab" aria-selected={view === 'register'} className={view === 'register' ? 'active' : ''} onClick={() => { setError(''); setView('register'); }}><PackagePlus size={16}/> शेतमाल विक्रीसाठी नोंदवा</button>
-        <button type="button" role="tab" aria-selected={view === 'seller'} className={view === 'seller' ? 'active' : ''} onClick={() => { setError(''); setView('seller'); }}><ClipboardList size={16}/> माझे व्यवहार{unreadMessageTotal > 0 && <span className="market-unread-badge" aria-label={`${unreadMessageTotal.toLocaleString('mr-IN')} न वाचलेले संदेश`}>{unreadMessageTotal.toLocaleString('mr-IN')}</span>}</button>
+        <button type="button" role="tab" aria-selected={view === 'seller'} className={view === 'seller' ? 'active' : ''} onClick={() => { setError(''); setView('seller'); }}><ClipboardList size={16}/> माझे व्यवहार{pendingSellerRequests > 0 && <span className="market-order-badge" role="status" aria-live="polite" aria-label={`${pendingSellerRequests.toLocaleString('mr-IN')} नवीन ऑर्डर`}>{pendingSellerRequests.toLocaleString('mr-IN')}</span>}{unreadMessageTotal > 0 && <span className="market-unread-badge" aria-label={`${unreadMessageTotal.toLocaleString('mr-IN')} न वाचलेले संदेश`}>{unreadMessageTotal.toLocaleString('mr-IN')}</span>}</button>
       </>}
     </div>
 
@@ -1213,7 +1218,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       </div>
       {sellerError && <div className="market-message market-error" role="alert">{sellerError}</div>}
       {sellerNotice && <div className="market-message market-success" role="status"><Check size={15}/>{sellerNotice}</div>}
-      {!sellerLoading && sellerListings.length > 0 && <div className="market-seller-view-switch" role="tablist" aria-label="माझे व्यवहार विभाग"><button type="button" role="tab" aria-selected={sellerDashboardView === 'orders'} className={sellerDashboardView === 'orders' ? 'active' : ''} onClick={() => setSellerDashboardView('orders')}><ClipboardList size={15}/> खरेदी ऑर्डर <b>{sellerOrders.length.toLocaleString('mr-IN')}</b></button><button type="button" role="tab" aria-selected={sellerDashboardView === 'listings'} className={sellerDashboardView === 'listings' ? 'active' : ''} onClick={() => setSellerDashboardView('listings')}><Store size={15}/> माझा शेतमाल <b>{sellerListings.length.toLocaleString('mr-IN')}</b></button></div>}
+      {!sellerLoading && sellerListings.length > 0 && <div className="market-seller-view-switch" role="tablist" aria-label="माझे व्यवहार विभाग"><button type="button" role="tab" aria-selected={sellerDashboardView === 'orders'} className={sellerDashboardView === 'orders' ? 'active' : ''} onClick={() => setSellerDashboardView('orders')}><ClipboardList size={15}/> खरेदी ऑर्डर <b>{sellerOrders.length.toLocaleString('mr-IN')}</b>{pendingSellerRequests > 0&&<span className="market-order-badge" aria-label={`${pendingSellerRequests.toLocaleString('mr-IN')} नवीन ऑर्डर`}>{pendingSellerRequests.toLocaleString('mr-IN')}</span>}</button><button type="button" role="tab" aria-selected={sellerDashboardView === 'listings'} className={sellerDashboardView === 'listings' ? 'active' : ''} onClick={() => setSellerDashboardView('listings')}><Store size={15}/> माझा शेतमाल <b>{sellerListings.length.toLocaleString('mr-IN')}</b></button></div>}
       {sellerLoading ? <div className="market-empty">विक्रेता माहिती लोड होत आहे…</div>
         : sellerListings.length === 0 ? <div className="market-empty market-seller-empty"><ClipboardList size={30}/><b>या ब्राउझरमध्ये विक्रीची नोंद नाही</b><span>नोंदणी केल्यानंतर तुमचा शेतमाल आणि खरेदीच्या विनंत्या येथे दिसतील. जुनी नोंद असल्यास तिचे नियंत्रण तपशील या ब्राउझरमध्ये उपलब्ध नसू शकतात.</span><button type="button" className="market-submit-button" onClick={() => setView('register')}><PackagePlus size={16}/> शेतमाल नोंदवा</button></div>
           : sellerDashboardView === 'orders' ? <div className="market-seller-orders-list">{sellerOrders.length === 0 ? <div className="market-empty market-seller-empty"><ClipboardList size={28}/><b>अजून खरेदी ऑर्डर नाहीत</b><span>नवीन ऑर्डर आल्यावर ती इथे दिसेल.</span></div> : sellerOrders.map(({ row, purchaseRequest }) => <article className="market-seller-order-card" key={purchaseRequest.id}>
