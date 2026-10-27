@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Headphones, LoaderCircle, MessageCircle, RefreshCw, Send } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ChevronLeft, ChevronRight, Headphones, LoaderCircle, MessageCircle, RefreshCw, Send, X } from 'lucide-react';
 import SpeechTextInput from './SpeechTextInput.jsx';
 import './supportChat.css';
 
@@ -28,7 +29,8 @@ function Conversation({ admin, title, subtitle, messages, draft, setDraft, onSen
   const lastMessageId = messages.at(-1)?.id;
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+    const container = bottomRef.current?.parentElement;
+    container?.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
   }, [lastMessageId]);
 
   return <section className="support-conversation" aria-label={title}>
@@ -268,4 +270,33 @@ export default function SupportChatPanel({ role, apiFetch, apiBase, onUnreadChan
   return role === 'admin'
     ? <AdminSupport apiFetch={apiFetch} apiBase={apiBase} onUnreadChange={onUnreadChange}/>
     : <ParticipantSupport apiFetch={apiFetch} apiBase={apiBase} onUnreadChange={onUnreadChange}/>;
+}
+
+export function SupportChatDialog({ role, apiFetch, apiBase, onUnreadChange, onClose }) {
+  const dialogRef = useRef(null);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    dialogRef.current?.focus();
+    const onKeyDown = event => { if (event.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [onClose]);
+
+  return createPortal(<div className="support-modal-backdrop" onMouseDown={event => {
+    if (event.target === event.currentTarget) onClose();
+  }}>
+    <section ref={dialogRef} className={`support-modal ${role === 'admin' ? 'support-modal-admin' : ''}`}
+      role="dialog" aria-modal="true" aria-labelledby="support-modal-title" tabIndex={-1}>
+      <div className="support-modal-toolbar">
+        <span id="support-modal-title"><MessageCircle size={18}/> मदत व संवाद</span>
+        <button type="button" onClick={onClose} aria-label="मदत संवादातून बाहेर पडा"><X size={20}/> बाहेर पडा</button>
+      </div>
+      <SupportChatPanel role={role} apiFetch={apiFetch} apiBase={apiBase} onUnreadChange={onUnreadChange}/>
+    </section>
+  </div>, document.body);
 }

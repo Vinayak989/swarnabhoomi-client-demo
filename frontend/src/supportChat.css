@@ -60,12 +60,28 @@
 .support-no-selection{display:grid;place-content:center;text-align:center;min-height:670px;border:1px solid #e2eae0;border-radius:18px;background:#fff;color:#7c987e}
 .support-no-selection h2{font-size:17px;color:#3e6447}
 .support-no-selection p{font-size:11px}
-.nav .support-nav-badge{margin-left:auto;padding:2px 6px;border-radius:20px;background:#dd6a44;color:#fff;font-size:10px;font-weight:800}
-.android-bottom-icon .support-mobile-badge{position:absolute;top:-5px;right:1px;min-width:18px;height:18px;display:grid;place-items:center;padding:0 4px;border-radius:20px;background:#df6848;color:white;font-size:9px;line-height:1}
-.android-more-list .support-more-badge{min-width:19px;height:19px;display:grid;place-items:center;padding:0 5px;border-radius:20px;background:#df6848;color:white;font-size:9px}
 .support-fab{position:fixed;right:23px;bottom:80px;z-index:20;display:inline-flex;align-items:center;gap:8px;border:0;border-radius:26px;background:#2d7044;color:white;padding:11px 15px;box-shadow:0 9px 25px #173e2d45;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700}
 .support-fab b{min-width:18px;height:18px;display:grid;place-items:center;border-radius:20px;background:#e56f45;font-size:9px}
 .support-fab:hover{background:#225a37}
 .android-app-mode .support-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px))}
+.support-modal-backdrop{position:fixed;inset:0;z-index:100;display:flex;align-items:flex-end;justify-content:flex-end;padding:20px;background:#10271985;backdrop-filter:blur(3px)}
+.support-modal{width:min(470px,calc(100vw - 24px));height:min(740px,calc(100dvh - 40px));display:flex;flex-direction:column;overflow:hidden;border:1px solid #e5ede3;border-radius:20px;background:#f7fbf5;box-shadow:0 25px 85px #1027196b;outline:none}
+.support-modal-admin{width:min(1120px,calc(100vw - 40px));height:min(820px,calc(100dvh - 40px))}
+.support-modal-toolbar{flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;background:#fff;border-bottom:1px solid #e1ebdf}
+.support-modal-toolbar span,.support-modal-toolbar button{display:inline-flex;align-items:center;gap:7px;font-family:inherit;font-size:12px;font-weight:800}
+.support-modal-toolbar span{color:#315b3b}
+.support-modal-toolbar button{border:1px solid #d9e8d8;border-radius:8px;background:#f2f8f0;color:#426b48;padding:7px 9px;cursor:pointer}
+.support-modal-toolbar button:hover{background:#e8f3e6}
+.support-modal .support-page{flex:1;display:flex;flex-direction:column;min-height:0;max-width:none;width:100%;margin:0;padding:13px;overflow:hidden}
+.support-modal .support-page-hero{flex:none;margin-bottom:12px;padding:17px 18px}
+.support-modal .support-page-hero h1{font-size:19px;margin:6px 0 4px}
+.support-modal .support-page-hero p{font-size:11px}
+.support-modal .support-page-hero>button{top:17px;right:18px}
+.support-modal .support-conversation{flex:1;min-height:0}
+.support-modal .support-messages{min-height:0;max-height:none}
+.support-modal-admin .support-admin-layout{flex:1;min-height:0;grid-template-columns:minmax(220px,315px) minmax(0,1fr)}
+.support-modal-admin .support-inbox,.support-modal-admin .support-admin-layout .support-conversation{min-height:0}
+.support-modal-admin .support-thread-items{min-height:0;max-height:none}
 @media(max-width:900px){.support-admin-layout{grid-template-columns:1fr}.support-inbox{min-height:250px}.support-thread-items{max-height:240px}.support-admin-layout .support-conversation{min-height:540px}}
 @media(max-width:700px){.support-page{margin:18px auto 38px}.support-page-hero{padding:20px}.support-page-hero h1{font-size:20px}.support-page-hero>button{position:static;margin-top:14px}.support-conversation{min-height:520px}.support-messages{padding:15px;min-height:270px}.support-message{max-width:90%}.support-compose{padding:13px}.support-fab{right:15px;bottom:94px;padding:10px 13px}}
+@media(max-width:700px){.support-modal-backdrop{padding:0}.support-modal,.support-modal-admin{width:100%;height:100dvh;max-height:none;border-radius:0}.support-modal .support-page{padding:9px}.support-modal .support-page-hero{padding:12px 14px;margin-bottom:8px}.support-modal .support-page-hero h1{font-size:17px}.support-modal .support-page-hero>button{margin-top:8px}.support-modal-admin .support-admin-layout{display:flex;flex-direction:column}.support-modal-admin .support-inbox{flex:0 0 30%;min-height:150px}.support-modal-admin .support-admin-layout .support-conversation{flex:1;min-height:0}}
