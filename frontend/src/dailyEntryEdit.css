@@ -1,7 +1,12 @@
 .entry-actions .edit-entry{display:grid;place-items:center;padding:6px;border:0;border-radius:7px;background:transparent;color:#7e9b80;cursor:pointer}
 .entry-actions .edit-entry:hover{background:#edf5eb;color:#39784a}
+.entry-actions .entry-pdf-download{min-height:32px;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:5px 8px;border:1px solid #dbe7d7;border-radius:8px;background:#f3f8f0;color:#47764f;font-family:inherit;font-size:9px;font-weight:700;white-space:nowrap;cursor:pointer}
+.entry-actions .entry-pdf-download:hover:not(:disabled){border-color:#adc9a8;background:#e9f3e5}
+.entry-actions .entry-pdf-download:disabled{opacity:.6;cursor:wait}
+.entry-actions .entry-pdf-download:focus-visible{outline:2px solid #74a879;outline-offset:2px}
 .entry-actions .edit-entry:focus-visible,.entry-actions .delete:focus-visible{outline:2px solid #74a879;outline-offset:2px}
 .photo-upload .photo-thumb-trigger{display:block;flex:none;padding:0;border:0;border-radius:8px;background:transparent;overflow:hidden;cursor:pointer}
 .photo-upload .photo-thumb-trigger img{display:block;width:50px;height:50px;object-fit:cover}
 .remove-entry-photo{padding:6px 9px;border:1px solid #eed8d3;border-radius:7px;background:#fff6f3;color:#9e5b50;font:700 9px inherit;cursor:pointer}
 .remove-entry-photo:hover{background:#ffede8}
+@media(max-width:700px){.entry-list .entry-card{grid-template-columns:minmax(0,1fr)}.entry-list .entry-actions{grid-column:1;grid-row:auto;justify-content:flex-end;padding-top:8px;border-top:1px solid #edf1eb}}
