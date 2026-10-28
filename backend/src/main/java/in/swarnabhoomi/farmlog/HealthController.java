@@ -32,7 +32,7 @@ public class HealthController {
                 }
             }
         } catch (Exception exception) { throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Database is not ready."); }
-        for (var field : Map.of("mysqlTargetCheck", "app.database.mysql-target-check", "mysqlTargetError", "app.database.mysql-target-error",
+        for (var field : Map.of("mysqlMemoryMaintenance", "app.database.mysql-memory-maintenance", "mysqlTargetCheck", "app.database.mysql-target-check", "mysqlTargetError", "app.database.mysql-target-error",
                 "migratedTables", "app.database.migrated-tables", "migratedRows", "app.database.migrated-rows").entrySet()) {
             String value = environment.getProperty(field.getValue()); if (value != null) result.put(field.getKey(), value);
         }
