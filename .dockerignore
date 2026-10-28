@@ -1,5 +1,7 @@
 .git
 .tools
+.backups
+.env
 **/node_modules
 **/target
 backend/data

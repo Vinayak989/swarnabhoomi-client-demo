@@ -13,8 +13,8 @@ For the live H2 app, `POST /api/internal/database-export` creates a consistent n
 Run from `backend` in PowerShell, replacing the private paths below:
 
 ```powershell
-mvn dependency:build-classpath "-Dmdep.outputFile=target/migration-classpath.txt"
-$migrationClasspath = (Get-Content -Raw target/migration-classpath.txt).Trim()
+mvn compile dependency:build-classpath "-Dmdep.outputFile=target/migration-classpath.txt"
+$migrationClasspath = (Resolve-Path target/classes).Path + ';' + (Get-Content -Raw target/migration-classpath.txt).Trim()
 $migrationSnapshot = 'D:/private-backups/h2-snapshot.sql'
 $migrationReports = 'D:/private-backups/migration'
 java --class-path $migrationClasspath tools/H2ToMySqlMigration.java plan $migrationSnapshot $migrationReports
@@ -51,3 +51,13 @@ The local `.env` can alternatively use `spring.profiles.active=mysql`. Start loc
 For a MySQL service on Render, follow [Render's MySQL deployment instructions](https://render.com/docs/deploy-mysql): create a Docker private service from `render-examples/mysql`, in the same workspace and region as the app; set `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, and `MYSQL_ROOT_PASSWORD`; and attach a persistent disk at exactly `/var/lib/mysql`. Use its **Connect > Internal** hostname and port in the app's JDBC URL. The private service and disk require paid resources. An external hosted MySQL server is another option; use that provider's TLS settings and allow the Render app's outbound addresses in the database firewall.
 
 Before production cutover, stop new writes, take a fresh H2 snapshot, migrate it to an empty MySQL schema, and verify it. Then change the app's environment settings and redeploy. Check login, listings, photos, and a new write. Enable reminders only on the production instance. Retain the original H2 database and both backup formats. If rolling back after MySQL has accepted new writes, reconcile those writes before returning to H2.
+
+## One-time Render cutover
+
+The packaged app can perform the same migration before its HTTP server, repositories, or scheduled jobs start. This avoids writes to H2 between the snapshot and cutover. Keep the existing H2 configuration while preparing this step.
+
+Set `MYSQL_JDBC_URL`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_SCHEMA`, and a unique `APP_MYSQL_CUTOVER_ID` on the web app. With `APP_MYSQL_CUTOVER_MODE=check`, startup performs a read-only connection and empty-schema check, then continues using H2. `/api/health` reports the check result without credentials.
+
+After that check succeeds, set `APP_MYSQL_CUTOVER_MODE=apply` and redeploy. On the disk-backed Render web service, the old instance stops before the new instance opens H2. The migration takes a fresh native and logical backup, imports into the empty MySQL schema, verifies every row twice, and validates the application schema before accepting requests. It retains the original H2 file and writes private reports under `DB_BACKUP_DIRECTORY/mysql-cutover/<cutover-id>/`.
+
+A completion marker allows restarts to reuse the verified MySQL target without copying or overwriting data again. A failed migration never starts the app against a partial target. Inspect the private failure report; retain H2 and its backups. After a successful cutover, activate the normal `mysql` profile and set the cutover mode back to `off`; verify `/api/health` still reports MySQL. Configure production reminder delivery and regular MySQL dumps.
