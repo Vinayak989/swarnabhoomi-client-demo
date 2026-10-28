@@ -90,7 +90,7 @@ function AccountProfilePanel({ accountType, mobileNumber, profile, profileLoadin
     ['पूर्ण नाव', profile?.fullName], ['मोबाईल क्रमांक', mobileNumber],
     ['व्यवसाय / शेताचे नाव', profile?.businessName], ['गाव', profile?.village],
     ['तालुका', profile?.taluka], ['जिल्हा', profile?.district], ['राज्य', profile?.state],
-    ['पिनकोड', profile?.pincode], ['पत्ता', profile?.address], ['परिचय', profile?.about],
+    ['पिनकोड', profile?.pincode], ['परिचय', profile?.about],
     ...(isSeller ? [
       ['सेंद्रिय प्रमाणपत्र प्रणाली', profile?.organicCertificationSystem === 'PGS_INDIA' ? 'PGS-India' : profile?.organicCertificationSystem === 'NPOP_APEDA' ? 'NPOP / APEDA' : 'प्रमाणपत्र जोडलेले नाही'],
       ['प्रमाणपत्र क्रमांक', profile?.organicCertificationNumber], ['वैधता', profile?.organicCertificateValidUntil],
@@ -114,7 +114,7 @@ function AccountProfilePanel({ accountType, mobileNumber, profile, profileLoadin
     {profileLoading ? <div className="account-profile-loading"><LoaderCircle className="spin" size={19}/> प्रोफाइल उघडत आहे…</div> : hasSavedProfile && !editing ? <div className="account-profile-summary">
       <section className="account-profile-section">
         <div className="account-profile-section-heading"><span><UserRound size={17}/></span><div><h2>प्रोफाइल तपशील</h2><p>जतन केलेली माहिती</p></div></div>
-        <dl className="account-profile-summary-grid">{profileRows.map(([label, value]) => <div className={label === 'पत्ता' || label === 'परिचय' ? 'wide' : ''} key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+        <dl className="account-profile-summary-grid">{profileRows.map(([label, value]) => <div className={label === 'परिचय' ? 'wide' : ''} key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
       </section>
       <div className="account-profile-footer"><p>{profile?.complete ? 'तुमचे प्रोफाइल जतन झाले आहे. माहिती बदलण्यासाठी संपादित करा.' : 'प्रोफाइल अपूर्ण आहे. आवश्यक तपशील पूर्ण करण्यासाठी संपादित करा.'}</p><button type="button" onClick={() => { setForm(blankForm(profile)); setEditing(true); setNotice(''); setError(''); }}><Pencil size={16}/> प्रोफाइल संपादित करा</button></div>
     </div> : <form className="account-profile-form" onSubmit={saveProfile}>
@@ -129,7 +129,6 @@ function AccountProfilePanel({ accountType, mobileNumber, profile, profileLoadin
           <label><span>जिल्हा *</span><SpeechTextInput><input name="district" value={form.district} onChange={updateField} maxLength={120} required placeholder="जिल्हा"/></SpeechTextInput></label>
           <label><span>राज्य *</span><SpeechTextInput><input name="state" value={form.state} onChange={updateField} maxLength={120} required placeholder="राज्य"/></SpeechTextInput></label>
           <label><span>पिनकोड</span><input name="pincode" value={form.pincode} onChange={event => setForm(current => ({ ...current, pincode: event.target.value.replace(/\D/g, '').slice(0, 6) }))} inputMode="numeric" maxLength={6} placeholder="६ अंक"/></label>
-          <label className="wide"><span>पत्ता</span><SpeechTextInput><textarea name="address" value={form.address} onChange={updateField} maxLength={500} rows="2" placeholder="ऐच्छिक"/></SpeechTextInput></label>
           <label className="wide"><span>थोडक्यात परिचय</span><SpeechTextInput><textarea name="about" value={form.about} onChange={updateField} maxLength={800} rows="3" placeholder="तुमच्याबद्दल किंवा व्यवसायाबद्दल लिहा"/></SpeechTextInput></label>
         </div>
       </section>

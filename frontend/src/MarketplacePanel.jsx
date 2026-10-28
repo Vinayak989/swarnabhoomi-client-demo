@@ -1055,15 +1055,10 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
         <span className="market-eyebrow"><Wheat size={15}/> शेतमाल थेट शेतकऱ्याकडून</span>
         <h1>{accountType === 'buyer' ? 'ताज्या शेतमालाची खरेदी' : accountType === 'seller' || accountType === 'farmer' ? 'तुमचा शेतमाल, थेट बाजारात' : 'शेतकरी बाजार'}</h1>
         <p>{accountType === 'buyer' ? 'उपलब्ध ताजा शेतमाल शोधा, भाव पहा आणि थेट ऑर्डर द्या.' : accountType === 'seller' || accountType === 'farmer' ? 'तुमचा माल नोंदवा, साठा सांभाळा आणि खरेदीदारांच्या विनंत्या एका ठिकाणी हाताळा.' : 'उपलब्ध शेतमाल शोधा किंवा विक्रीची नोंद आणि व्यवहार व्यवस्थापित करा.'}</p>
-        <div className="market-hero-actions">
-          {accountType === 'buyer' ? <>
-            <button type="button" className="market-hero-cta primary" onClick={() => setView('browse')}><Search size={16}/> शेतमाल शोधा <ArrowRight size={15}/></button>
-            <button type="button" className="market-hero-cta" onClick={() => { setBuyerFulfillment('DELIVERY'); setView('cart'); }}><ShoppingCart size={16}/> कार्ट पहा</button>
-          </> : accountType === 'seller' || accountType === 'farmer' ? <>
-            <button type="button" className="market-hero-cta primary" onClick={() => { setError(''); setView('register'); }}><PackagePlus size={16}/> विक्री नोंदवा <ArrowRight size={15}/></button>
-            <button type="button" className="market-hero-cta" onClick={() => { setError(''); setView('seller'); }}><ClipboardList size={16}/> माझे व्यवहार</button>
-          </> : null}
-        </div>
+        {accountType === 'buyer' && <div className="market-hero-actions">
+          <button type="button" className="market-hero-cta primary" onClick={() => setView('browse')}><Search size={16}/> शेतमाल शोधा <ArrowRight size={15}/></button>
+          <button type="button" className="market-hero-cta" onClick={() => { setBuyerFulfillment('DELIVERY'); setView('cart'); }}><ShoppingCart size={16}/> कार्ट पहा</button>
+        </div>}
       </div>
       <div className="market-hero-stats" aria-label="बाजाराची माहिती">
         {accountType === 'seller' || accountType === 'farmer' ? <>
