@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 public interface FarmEntryRepository extends JpaRepository<FarmEntry, Long> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select e from FarmEntry e where e.id=:id and e.owner.id=:owner")
+    java.util.Optional<FarmEntry> lockOwned(@org.springframework.data.repository.query.Param("id") Long id,@org.springframework.data.repository.query.Param("owner") Long owner);
     List<FarmEntry> findAllByOwnerIdOrderByEntryDateDescIdDesc(Long ownerId);
     Optional<FarmEntry> findFirstByOwnerIdAndClientRequestId(Long ownerId, String clientRequestId);
     Optional<FarmEntry> findByIdAndOwnerId(Long id, Long ownerId);

@@ -38,6 +38,7 @@ class FarmMarketplaceControllerTest {
               "cropType":"सेंद्रिय हळद",
               "category":"मसाले",
               "quantity":50,
+              "pricePerUnit":100,
               "unit":"kg",
               "description":"ताजी काढणी"
             }
@@ -45,21 +46,28 @@ class FarmMarketplaceControllerTest {
 
     @Autowired private MockMvc mvc;
     @Autowired private FarmProductListingRepository repository;
+    @Autowired private AppUserRepository users;
+    @Autowired private AuthService auth;
+    @Autowired private org.springframework.security.crypto.password.PasswordEncoder passwords;
+    private String sellerAuthorization;
 
     @BeforeEach
     void clearListings() {
         repository.deleteAll();
+        AppUser seller=users.findByMobileNumberAndRole("+919876543211","farmer").orElseGet(()->users.save(new AppUser("+919876543211","farmer",passwords.encode("MarketTesting123!"))));
+        sellerAuthorization="Bearer "+auth.login(seller.getMobileNumber(),"MarketTesting123!","farmer").token();
     }
 
     @Test
     void publicListingsHideSellerContactAndLocationAndContactEndpointRejectsNonAdmin() throws Exception {
         mvc.perform(post("/api/marketplace/listings")
+                .header("Authorization",sellerAuthorization)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(VALID_LISTING))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.productName").value("हळद"))
-            .andExpect(jsonPath("$.address").value("इस्लामपूर, सांगली"))
-            .andExpect(jsonPath("$.phone").doesNotExist());
+            .andExpect(jsonPath("$.listing.productName").value("हळद"))
+            .andExpect(jsonPath("$.listing.address").value("इस्लामपूर, सांगली"))
+            .andExpect(jsonPath("$.listing.phone").doesNotExist());
 
         long id = repository.findTop200ByOrderByCreatedAtDesc().get(0).getId();
         mvc.perform(get("/api/marketplace/listings"))
@@ -79,19 +87,20 @@ class FarmMarketplaceControllerTest {
     }
 
     @Test
-    void listingCreationDoesNotRequireTheSharedApplicationCredentialsEvenWhenAppLoginIsEnabled() throws Exception {
+    void signedInFarmerCanCreateListingWithoutSharedBasicCredentials() throws Exception {
         mvc.perform(post("/api/marketplace/listings")
+                .header("Authorization",sellerAuthorization)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(VALID_LISTING))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.productName").value("हळद"));
+            .andExpect(jsonPath("$.listing.productName").value("हळद"));
     }
 
     @Test
-    void sellerCanUploadAndRetrieveAProductPhotoWithoutSigningIn() throws Exception {
+    void authenticatedSellerUploadsPhotoAndPublicCanReadIt() throws Exception {
         MockMultipartFile image = new MockMultipartFile(
                 "file", "crop.jpg", "image/jpeg", new byte[]{1, 2, 3});
-        String photoPath = mvc.perform(multipart("/api/marketplace/photos").file(image))
+        String photoPath = mvc.perform(multipart("/api/marketplace/photos").file(image).header("Authorization",sellerAuthorization))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         String photoUrl = new com.fasterxml.jackson.databind.ObjectMapper()
@@ -109,6 +118,7 @@ class FarmMarketplaceControllerTest {
     void invalidPhoneAndCoordinatesAreRejected() throws Exception {
         String invalid = VALID_LISTING.replace("+919876543210", "1234").replace("16.8524", "100");
         mvc.perform(post("/api/marketplace/listings")
+                .header("Authorization",sellerAuthorization)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(invalid))
             .andExpect(status().isBadRequest());

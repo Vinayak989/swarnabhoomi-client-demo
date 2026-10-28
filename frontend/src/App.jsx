@@ -29,6 +29,8 @@ import './auth.css';
 import './adminMarketplace.css';
 import './androidApp.css';
 import './dailyEntryEdit.css';
+import { AdminBackups, PublicBatchPage, ReturnsPanel } from './TradeFeatures.jsx';
+import { EntryMaterialPicker, MaterialInventory } from './MaterialInventory.jsx';
 
 const API = `${(import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')}/api`;
 const CROP_GROUPS = {
@@ -41,7 +43,7 @@ const CROP_GROUPS = {
   'व्यावसायिक व इतर पिके':['ऊस','कापूस','तंबाखू','ताग','चहा','कॉफी','रबर','बांबू','चारा पीक','फुलशेती','गुलाब','झेंडू','जर्बेरा']
 };
 const requestId = () => globalThis.crypto?.randomUUID?.() || `entry-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-const fresh = () => ({clientRequestId:requestId(),entryDate:new Date().toISOString().slice(0,10),weather:'',pincode:'',cropName:'',cropCustom:'',plotName:'',seasonName:'',plotAreaAcres:'',farmSection:'',workDone:'',materials:'',waterLitres:'',applicationKind:'',applicationName:'',applicationAmount:'',applicationUnit:'',pestDisease:'',issueSeverity:'',intervention:'',followUpDate:'',receiptPhotoUrls:'[]',workerCount:'',laborCost:'',materialsCost:'',otherCost:'',productionKg:'',soldKg:'',saleIncome:'',cropCondition:'',soilNotes:'',tomorrowPlan:'',specialNote:'',photoUrl:'',weatherDetails:''});
+const fresh = () => ({materialUsages:[],clientRequestId:requestId(),entryDate:new Date().toISOString().slice(0,10),weather:'',pincode:'',cropName:'',cropCustom:'',plotName:'',seasonName:'',plotAreaAcres:'',farmSection:'',workDone:'',materials:'',waterLitres:'',applicationKind:'',applicationName:'',applicationAmount:'',applicationUnit:'',pestDisease:'',issueSeverity:'',intervention:'',followUpDate:'',receiptPhotoUrls:'[]',workerCount:'',laborCost:'',materialsCost:'',otherCost:'',productionKg:'',soldKg:'',saleIncome:'',cropCondition:'',soilNotes:'',tomorrowPlan:'',specialNote:'',photoUrl:'',weatherDetails:''});
 const money = n => `₹${Number(n||0).toLocaleString('en-IN')}`;
 const day = s => s ? new Date(`${s}T00:00:00`).toLocaleDateString('mr-IN',{day:'numeric',month:'short',year:'numeric'}) : 'दिनांक नाही';
 const entryCost = e => Number(e.laborCost||0)+Number(e.materialsCost||0)+Number(e.otherCost||0);
@@ -104,6 +106,7 @@ function readSessionUser() {
   } catch { return null; }
 }
 
+function initialBuyerView(){const view=new URLSearchParams(window.location.search).get('view');return ['browse','offers','cart','orders','recurring','bulk','returns'].includes(view)?view:'browse';}
 function App(){
   const appEnvironment=getAppEnvironment();
   const mobileAppMode=appEnvironment.isApp;
@@ -128,8 +131,8 @@ function App(){
   const [pdfBusyEntryId,setPdfBusyEntryId]=useState(null);
   const [supportUnread,setSupportUnread]=useState(0);
   const [supportOpen,setSupportOpen]=useState(false);
-  const [androidBuyerView,setAndroidBuyerView]=useState('browse');
-  const [androidBuyerViewRequest,setAndroidBuyerViewRequest]=useState({view:'browse',nonce:0});
+  const [androidBuyerView,setAndroidBuyerView]=useState(initialBuyerView);
+  const [androidBuyerViewRequest,setAndroidBuyerViewRequest]=useState(()=>({view:initialBuyerView(),nonce:0}));
   const [androidBuyerUnread,setAndroidBuyerUnread]=useState(0);
   const supportFabRef=useRef(null);
   const closeSupport=useCallback(()=>{
@@ -138,7 +141,7 @@ function App(){
   },[]);
   const currentAccount=ACCOUNT_TYPES.find(account=>account.id===accountType)||ACCOUNT_TYPES[0];
   const androidBuyerTitle=activeTab==='marketplace'&&accountType==='buyer'
-    ? ({browse:'ताजे शेतमाल',offers:'विशेष ऑफर',cart:'माझे कार्ट',orders:'माझ्या ऑर्डर'})[androidBuyerView] : null;
+    ? ({browse:'ताजे शेतमाल',offers:'विशेष ऑफर',cart:'माझे कार्ट',orders:'माझ्या ऑर्डर',recurring:'नियमित खरेदी',bulk:'घाऊक खरेदी',returns:'परतावा व बदल'})[androidBuyerView] : null;
   function openAndroidBuyerView(view){
     setAndroidBuyerView(view);
     setAndroidBuyerViewRequest(current=>({view,nonce:current.nonce+1}));
@@ -289,7 +292,7 @@ function App(){
       setPdfBusyEntryId(null);
     }
   }
-  function editEntry(entry){const [cropLabel='',...plotParts]=String(entry.farmSection||'').split(/\s+—\s+/);const knownCrop=Object.values(CROP_GROUPS).flat().includes(cropLabel);const nextForm=fresh();Object.keys(nextForm).forEach(key=>{if(key in entry&&key!=='clientRequestId')nextForm[key]=entry[key]===null||entry[key]===undefined?'':String(entry[key])});nextForm.clientRequestId=entry.clientRequestId||nextForm.clientRequestId;nextForm.cropName=knownCrop?cropLabel:cropLabel?'इतर':'';nextForm.cropCustom=knownCrop?'':cropLabel;nextForm.plotName=plotParts.join(' — ');setForm(nextForm);setEditingEntryId(entry.id);setPreview('');photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');setWeatherError('');setWeatherOpen(Boolean(entry.weather||entry.weatherDetails||entry.pincode));setQuickTemplatesOpen(false);setOpen(true)}
+  function editEntry(entry){const [cropLabel='',...plotParts]=String(entry.farmSection||'').split(/\s+—\s+/);const knownCrop=Object.values(CROP_GROUPS).flat().includes(cropLabel);const nextForm=fresh();Object.keys(nextForm).forEach(key=>{if(key in entry&&key!=='clientRequestId')nextForm[key]=entry[key]===null||entry[key]===undefined?'':String(entry[key])});nextForm.materialUsages=Array.isArray(entry.materialUsages)?entry.materialUsages.map(use=>({...use})):[];nextForm.clientRequestId=entry.clientRequestId||nextForm.clientRequestId;nextForm.cropName=knownCrop?cropLabel:cropLabel?'इतर':'';nextForm.cropCustom=knownCrop?'':cropLabel;nextForm.plotName=plotParts.join(' — ');setForm(nextForm);setEditingEntryId(entry.id);setPreview('');photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');setWeatherError('');setWeatherOpen(Boolean(entry.weather||entry.weatherDetails||entry.pincode));setQuickTemplatesOpen(false);setOpen(true)}
   async function save(e){
     e.preventDefault();
     if(loading)return;
@@ -306,12 +309,12 @@ function App(){
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify(Object.fromEntries(Object.entries(record).map(([key,value])=>[key,value===''?null:value])))
       });
-      if(!r.ok)throw Error();
+      if(!r.ok){const error=await r.json().catch(()=>({}));throw Error(error.message||error.detail||'नोंद जतन करता आली नाही.');}
       photoUploadRef.current=null;
       setForm(fresh());setEditingEntryId(null);setOpen(false);setPreview('');setPhotoError('');
       await load();
     }catch(error){
-      alert(error?.message==='Photo upload failed.'?'फोटो अपलोड झाला नाही. कृपया फोटो पुन्हा निवडा.':'नोंद जतन करता आली नाही. Java सर्व्हर सुरू आहे का ते तपासा.');
+      alert(error?.message==='Photo upload failed.'?'फोटो अपलोड झाला नाही. कृपया फोटो पुन्हा निवडा.':error.message||'नोंद जतन करता आली नाही. पुन्हा प्रयत्न करा.');
     }finally{setLoading(false)}
   }
   async function getWeather(){setWeatherBusy(true);setWeatherError('');try{const r=await apiFetch(`${API}/weather/${form.pincode}`);const contentType=r.headers.get('content-type')||'';if(!contentType.toLowerCase().includes('json'))throw Error('हवामान सर्व्हरकडून JSON प्रतिसाद मिळाला नाही. Java सर्व्हर सुरू आहे का ते तपासा.');let d;try{d=await r.json()}catch{throw Error('हवामान सर्व्हरकडून वाचता न येणारा प्रतिसाद मिळाला.')}if(!r.ok)throw Error(d.message||(r.status>=500?'IMD हवामान सेवा सध्या उपलब्ध नाही. हवामान हाताने निवडा.':'हवामान माहिती मिळाली नाही.'));set('weatherDetails',JSON.stringify(d));}catch(e){setWeatherError(e instanceof TypeError?'हवामान सर्व्हरशी संपर्क होऊ शकला नाही. Java सर्व्हर सुरू आहे का ते तपासा.':e.message)}finally{setWeatherBusy(false)}}
@@ -365,6 +368,7 @@ function App(){
       <section className="welcome"><div><span className="eyebrow"><span className="pulse"/> तुमच्या शेताची डायरी</span><h1>नमस्कार, शेतकरी मित्रा! <span>🌱</span></h1><p>आज शेतात काय घडलं? तुमची नोंद इथे जतन करा.</p></div><button className="primary" onClick={()=>{setForm(fresh());setEditingEntryId(null);setPreview('');photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');setQuickTemplatesOpen(false);setWeatherOpen(false);setOpen(true)}}><Plus size={19}/> आजची नोंद लिहा</button><div className="welcome-art"><span>☀️</span><div>〰️〰️</div></div></section>
       <section className="stats"><Stat icon={<Wallet/>} label="एकूण खर्च" value={<AnimatedMetric value={totals.cost} format="money"/>} tone="peach" analyticsKey="cost" onAnalytics={setAnalyticsMetric}/><Stat icon={<TrendingUp/>} label="एकूण उत्पन्न" value={<AnimatedMetric value={totals.income} format="money"/>} tone="green" analyticsKey="income" onAnalytics={setAnalyticsMetric}/><Stat icon={<Boxes/>} label="एकूण उत्पादन" value={<AnimatedMetric value={totals.production} format="quantity"/>} tone="blue" analyticsKey="production" onAnalytics={setAnalyticsMetric}/><div className="stat-card net"><div className="net-label">निव्वळ शिल्लक</div><strong><AnimatedMetric value={totals.income-totals.cost} format="money"/></strong><span>आतापर्यंतची कमाई</span><div className="net-icon">↗</div></div></section>
       <OfflineQueueStatus ownerId={authUser.id}/>
+      <MaterialInventory apiFetch={apiFetch} apiBase={API}/>
       <section className="entries-head"><div><h2>शेतातील नोंदी</h2><p>तुमच्या रोजच्या कामांचा लेखाजोखा</p></div><div className="tools"><div className="search"><Search size={17}/><SpeechTextInput><input placeholder="नोंदी शोधा..." value={search} onChange={e=>setSearch(e.target.value)}/></SpeechTextInput></div><button className="outline pdf-export" onClick={()=>void downloadPdf(filtered)} disabled={!filtered.length||pdfBusy} title="दिसणाऱ्या नोंदींची PDF तयार करा">{pdfBusy?<LoaderCircle className="spin" size={15}/>:<FileDown size={15}/>} PDF डाउनलोड</button><button type="button" className="outline csv-export" onClick={() => downloadEntriesCsv(filtered)} disabled={!filtered.length} title="दिसणाऱ्या नोंदी Excel किंवा CSV मध्ये डाउनलोड करा"><FileSpreadsheet size={15}/> CSV डाउनलोड</button><button className="filter">सर्व नोंदी⌄</button></div></section>
       {!filtered.length?<div className="empty"><div className="empty-icon">🌾</div><h3>{entries.length?'नोंद सापडली नाही':'तुमची पहिली नोंद लिहा'}</h3><p>शेतातल्या छोट्या-मोठ्या गोष्टी नोंदवा. त्या पुढच्या हंगामात उपयोगी पडतील.</p><button className="primary" onClick={()=>{setForm(fresh());setEditingEntryId(null);setPreview('');photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');setQuickTemplatesOpen(false);setWeatherOpen(false);setOpen(true)}}><Plus size={18}/> नवी नोंद</button></div>:<div className="entry-list">{filtered.map(e=><article className={`entry-card ${activeRecord===e.id?'details-open':''}`} key={e.id} tabIndex={0} aria-describedby={`record-details-${e.id}`} onClick={()=>{if(window.matchMedia?.('(hover: none)').matches)setActiveRecord(current=>current===e.id?null:e.id)}} onKeyDown={event=>{if(event.key==='Escape')setActiveRecord(null)}}><div className="entry-date"><div className="date-icon"><CalendarDays size={18}/></div><div><b>{day(e.entryDate)}</b><small>{e.weather||'हवामान नोंदले नाही'}</small></div></div><div className="entry-crop"><small>पीक / विभाग</small><b>{e.farmSection||'—'}</b></div><div className="entry-work"><small>आजची कामे</small><b>{e.workDone||'—'}</b></div><div className="entry-money"><small>खर्च　·　उत्पन्न</small><b>{money(entryCost(e))} <span>·</span> {money(e.saleIncome)}</b></div><div className="entry-actions">{e.photoUrl&&<ProtectedPhoto src={e.photoUrl} auth={authToken} alt="शेत फोटो"/>}<button type="button" className="entry-pdf-download" title="या नोंदीचा PDF डाउनलोड करा" aria-label={`दिनांक ${day(e.entryDate)} च्या नोंदीचा PDF डाउनलोड करा`} disabled={pdfBusy} onClick={event=>{event.stopPropagation();void downloadPdf([e],e.id)}}>{pdfBusyEntryId===e.id?<LoaderCircle className="spin" size={15}/>:<FileDown size={15}/>}<span>PDF डाउनलोड</span></button><button type="button" className="edit-entry" title="नोंद संपादित करा" aria-label="नोंद संपादित करा" onClick={event=>{event.stopPropagation();editEntry(e)}}><Pencil size={15}/></button><button type="button" className="delete" title="नोंद हटवा" aria-label="नोंद हटवा" onClick={event=>{event.stopPropagation();remove(e.id)}}><Trash2 size={16}/></button></div><div className="record-details-popup" id={`record-details-${e.id}`} role="tooltip" onClick={event=>event.stopPropagation()}><RecordDetails entry={e} apiFetch={apiFetch} userId={authUser.id}/></div></article>)}</div>}
       <footer>🌿　तुमच्या कष्टांना योग्य नोंद — स्वर्णभूमी</footer></>:activeTab==='entries'&&entrySubTab==='profits'?<FarmProfitPanel entries={entries}/>:activeTab==='reminders'?<ReminderPanel apiFetch={apiFetch} apiBase={API} entries={entries} userId={authUser.id} onUnauthorized={logout}/>:null}
@@ -373,7 +377,7 @@ function App(){
       {activeTab==='profile'&&<AccountProfilePanel accountType={accountType} mobileNumber={authUser.mobileNumber} profile={accountProfile} profileLoading={accountProfileLoading} onSaved={setAccountProfile} apiFetch={apiFetch}/>}
       {activeTab==='schemes'&&accountType==='farmer'&&<GovernmentSchemesPanel feed={schemeFeed} loading={schemeLoading} refreshing={schemeRefreshing} error={schemeError} onRefresh={()=>refreshSchemeFeed(false)}/>}
       {activeTab==='prices'&&<MarketPricesPanel apiFetch={apiFetch} apiBase={API} userId={authUser.id} onUnauthorized={logout}/>}
-      {activeTab==='admin'&&<AdminOverview apiBase={API} apiFetch={apiFetch}/>}
+      {activeTab==='admin'&&<><AdminOverview apiBase={API} apiFetch={apiFetch}/><AdminFeaturePanels apiBase={API} apiFetch={apiFetch}/></>}
       {activeTab==='marketplace'&&<MarketplacePanel key={authUser.id} accountType={accountType} apiBase={API} auth={authToken} userId={authUser.id} buyerPhone={authUser.mobileNumber} profile={accountProfile} onUnauthorized={logout} requestedView={mobileAppMode&&accountType==='buyer'?androidBuyerViewRequest:null} onViewChange={mobileAppMode&&accountType==='buyer'?setAndroidBuyerView:undefined} onUnreadChange={mobileAppMode&&accountType==='buyer'?setAndroidBuyerUnread:undefined}/>}
       {activeTab==='consultants'&&<ConsultantPanel apiBase={API} apiFetch={apiFetch} mobileNumber={authUser.mobileNumber}/>}
     </main>
@@ -394,6 +398,7 @@ function App(){
       <QuickEntryTemplates expanded={quickTemplatesOpen} onToggle={()=>setQuickTemplatesOpen(value=>!value)} onApply={template=>{setForm(current=>({...current,...template}));setQuickTemplatesOpen(false)}}/>
       <Field label="आज केलेली कामे"><textarea rows="2" placeholder="उदा. तण काढले, पाणी दिले..." value={form.workDone} onChange={e=>set('workDone',e.target.value)}/></Field><Field label="वापरलेले साहित्य / खते"><textarea rows="2" placeholder="उदा. शेणखत २ पोती, ठिबक दुरुस्ती..." value={form.materials} onChange={e=>set('materials',e.target.value)}/></Field>
       <section className="form-section"><h3><Wallet size={18}/> मजुरी व खर्च</h3><div className="form-grid three"><Field label="मजूर संख्या"><input type="number" min="0" value={form.workerCount} onChange={e=>set('workerCount',e.target.value)} placeholder="०"/></Field><Field label="मजुरी खर्च (₹)"><input type="number" min="0" value={form.laborCost} onChange={e=>set('laborCost',e.target.value)} placeholder="०"/></Field><Field label="खते / साहित्य खर्च (₹)"><input type="number" min="0" value={form.materialsCost} onChange={e=>set('materialsCost',e.target.value)} placeholder="०"/></Field><Field label="इतर खर्च (₹)"><input type="number" min="0" value={form.otherCost} onChange={e=>set('otherCost',e.target.value)} placeholder="०"/></Field></div></section>
+      <EntryMaterialPicker apiFetch={apiFetch} apiBase={API} value={form.materialUsages} onChange={value=>set('materialUsages',value)} onCost={cost=>set('materialsCost',cost)}/>
       <section className="form-section"><h3><Boxes size={18}/> उत्पादन व विक्री</h3><div className="form-grid three"><Field label="उत्पादन (किलो)"><input type="number" min="0" value={form.productionKg} onChange={e=>set('productionKg',e.target.value)} placeholder="०"/></Field><Field label="विक्री (किलो)"><input type="number" min="0" value={form.soldKg} onChange={e=>set('soldKg',e.target.value)} placeholder="०"/></Field><Field label="विक्रीतून पैसे (₹)"><input type="number" min="0" value={form.saleIncome} onChange={e=>set('saleIncome',e.target.value)} placeholder="०"/></Field></div><div className="calculation">आजचा खर्च <b>{money(Number(form.laborCost||0)+Number(form.materialsCost||0)+Number(form.otherCost||0))}</b><span>•</span> निव्वळ उत्पन्न <b>{money(Number(form.saleIncome||0)-Number(form.laborCost||0)-Number(form.materialsCost||0)-Number(form.otherCost||0))}</b></div></section>
       <section className="form-section crop-soil-observations"><h3><Sprout size={18}/> पीक व माती निरीक्षण</h3><div className="form-grid"><Field label="पिकाची सद्यस्थिती"><textarea rows="2" value={form.cropCondition} onChange={e=>set('cropCondition',e.target.value)} placeholder="पिकाची वाढ, कीड, फुलोरा..."/></Field><Field label="माती व सेंद्रिय शेती निरीक्षण"><textarea rows="2" value={form.soilNotes} onChange={e=>set('soilNotes',e.target.value)} placeholder="मातीतील ओलावा, गांडूळखत..."/></Field></div></section><IssueTrackingFields form={form} set={set} apiFetch={apiFetch} apiBase={API} userId={authUser.id}/><Field label="उद्याची नियोजित कामे"><input value={form.tomorrowPlan} onChange={e=>set('tomorrowPlan',e.target.value)} placeholder="उद्या कोणते काम करायचे?"/></Field>
       <Field label="विशेष नोंद"><textarea rows="2" value={form.specialNote} onChange={e=>set('specialNote',e.target.value)} placeholder="काही विशेष सांगायचे असल्यास..."/></Field>
@@ -434,7 +439,7 @@ function AnalyticsDialog({metric,entries,onClose}){
 }
 function RecordDetails({entry:e,apiFetch,userId}){
   const fields=[
-    ['दिनांक',day(e.entryDate)],['पीक / शेताचा विभाग',e.farmSection],['हंगाम',e.seasonName],
+    ['दिनांक',day(e.entryDate)],['पीक / शेताचा विभाग',e.farmSection],['हंगाम',e.seasonName],['साठ्यातील साहित्याचा वापर',e.materialUsageSummary],
     ['प्लॉटचे क्षेत्र',e.plotAreaAcres?e.plotAreaAcres+' एकर':null],['हवामान',e.weather],['पिनकोड',e.pincode],
     ['हवामान माहिती',weatherDetailText(e.weatherDetails)],['आज केलेली कामे',e.workDone],['वापरलेले साहित्य / खते',e.materials],
     ['पाणी',e.waterLitres?e.waterLitres+' लिटर':null],['निविष्ठेचा प्रकार',e.applicationKind],['निविष्ठेचे नाव',e.applicationName],
@@ -596,4 +601,6 @@ function Field({label,required,children}){
   const input=React.isValidElement(children)?React.cloneElement(children,{id:children.props.id||id}):children;
   return <div className="field"><label className="field-label" htmlFor={id}>{label}{required&&<i> *</i>}</label>{voiceEnabled?<SpeechTextInput>{input}</SpeechTextInput>:input}</div>;
 }
-export default App;
+function AdminFeaturePanels({apiBase,apiFetch}){const request=useCallback((path,options)=>apiFetch(apiBase+path,options),[apiFetch,apiBase]);return <div className="trade-admin-extensions"><AdminBackups request={request}/><ReturnsPanel request={request} admin/></div>;}
+function Root(){const token=new URLSearchParams(window.location.search).get('batch');return token?<PublicBatchPage token={token} apiBase={API}/>:<App/>;}
+export default Root;

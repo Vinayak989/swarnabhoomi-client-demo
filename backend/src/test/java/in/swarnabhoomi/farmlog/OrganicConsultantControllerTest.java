@@ -36,15 +36,22 @@ class OrganicConsultantControllerTest {
 
     @Autowired private MockMvc mvc;
     @Autowired private OrganicConsultantRepository repository;
+    @Autowired private AppUserRepository users;
+    @Autowired private AuthService auth;
+    @Autowired private org.springframework.security.crypto.password.PasswordEncoder passwords;
+    private String adminAuthorization;
 
     @BeforeEach
     void clearConsultants() {
         repository.deleteAll();
+        AppUser admin=users.findByMobileNumberAndRole("+919876543212","admin").orElseGet(()->users.save(new AppUser("+919876543212","admin",passwords.encode("ConsultantTesting123!"))));
+        adminAuthorization="Bearer "+auth.login(admin.getMobileNumber(),"ConsultantTesting123!","admin").token();
     }
 
     @Test
-    void consultantCanRegisterAndBeFoundWithoutAppLogin() throws Exception {
+    void administratorCanRegisterAndBrowseConsultants() throws Exception {
         mvc.perform(post("/api/consultants")
+                .header("Authorization",adminAuthorization)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(VALID_CONSULTANT))
             .andExpect(status().isCreated())
@@ -52,7 +59,7 @@ class OrganicConsultantControllerTest {
             .andExpect(jsonPath("$.phone").value("+919876543210"))
             .andExpect(jsonPath("$.expertise").value("सेंद्रिय खते, माती परीक्षण"));
 
-        mvc.perform(get("/api/consultants"))
+        mvc.perform(get("/api/consultants").header("Authorization",adminAuthorization))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(1)))
             .andExpect(jsonPath("$[0].serviceArea").value("सांगली जिल्हा"));
@@ -64,6 +71,7 @@ class OrganicConsultantControllerTest {
                 .replace("+919876543210", "1234")
                 .replace("\"experienceYears\":8", "\"experienceYears\":-1");
         mvc.perform(post("/api/consultants")
+                .header("Authorization",adminAuthorization)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(invalid))
             .andExpect(status().isBadRequest());

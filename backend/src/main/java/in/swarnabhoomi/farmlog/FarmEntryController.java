@@ -22,42 +22,47 @@ public class FarmEntryController {
     private final FarmEntryRepository repo;
     private final FarmPhotoRepository photoRepo;
     private final PhotoObjectStorage photoStorage;
+    private final MaterialService materials;
     @Value("${app.upload-dir:./uploads}") private String uploadDirectory;
     public FarmEntryController(FarmEntryRepository repo, FarmPhotoRepository photoRepo,
-            PhotoObjectStorage photoStorage) {
+            PhotoObjectStorage photoStorage, MaterialService materials) {
         this.repo = repo;
         this.photoRepo = photoRepo;
         this.photoStorage = photoStorage;
+        this.materials = materials;
     }
 
     @GetMapping("/entries") public List<FarmEntry> entries(@RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
         requireFarmer(user);
-        return repo.findAllByOwnerIdOrderByEntryDateDescIdDesc(user.getId());
+        var entries=repo.findAllByOwnerIdOrderByEntryDateDescIdDesc(user.getId());
+        materials.hydrateAll(entries,user);return entries;
     }
-    @PostMapping("/entries") public FarmEntry create(@RequestBody FarmEntry entry,
+    @PostMapping("/entries") @org.springframework.transaction.annotation.Transactional public FarmEntry create(@RequestBody FarmEntry entry,
             @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
         requireFarmer(user);
         if (entry.getEntryDate() == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "दिनांक आवश्यक आहे");
         if (entry.getClientRequestId() != null && !entry.getClientRequestId().isBlank()) {
             FarmEntry existing = repo.findFirstByOwnerIdAndClientRequestId(user.getId(), entry.getClientRequestId()).orElse(null);
-            if (existing != null) return existing;
+            if (existing != null) {materials.hydrate(existing,user);return existing;}
         }
         entry.setOwner(user);
-        return repo.save(entry);
+        entry.setId(null);var saved=repo.saveAndFlush(entry);materials.sync(saved.getId(),entry.getMaterialUsages(),user);materials.hydrate(saved,user);return saved;
     }
-    @PutMapping("/entries/{id}") public FarmEntry update(@PathVariable Long id, @RequestBody FarmEntry entry,
+    @PutMapping("/entries/{id}") @org.springframework.transaction.annotation.Transactional public FarmEntry update(@PathVariable Long id, @RequestBody FarmEntry entry,
             @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
         requireFarmer(user);
-        repo.findByIdAndOwnerId(id, user.getId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        FarmEntry existing=repo.lockOwned(id,user.getId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if(entry.getEntryDate()==null)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"दिनांक आवश्यक आहे");
+        entry.setClientRequestId(existing.getClientRequestId());
         entry.setOwner(user);
-        entry.setId(id); return repo.save(entry);
+        entry.setId(id);materials.sync(id,entry.getMaterialUsages(),user);var saved=repo.save(entry);materials.hydrate(saved,user);return saved;
     }
-    @DeleteMapping("/entries/{id}") public void delete(@PathVariable Long id,
+    @DeleteMapping("/entries/{id}") @org.springframework.transaction.annotation.Transactional public void delete(@PathVariable Long id,
             @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
         requireFarmer(user);
-        FarmEntry entry = repo.findByIdAndOwnerId(id, user.getId())
+        FarmEntry entry = repo.lockOwned(id, user.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        repo.delete(entry);
+        materials.sync(id,List.of(),user);repo.delete(entry);
     }
     @PostMapping("/photos") public Map<String,String> photo(@RequestParam("file") MultipartFile file,
             @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) throws Exception {

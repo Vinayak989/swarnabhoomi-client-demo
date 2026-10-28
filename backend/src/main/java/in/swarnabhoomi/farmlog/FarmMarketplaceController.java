@@ -41,7 +41,7 @@ public class FarmMarketplaceController {
     private static final Pattern CONTACT_EMAIL_OR_URL = Pattern.compile("(?i)([a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}|https?://|www\\.)");
     private static final Pattern CONTACT_WORDS = Pattern.compile("(?i)(whats ?app|phone|mobile|contact|call me|address|pin ?code|मोबाईल|मोबाइल|फोन|संपर्क|पत्ता|व्हॉट्सअॅप|पिनकोड)");
     private static final Pattern PHOTO_URL = Pattern.compile("^/api/marketplace/photos/[a-fA-F0-9-]{36}$");
-    private static final Set<String> UNITS = Set.of("kg", "quintal", "ton", "dozen", "crate", "piece");
+    private static final Set<String> UNITS = Set.of("kg", "quintal", "ton", "dozen", "crate", "piece", "litre");
     private static final BigDecimal MAX_PRICE = new BigDecimal("9999999999.99");
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private final FarmProductListingRepository repository;
@@ -373,6 +373,9 @@ public class FarmMarketplaceController {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
                         "ऑर्डर पूर्ण करण्यापूर्वी रोख पेमेंट मिळाल्याची नोंद करा.");
             }
+            if (nextStage == MarketplacePurchaseRequest.FulfillmentStage.COMPLETED) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "खरेदीदाराचा वितरण कोड तपासून ऑर्डर पूर्ण करा.");
+            }
             request.setFulfillmentStage(nextStage);
             if (nextStage == MarketplacePurchaseRequest.FulfillmentStage.COMPLETED) {
                 request.setStatus(MarketplacePurchaseRequest.Status.COMPLETED);
@@ -491,7 +494,7 @@ public class FarmMarketplaceController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "विक्रीची नोंद सापडली नाही."));
     }
 
-    private static MarketplacePurchaseRequest newPurchaseRequest(Long listingId, FarmProductListing listing,
+    static MarketplacePurchaseRequest newPurchaseRequest(Long listingId, FarmProductListing listing,
             AppUser buyer, String buyerName, BigDecimal quantity,
             MarketplacePurchaseRequest.Fulfillment fulfillment, String note) {
         MarketplacePurchaseRequest order = new MarketplacePurchaseRequest();
@@ -501,7 +504,7 @@ public class FarmMarketplaceController {
         order.setBuyerPhone(buyer.getMobileNumber());
         order.setProductName(listing.getProductName());
         order.setSellerName(listing.getSellerName());
-        order.setPricePerUnit(discountedPrice(listing.getPricePerUnit(), listing.getDiscountPercent()));
+        order.setPricePerUnit(listing.effectivePrice());
         order.setQuantity(quantity);
         order.setUnit(listing.getUnit());
         order.setFulfillment(fulfillment);
@@ -511,7 +514,7 @@ public class FarmMarketplaceController {
         return order;
     }
 
-    private static void reserveStock(FarmProductListing listing, BigDecimal quantity) {
+    static void reserveStock(FarmProductListing listing, BigDecimal quantity) {
         BigDecimal remaining = BigDecimal.valueOf(listing.getQuantity()).subtract(quantity);
         listing.setQuantity(remaining.max(BigDecimal.ZERO).doubleValue());
         if (remaining.signum() <= 0) listing.setAvailable(false);
@@ -564,7 +567,7 @@ public class FarmMarketplaceController {
                 && quantity.stripTrailingZeros().scale() <= 3;
     }
 
-    private static boolean validDeliveryAddress(MarketplacePurchaseRequest.Fulfillment fulfillment, String address) {
+    static boolean validDeliveryAddress(MarketplacePurchaseRequest.Fulfillment fulfillment, String address) {
         return fulfillment != MarketplacePurchaseRequest.Fulfillment.DELIVERY
                 || !blankOrLong(address, 500) && !containsDeliveryContactDetails(address);
     }
@@ -596,7 +599,7 @@ public class FarmMarketplaceController {
                 : discountPercent.setScale(2, java.math.RoundingMode.HALF_UP);
     }
 
-    private static BigDecimal discountedPrice(BigDecimal pricePerUnit, BigDecimal discountPercent) {
+    static BigDecimal discountedPrice(BigDecimal pricePerUnit, BigDecimal discountPercent) {
         if (pricePerUnit == null) return null;
         if (discountPercent == null || discountPercent.signum() <= 0) {
             return pricePerUnit.setScale(2, java.math.RoundingMode.HALF_UP);
@@ -636,7 +639,7 @@ public class FarmMarketplaceController {
         return value != null && value.length() > maxLength;
     }
 
-    private static boolean containsContactDetails(String value) {
+    static boolean containsContactDetails(String value) {
         if (value == null) return false;
         if (CONTACT_PHONE.matcher(value).find()) return true;
         String digits = value.replaceAll("\\D", "");
@@ -737,7 +740,7 @@ public class FarmMarketplaceController {
                     safePublicText(listing.getProductName(), "शेतमाल"),
                     safePublicText(listing.getCropType(), "पीक"), safePublicText(listing.getCategory(), "इतर"),
                     listing.getQuantity(), listing.getPricePerUnit(),
-                    listing.getDiscountPercent(), discountedPrice(listing.getPricePerUnit(), listing.getDiscountPercent()),
+                    listing.effectiveDiscount(), listing.effectivePrice(),
                     !Boolean.FALSE.equals(listing.getAvailable()), listing.getUnit(),
                     containsContactDetails(listing.getDescription()) ? null : listing.getDescription(), listing.getPhotoUrl(), verified,
                     verified ? profile.getOrganicCertificateValidUntil() : null,

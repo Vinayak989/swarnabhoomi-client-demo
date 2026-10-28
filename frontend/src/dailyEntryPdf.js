@@ -47,6 +47,7 @@ function reportFields(entry) {
     ['हवामान माहिती', weatherText(entry.weatherDetails)],
     ['आज केलेली कामे', entry.workDone],
     ['वापरलेले साहित्य / खते', entry.materials],
+    ['साठ्यातील साहित्याचा वापर', entry.materialUsageSummary],
     ['पाणी (लिटर)', entry.waterLitres],
     ['निविष्ठेचा प्रकार', entry.applicationKind],
     ['निविष्ठा', entry.applicationName],

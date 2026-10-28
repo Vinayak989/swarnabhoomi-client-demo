@@ -9,6 +9,9 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MarketplacePurchaseRequestRepository extends JpaRepository<MarketplacePurchaseRequest, Long> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from MarketplacePurchaseRequest r where r.id=:id")
+    java.util.Optional<MarketplacePurchaseRequest> lockById(@Param("id") Long id);
     List<MarketplacePurchaseRequest> findTop100ByListingIdOrderByCreatedAtDesc(Long listingId);
     List<MarketplacePurchaseRequest> findTop100ByBuyerUserIdOrderByCreatedAtDesc(Long buyerUserId);
     List<MarketplacePurchaseRequest> findAllByListingIdInOrderByCreatedAtDesc(List<Long> listingIds);

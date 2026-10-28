@@ -14,6 +14,22 @@ import java.math.BigDecimal;
 @Entity
 @Table(name = "farm_product_listing")
 public class FarmProductListing {
+    private Instant offerStartsAt;
+    private Instant offerEndsAt;
+    private java.time.LocalDate harvestDate;
+    @Column(length=80) private String batchNumber;
+    @Column(length=1000) private String traceabilityNotes;
+    @Column(nullable=false) private boolean traceabilityPublic;
+    @Column(length=36) private String traceabilityToken;
+    public Instant getOfferStartsAt(){return offerStartsAt;} public void setOfferStartsAt(Instant v){offerStartsAt=v;}
+    public Instant getOfferEndsAt(){return offerEndsAt;} public void setOfferEndsAt(Instant v){offerEndsAt=v;}
+    public java.time.LocalDate getHarvestDate(){return harvestDate;} public void setHarvestDate(java.time.LocalDate v){harvestDate=v;}
+    public String getBatchNumber(){return batchNumber;} public void setBatchNumber(String v){batchNumber=v;}
+    public String getTraceabilityNotes(){return traceabilityNotes;} public void setTraceabilityNotes(String v){traceabilityNotes=v;}
+    public boolean isTraceabilityPublic(){return traceabilityPublic;} public void setTraceabilityPublic(boolean v){traceabilityPublic=v;}
+    public String getTraceabilityToken(){return traceabilityToken;} public void setTraceabilityToken(String v){traceabilityToken=v;}
+    public BigDecimal effectiveDiscount(){Instant now=Instant.now();return (offerStartsAt!=null&&now.isBefore(offerStartsAt))||(offerEndsAt!=null&&!now.isBefore(offerEndsAt))?BigDecimal.ZERO:discountPercent;}
+    public BigDecimal effectivePrice(){return FarmMarketplaceController.discountedPrice(pricePerUnit,effectiveDiscount());}
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

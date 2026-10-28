@@ -6,6 +6,7 @@ import SpeechTextInput from './SpeechTextInput.jsx';
 import { MarketplaceConversation, OrderProgress, SellerReviewForm, SellerReviews, nextSellerStage, stageLabel } from './MarketplaceEngagement.jsx';
 import './marketplace.css';
 import './specialOffers.css';
+import { BulkPurchases, DeliveryActions, ListingTools, RecurringPurchases, ReturnRequest, ReturnsPanel } from './TradeFeatures.jsx';
 
 const EMPTY_FORM = {
   sellerName: '',
@@ -46,6 +47,7 @@ function prefillValue(currentValue, previousPrefill, nextPrefill) {
 const CATEGORIES = ['भाजीपाला', 'फळे', 'धान्य', 'कडधान्ये', 'मसाले', 'दुग्धजन्य', 'मध व इतर', 'इतर'];
 const UNITS = [
   ['kg', 'किलो'],
+  ['litre', 'लिटर'],
   ['quintal', 'क्विंटल'],
   ['ton', 'टन'],
   ['dozen', 'डझन'],
@@ -176,8 +178,14 @@ function ProductPhoto({ apiBase, photoUrl, authorization, productName }) {
 }
 
 function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyerPhone = '', profile, onUnauthorized, requestedView, onViewChange, onUnreadChange }) {
-  const [view, setView] = useState(() => accountType === 'seller' ? 'seller' : requestedView?.view || 'browse');
+  const [view, setView] = useState(() => {
+    const requested=requestedView?.view || new URLSearchParams(window.location.search).get('view');
+    const allowed=accountType==='buyer'?['browse','offers','cart','orders','recurring','bulk','returns']:['browse','register','seller','bulk','returns'];
+    return allowed.includes(requested)?requested:accountType==='seller'?'seller':'browse';
+  });
   const [listings, setListings] = useState([]);
+  const marketNavigationRef=useRef(null);
+  useEffect(()=>{const navigation=marketNavigationRef.current;const selected=navigation?.querySelector('[aria-selected="true"]');if(navigation&&selected)navigation.scrollTo({left:selected.offsetLeft-navigation.offsetLeft-(navigation.clientWidth-selected.clientWidth)/2,behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});},[view]);
   const offersView = accountType === 'buyer' && view === 'offers';
   const [marketPriceFeed, setMarketPriceFeed] = useState(null);
   const [marketPriceLoading, setMarketPriceLoading] = useState(false);
@@ -682,6 +690,21 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     }
   }
 
+  async function reorder(order) {
+    setBuyerOrdersError('');
+    try {
+      const response=await request('/marketplace/listings');
+      if(!response.ok) throw new Error('सध्याचा साठा तपासता आला नाही.');
+      const current=await response.json();setListings(current);
+      const listing=current.find(item=>item.id===order.listingId);
+      if(!listing||listing.available===false||Number(listing.quantity)<=0) throw new Error('हा माल सध्या उपलब्ध नाही.');
+      if(listing.unit!==order.unit) throw new Error('मालाचे माप बदलले आहे. शेतमाल शोधून नवीन प्रमाण निवडा.');
+      setCart(cart=>{const existing=cart.find(i=>i.listingId===listing.id);const quantity=Math.min(Number(listing.quantity),Number(order.quantity)+Number(existing?.quantity||0));return [...cart.filter(i=>i.listingId!==listing.id),{listingId:listing.id,quantity}];});
+      setCartNotice('मागील माल सध्याच्या दराने कार्टमध्ये जोडला. उपलब्ध साठ्यानुसार प्रमाण तपासा आणि मग ऑर्डर द्या.');
+      setBuyerFulfillment('DELIVERY');setView('cart');
+    } catch(error) {setBuyerOrdersError(error.message);}
+  }
+
   function updateSellerListing(id, field, value) {
     setSellerListings(current => current.map(row => row.listing.id === id
       ? { ...row, listing: { ...row.listing, [field]: value } }
@@ -1065,7 +1088,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     }
   }
 
-  return <div className="market-page" lang="mr">
+  return <div className={`market-page ${view==='browse'||offersView?'':'market-workspace-view'}`} lang="mr">
     <section className={`market-hero market-hero-${accountType} ${offersView ? 'market-offers-hero' : ''}`}>
       <div className="market-hero-copy">
         <span className="market-eyebrow"><Wheat size={15}/> शेतमाल थेट शेतकऱ्याकडून</span>
@@ -1089,7 +1112,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       </div>}
     </section>
 
-    <div className="market-actions" role="tablist" aria-label="शेतकरी बाजार विभाग">
+    <div ref={marketNavigationRef} className="market-actions" role="tablist" aria-label="शेतकरी बाजार विभाग">
       <button type="button" role="tab" aria-selected={view === 'browse'} className={view === 'browse' ? 'active' : ''} onClick={() => setView('browse')}><Search size={16}/> शेतमाल शोधा</button>
       {accountType === 'buyer' && <>
         <button type="button" role="tab" aria-selected={offersView} className={offersView ? 'active market-offers-tab' : 'market-offers-tab'} onClick={() => { setError(''); setView('offers'); }}><Tag size={16}/> विशेष ऑफर <span className="market-tab-count">{specialOffers.length.toLocaleString('mr-IN')}</span></button>
@@ -1100,13 +1123,15 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
         <button type="button" role="tab" aria-selected={view === 'register'} className={view === 'register' ? 'active' : ''} onClick={() => { setError(''); setView('register'); }}><PackagePlus size={16}/> शेतमाल विक्रीसाठी नोंदवा</button>
         <button type="button" role="tab" aria-selected={view === 'seller'} className={view === 'seller' ? 'active' : ''} onClick={() => { setError(''); setView('seller'); }}><ClipboardList size={16}/> माझे व्यवहार{pendingSellerRequests > 0 && <span className="market-order-badge" role="status" aria-live="polite" aria-label={`${pendingSellerRequests.toLocaleString('mr-IN')} नवीन ऑर्डर`}>{pendingSellerRequests.toLocaleString('mr-IN')}</span>}{unreadMessageTotal > 0 && <span className="market-unread-badge" aria-label={`${unreadMessageTotal.toLocaleString('mr-IN')} न वाचलेले संदेश`}>{unreadMessageTotal.toLocaleString('mr-IN')}</span>}</button>
       </>}
+      {accountType === 'buyer' && <button type="button" role="tab" aria-selected={view==='recurring'} className={view==='recurring'?'active':''} onClick={()=>setView('recurring')}><RefreshCw size={16}/> नियमित खरेदी</button>}
+      {['buyer','seller','farmer'].includes(accountType) && <><button type="button" role="tab" aria-selected={view==='bulk'} className={view==='bulk'?'active':''} onClick={()=>setView('bulk')}><ShoppingBag size={16}/> घाऊक खरेदी</button><button type="button" role="tab" aria-selected={view==='returns'} className={view==='returns'?'active':''} onClick={()=>setView('returns')}><ShieldCheck size={16}/> परतावा व बदल</button></>}
     </div>
 
     {error && <div className="market-message market-error" role="alert">{error}</div>}
     {cartNotice && (view === 'browse' || offersView) && <div className="market-message market-success" role="status"><Check size={15}/>{cartNotice}</div>}
     {adminListingNotice && view === 'browse' && <div className="market-message market-success" role="status"><Check size={15}/>{adminListingNotice}</div>}
 
-    {view === 'browse' || offersView ? <>
+    {view==='recurring' && accountType==='buyer' ? <RecurringPurchases request={request} listings={listings} profile={profile}/> : view==='bulk' && ['buyer','seller','farmer'].includes(accountType) ? <BulkPurchases request={request} buyer={accountType==='buyer'} profile={profile}/> : view==='returns' && ['buyer','seller','farmer'].includes(accountType) ? <ReturnsPanel request={request} buyer={accountType==='buyer'}/> : view === 'browse' || offersView ? <>
       {offersView && <section className="market-offers-banner">
         <div className="market-offers-icon"><Tag size={28}/></div>
         <div><span>विक्रेत्यांकडून थेट सवलत</span><h2>ताज्या शेतमालावर खास बचत</h2><p>मूळ दर, सवलतीचा दर आणि उपलब्ध साठा एकत्र पहा.</p></div>
@@ -1235,6 +1260,9 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
             {order.totalAmount != null && <b className="market-buyer-order-total">₹{Number(order.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>}
             <time dateTime={order.createdAt}>{new Date(order.createdAt).toLocaleString('mr-IN', { dateStyle: 'medium', timeStyle: 'short' })}</time>
             <button type="button" className="market-receipt-button" onClick={() => downloadOrderReceipt(order)} disabled={receiptBusyId === order.id}><FileDown size={15}/>{receiptBusyId === order.id ? 'पावती तयार होत आहे…' : 'PDF पावती डाउनलोड करा'}</button>
+            <button type="button" className="market-receipt-button" onClick={()=>reorder(order)}><RefreshCw size={15}/> पुन्हा कार्टमध्ये जोडा</button>
+            <DeliveryActions order={order} buyer request={request} onUpdated={loadBuyerOrders}/>
+            <ReturnRequest order={order} request={request}/>
             <MarketplaceConversation orderId={order.id} userId={userId} request={request} orderStatus={order.status} unreadCount={unreadMessages[order.id] || 0} onRead={loadUnreadMessages}/>
             <SellerReviewForm order={order} request={request} onSubmitted={() => setBuyerOrders(current => current.map(item => item.id === order.id ? { ...item, reviewSubmitted: true } : item))}/>
           </article>)}</div>}
@@ -1283,7 +1311,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
           {previewUrl ? <div className="market-photo-preview"><img src={previewUrl} alt="शेतमालाचा निवडलेला फोटो"/><button type="button" onClick={() => setPhoto(null)} aria-label="फोटो काढा"><X size={16}/></button></div>
             : <button type="button" className="market-upload-button" onClick={() => fileInputRef.current?.click()}><Upload size={17}/> शेतमालाचा फोटो जोडा <small>१० MB पर्यंत · ऐच्छिक</small></button>}
         </div>
-        <div className="market-auth-note"><ShieldCheck size={15}/> तुमचा फोन नंबर फक्त अॅप प्रवेश केलेल्या खरेदीदारालाच दिसेल. विक्रेता नियंत्रणाची सुरक्षित माहिती याच ब्राउझरमध्ये जतन होईल.</div>
+        <div className="market-auth-note"><ShieldCheck size={15}/> तुमचा फोन नंबर फक्त प्रशासकाला दिसेल. विक्रेता नियंत्रणाची सुरक्षित माहिती याच ब्राउझरमध्ये जतन होईल.</div>
         <button className="market-submit-button" type="submit" disabled={saving}>{saving?'नोंद जतन होत आहे…':<><PackagePlus size={17}/> विक्रीची नोंद जतन करा</>}</button>
       </form>
     </section> : <section className="market-seller-dashboard">
@@ -1306,8 +1334,9 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
             <div className="market-request-actions">
               {purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus === 'PENDING' && purchaseRequest.status !== 'DECLINED' && <button type="button" onClick={() => updatePaymentStatus(row, purchaseRequest, 'PAID')}>रोख पेमेंट मिळाले</button>}
               {purchaseRequest.status === 'PENDING' && <><button type="button" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'ACCEPTED')}>स्वीकारा</button><button type="button" className="decline" onClick={() => updatePurchaseStatus(row, purchaseRequest, 'DECLINED')}>नाकारा</button></>}
-              {purchaseRequest.status === 'ACCEPTED' && nextSellerStage(purchaseRequest) && <div className="market-request-stage-action"><button type="button" disabled={purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus !== 'PAID' && nextSellerStage(purchaseRequest) === 'COMPLETED'} onClick={() => updateFulfillmentStage(row, purchaseRequest, nextSellerStage(purchaseRequest))}><PackageCheck size={13}/>{stageLabel(nextSellerStage(purchaseRequest))} म्हणून नोंदवा</button>{purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus !== 'PAID' && nextSellerStage(purchaseRequest) === 'COMPLETED' && <small>पूर्ण करण्यापूर्वी रोख पेमेंट नोंदवा.</small>}</div>}
+              {purchaseRequest.status === 'ACCEPTED' && nextSellerStage(purchaseRequest) && nextSellerStage(purchaseRequest) !== 'COMPLETED' && <div className="market-request-stage-action"><button type="button" disabled={purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus !== 'PAID' && nextSellerStage(purchaseRequest) === 'COMPLETED'} onClick={() => updateFulfillmentStage(row, purchaseRequest, nextSellerStage(purchaseRequest))}><PackageCheck size={13}/>{stageLabel(nextSellerStage(purchaseRequest))} म्हणून नोंदवा</button>{purchaseRequest.paymentMethod === 'CASH' && purchaseRequest.paymentStatus !== 'PAID' && nextSellerStage(purchaseRequest) === 'COMPLETED' && <small>पूर्ण करण्यापूर्वी रोख पेमेंट नोंदवा.</small>}</div>}
             </div>
+            <DeliveryActions order={purchaseRequest} request={request} onUpdated={loadSellerListings}/>
             <MarketplaceConversation orderId={purchaseRequest.id} userId={userId} request={request} orderStatus={purchaseRequest.status} unreadCount={unreadMessages[purchaseRequest.id] || 0} onRead={loadUnreadMessages}/>
           </article>)}</div>
           : <div className="market-seller-list">{sellerListings.map(row => <article className="market-seller-card" key={row.listing.id}>
@@ -1328,7 +1357,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
                 <button type="button" className="market-submit-button" disabled={sellerSavingId === row.listing.id} onClick={() => saveSellerListing(row)}>{sellerSavingId === row.listing.id ? 'जतन होत आहे…' : 'बदल जतन करा'}</button>
               </div>
             </details>
-
+            <ListingTools listing={row.listing} request={request} onUpdated={loadListings}/>
           </article>)}</div>}
     </section>}
 

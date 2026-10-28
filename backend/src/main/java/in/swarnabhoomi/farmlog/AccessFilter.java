@@ -75,6 +75,7 @@ public class AccessFilter extends OncePerRequestFilter {
 
     private boolean isPublicMarketplaceRequest(HttpServletRequest request, String path) {
         String method = request.getMethod();
+        if("GET".equalsIgnoreCase(method)&&path.matches("^/api/marketplace/batches/[a-f0-9-]{36}$"))return true;
         return (path.equals("/api/consultants")
                     && ("GET".equalsIgnoreCase(method) || "POST".equalsIgnoreCase(method)))
                 || (path.startsWith("/api/marketplace/")

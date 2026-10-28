@@ -6,6 +6,12 @@ import java.time.LocalDate;
 
 @Entity
 public class FarmEntry {
+    @Transient private java.util.List<MaterialService.Usage> materialUsages;
+    @Transient private String materialUsageSummary;
+    public String getMaterialUsageSummary(){return materialUsageSummary;}
+    public void setMaterialUsageSummary(String v){materialUsageSummary=v;}
+    public java.util.List<MaterialService.Usage> getMaterialUsages(){return materialUsages;}
+    public void setMaterialUsages(java.util.List<MaterialService.Usage> v){materialUsages=v;}
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     private LocalDate entryDate;
     private String weather, pincode, farmSection, workDone, materials, cropCondition, soilNotes, tomorrowPlan, specialNote;

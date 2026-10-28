@@ -20,7 +20,7 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 public class MySqlCutoverEnvironment implements EnvironmentPostProcessor, Ordered {
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    @Override public int getOrder() { return Ordered.LOWEST_PRECEDENCE; }
+    @Override public int getOrder() { return Ordered.LOWEST_PRECEDENCE - 10; }
 
     @Override public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
         String mode = environment.getProperty("APP_MYSQL_CUTOVER_MODE", "off");
