@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDownRight, ArrowDownWideNarrow, ArrowRight, ArrowUpRight, Check, ClipboardList, FileDown, Heart, LocateFixed, MapPin, Minus, PackageCheck, PackagePlus, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, Upload, UserRound, Wheat } from 'lucide-react';
+import { ArrowDownRight, ArrowDownWideNarrow, ArrowRight, ArrowUpRight, Check, ClipboardList, FileDown, Heart, LocateFixed, MapPin, Minus, PackageCheck, PackagePlus, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Tag, Trash2, Upload, UserRound, Wheat } from 'lucide-react';
+import { isAvailableOffer } from './specialOffers.js';
 import { fetchOfficialPrices, findLatestCommodityPrice, MARKET_CROP_OPTIONS } from './MarketPrices.jsx';
 import SpeechTextInput from './SpeechTextInput.jsx';
 import { MarketplaceConversation, OrderProgress, SellerReviewForm, SellerReviews, nextSellerStage, stageLabel } from './MarketplaceEngagement.jsx';
 import './marketplace.css';
+import './specialOffers.css';
 
 const EMPTY_FORM = {
   sellerName: '',
@@ -176,6 +178,7 @@ function ProductPhoto({ apiBase, photoUrl, authorization, productName }) {
 function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyerPhone = '', profile, onUnauthorized, requestedView, onViewChange, onUnreadChange }) {
   const [view, setView] = useState(() => accountType === 'seller' ? 'seller' : requestedView?.view || 'browse');
   const [listings, setListings] = useState([]);
+  const offersView = accountType === 'buyer' && view === 'offers';
   const [marketPriceFeed, setMarketPriceFeed] = useState(null);
   const [marketPriceLoading, setMarketPriceLoading] = useState(false);
   const [marketPriceError, setMarketPriceError] = useState('');
@@ -353,9 +356,8 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     }
   }, [request]);
 
-  const loadListings = useCallback(async (token = authorization) => {
-    setLoading(true);
-    setError('');
+  const loadListings = useCallback(async (token = authorization, silent = false) => {
+    if (!silent) { setLoading(true); setError(''); }
     try {
       const response = await request('/marketplace/listings', {}, token);
       if (response.status === 401) {
@@ -364,10 +366,11 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       }
       if (!response.ok) throw new Error('विक्रीची माहिती मिळाली नाही. सर्व्हरची स्थिती तपासा.');
       setListings(await response.json());
+      setError('');
     } catch (loadError) {
       setError(loadError.message || 'विक्रीची माहिती मिळाली नाही.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [request]);
 
@@ -426,6 +429,15 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   }, [loadListings]);
 
   useEffect(() => {
+    if (!offersView) return undefined;
+    const refresh = () => { void loadListings(authorization, true); };
+    refresh();
+    const timer = window.setInterval(refresh, 30000);
+    window.addEventListener('focus', refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); };
+  }, [offersView, authorization, loadListings]);
+
+  useEffect(() => {
     if (accountType !== 'farmer') return undefined;
     let active = true;
     setMarketPriceLoading(true);
@@ -460,6 +472,8 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   const availableCategories = useMemo(() => Array.from(new Set(
     listings.map(listing => listing.category).filter(Boolean)
   )).sort((a, b) => a.localeCompare(b, 'mr-IN')), [listings]);
+  const specialOffers = useMemo(() => listings.filter(isAvailableOffer), [listings]);
+  const bestDiscount = Math.max(0, ...specialOffers.map(listing => Number(listing.discountPercent)));
 
   const favoriteCount = useMemo(() => listings.filter(listing => favoriteIds.has(String(listing.id))).length,
     [listings, favoriteIds]);
@@ -490,15 +504,17 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   const filteredListings = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('mr-IN');
     return listings
+      .filter(listing => !offersView || isAvailableOffer(listing))
       .filter(listing => !query || [listing.productName, listing.cropType, listing.category]
         .join(' ').toLocaleLowerCase('mr-IN').includes(query))
       .filter(listing => categoryFilter === 'all' || listing.category === categoryFilter)
       .filter(listing => !favoritesOnly || favoriteIds.has(String(listing.id)))
       .sort((a, b) => {
         if (sortBy === 'name') return a.productName.localeCompare(b.productName, 'mr-IN');
+        if (offersView && sortBy === 'recommended') return Number(b.discountPercent) - Number(a.discountPercent) || b.id - a.id;
         return b.id - a.id;
       });
-  }, [listings, search, categoryFilter, favoritesOnly, favoriteIds, sortBy]);
+  }, [listings, search, categoryFilter, favoritesOnly, favoriteIds, sortBy, offersView]);
 
   function toggleFavorite(id, event) {
     event.stopPropagation();
@@ -1050,17 +1066,17 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
   }
 
   return <div className="market-page" lang="mr">
-    <section className={`market-hero market-hero-${accountType}`}>
+    <section className={`market-hero market-hero-${accountType} ${offersView ? 'market-offers-hero' : ''}`}>
       <div className="market-hero-copy">
         <span className="market-eyebrow"><Wheat size={15}/> शेतमाल थेट शेतकऱ्याकडून</span>
-        <h1>{accountType === 'buyer' ? 'ताज्या शेतमालाची खरेदी' : accountType === 'seller' || accountType === 'farmer' ? 'तुमचा शेतमाल, थेट बाजारात' : 'शेतकरी बाजार'}</h1>
-        <p>{accountType === 'buyer' ? 'उपलब्ध ताजा शेतमाल शोधा, भाव पहा आणि थेट ऑर्डर द्या.' : accountType === 'seller' || accountType === 'farmer' ? 'तुमचा माल नोंदवा, साठा सांभाळा आणि खरेदीदारांच्या विनंत्या एका ठिकाणी हाताळा.' : 'उपलब्ध शेतमाल शोधा किंवा विक्रीची नोंद आणि व्यवहार व्यवस्थापित करा.'}</p>
-        {accountType === 'buyer' && <div className="market-hero-actions">
+        <h1>{offersView ? 'विशेष ऑफर' : accountType === 'buyer' ? 'ताज्या शेतमालाची खरेदी' : accountType === 'seller' || accountType === 'farmer' ? 'तुमचा शेतमाल, थेट बाजारात' : 'शेतकरी बाजार'}</h1>
+        <p>{offersView ? 'विक्रेत्यांनी दिलेल्या सवलती पहा आणि आवडता शेतमाल कमी दरात खरेदी करा.' : accountType === 'buyer' ? 'उपलब्ध ताजा शेतमाल शोधा, भाव पहा आणि थेट ऑर्डर द्या.' : accountType === 'seller' || accountType === 'farmer' ? 'तुमचा माल नोंदवा, साठा सांभाळा आणि खरेदीदारांच्या विनंत्या एका ठिकाणी हाताळा.' : 'उपलब्ध शेतमाल शोधा किंवा विक्रीची नोंद आणि व्यवहार व्यवस्थापित करा.'}</p>
+        {accountType === 'buyer' && !offersView && <div className="market-hero-actions">
           <button type="button" className="market-hero-cta primary" onClick={() => setView('browse')}><Search size={16}/> शेतमाल शोधा <ArrowRight size={15}/></button>
           <button type="button" className="market-hero-cta" onClick={() => { setBuyerFulfillment('DELIVERY'); setView('cart'); }}><ShoppingCart size={16}/> कार्ट पहा</button>
         </div>}
       </div>
-      <div className="market-hero-stats" aria-label="बाजाराची माहिती">
+      {!offersView && <div className="market-hero-stats" aria-label="बाजाराची माहिती">
         {accountType === 'seller' || accountType === 'farmer' ? <>
           <div className="market-hero-stat"><span><PackageCheck size={17}/> माझा शेतमाल</span><strong>{sellerListings.length.toLocaleString('mr-IN')}</strong><small>एकूण नोंदी</small></div>
           <div className="market-hero-stat"><span><Store size={17}/> विक्री सुरू</span><strong>{activeSellerListings.toLocaleString('mr-IN')}</strong><small>उपलब्ध नोंदी</small></div>
@@ -1070,12 +1086,13 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
           <div className="market-hero-stat"><span><UserRound size={17}/> स्थानिक विक्रेते</span><strong>{sellerCount.toLocaleString('mr-IN')}</strong><small>थेट शेतकऱ्यांकडून</small></div>
           <div className="market-hero-stat"><span><ShoppingBag size={17}/> तुमच्या कार्टमध्ये</span><strong>{cart.length.toLocaleString('mr-IN')}</strong><small>निवडलेले प्रकार</small></div>
         </>}
-      </div>
+      </div>}
     </section>
 
     <div className="market-actions" role="tablist" aria-label="शेतकरी बाजार विभाग">
       <button type="button" role="tab" aria-selected={view === 'browse'} className={view === 'browse' ? 'active' : ''} onClick={() => setView('browse')}><Search size={16}/> शेतमाल शोधा</button>
       {accountType === 'buyer' && <>
+        <button type="button" role="tab" aria-selected={offersView} className={offersView ? 'active market-offers-tab' : 'market-offers-tab'} onClick={() => { setError(''); setView('offers'); }}><Tag size={16}/> विशेष ऑफर <span className="market-tab-count">{specialOffers.length.toLocaleString('mr-IN')}</span></button>
         <button type="button" role="tab" aria-selected={view === 'cart'} className={view === 'cart' ? 'active' : ''} onClick={() => { setCartNotice(''); setBuyerFulfillment('DELIVERY'); setView('cart'); }}><ShoppingCart size={16}/> कार्ट <span className="market-tab-count">{cart.length.toLocaleString('mr-IN')}</span></button>
         <button type="button" role="tab" aria-selected={view === 'orders'} className={view === 'orders' ? 'active' : ''} onClick={() => { setBuyerOrdersNotice(''); setView('orders'); }}><ClipboardList size={16}/> माझ्या ऑर्डर{unreadMessageTotal > 0 && <span className="market-unread-badge" aria-label={`${unreadMessageTotal.toLocaleString('mr-IN')} न वाचलेले संदेश`}>{unreadMessageTotal.toLocaleString('mr-IN')}</span>}</button>
       </>}
@@ -1086,10 +1103,15 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
     </div>
 
     {error && <div className="market-message market-error" role="alert">{error}</div>}
-    {cartNotice && view === 'browse' && <div className="market-message market-success" role="status"><Check size={15}/>{cartNotice}</div>}
+    {cartNotice && (view === 'browse' || offersView) && <div className="market-message market-success" role="status"><Check size={15}/>{cartNotice}</div>}
     {adminListingNotice && view === 'browse' && <div className="market-message market-success" role="status"><Check size={15}/>{adminListingNotice}</div>}
 
-    {view === 'browse' ? <>
+    {view === 'browse' || offersView ? <>
+      {offersView && <section className="market-offers-banner">
+        <div className="market-offers-icon"><Tag size={28}/></div>
+        <div><span>विक्रेत्यांकडून थेट सवलत</span><h2>ताज्या शेतमालावर खास बचत</h2><p>मूळ दर, सवलतीचा दर आणि उपलब्ध साठा एकत्र पहा.</p></div>
+        {specialOffers.length > 0 && <div className="market-offers-highlight"><strong>{bestDiscount.toLocaleString('mr-IN', { maximumFractionDigits: 2 })}%</strong><span>पर्यंत सूट</span></div>}
+      </section>}
       <section className="market-category-shortcuts" aria-label="शेतमालाच्या प्रकारानुसार शोधा">
         <span className="market-category-label">जलद शोध</span>
         <button type="button" className={categoryFilter === 'all' ? 'selected' : ''} aria-pressed={categoryFilter === 'all'} onClick={() => setCategoryFilter('all')}>सर्व शेतमाल</button>
@@ -1107,7 +1129,7 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
         </label>
         <label className="market-filter-field"><span>क्रम</span>
           <select value={sortBy} onChange={event => setSortBy(event.target.value)}>
-            <option value="recommended">नवीन नोंदी आधी</option>
+            <option value="recommended">{offersView ? 'सर्वाधिक सवलत आधी' : 'नवीन नोंदी आधी'}</option>
             <option value="name">नावानुसार</option>
           </select>
         </label>
@@ -1117,16 +1139,17 @@ function MarketplacePanel({ accountType = 'farmer', apiBase, auth, userId, buyer
       </section>
       {accountType === 'farmer' && marketPriceError && <div className="market-message market-price-comparison-error" role="status">बाजारभाव तुलना सध्या उपलब्ध नाही. {marketPriceError}</div>}
       <section className={`market-listings ${accountType === 'farmer' ? 'market-farmer-listings' : ''}`}>
-          <div className="market-card-heading"><div><span>उपलब्ध शेतमाल</span><h2>{accountType === 'farmer' ? 'शेतमाल आणि विक्री दर' : 'शेतमालाची यादी'}</h2></div><span className="market-result-count">{filteredListings.length.toLocaleString('mr-IN')} उत्पादने</span></div>
+          <div className="market-card-heading"><div><span>{offersView ? 'उपलब्ध सवलती' : 'उपलब्ध शेतमाल'}</span><h2>{offersView ? 'तुमच्यासाठी खास ऑफर' : accountType === 'farmer' ? 'शेतमाल आणि विक्री दर' : 'शेतमालाची यादी'}</h2></div><span className="market-result-count">{filteredListings.length.toLocaleString('mr-IN')} उत्पादने</span></div>
           {loading ? <div className="market-empty">विक्रीची माहिती लोड होत आहे…</div>
-            : !filteredListings.length ? <div className="market-empty"><Wheat size={28}/><b>{favoritesOnly ? 'आवडत्या नोंदी सापडल्या नाहीत' : 'शेतमाल सापडला नाही'}</b><span>{favoritesOnly ? 'यादीत हृदयाचे चिन्ह दाबून आवडते शेतमाल जतन करा.' : 'शोध किंवा फिल्टर बदलून पाहा किंवा नवी विक्रीची नोंद जोडा.'}</span></div>
-              : <div className="market-listing-scroll">{filteredListings.map(listing=><article className={`market-listing-card ${accountType === 'farmer' ? 'market-farmer-listing-card' : ''}`} key={listing.id}>
+            : !filteredListings.length ? <div className="market-empty"><Wheat size={28}/><b>{offersView && !specialOffers.length ? 'सध्या विशेष ऑफर नाहीत' : favoritesOnly ? 'आवडत्या नोंदी सापडल्या नाहीत' : 'शेतमाल सापडला नाही'}</b><span>{offersView && !specialOffers.length ? 'विक्रेत्यांनी सवलत दिलेला उपलब्ध शेतमाल येथे दिसेल.' : favoritesOnly ? 'यादीत हृदयाचे चिन्ह दाबून आवडते शेतमाल जतन करा.' : 'शोध किंवा फिल्टर बदलून पाहा.'}</span>{offersView && <button type="button" className="market-location-button" onClick={() => { setSearch(''); setCategoryFilter('all'); setFavoritesOnly(false); setView('browse'); }}><Search size={15}/> सर्व शेतमाल पहा</button>}</div>
+              : <div className="market-listing-scroll">{filteredListings.map(listing=><article className={`market-listing-card ${offersView ? 'market-special-offer-card' : ''} ${accountType === 'farmer' ? 'market-farmer-listing-card' : ''}`} key={listing.id}>
                 <ProductPhoto apiBase={apiBase} photoUrl={listing.photoUrl} authorization={authorization} productName={listing.productName}/>
                 <div className="market-listing-content">
                   <div className="market-listing-heading"><span>{listing.category}</span>{accountType !== 'farmer' && <button type="button" className={`market-favorite-button ${favoriteIds.has(String(listing.id)) ? 'saved' : ''}`} aria-label={favoriteIds.has(String(listing.id)) ? 'आवडत्यामधून काढा' : 'आवडत्यात जतन करा'} aria-pressed={favoriteIds.has(String(listing.id))} onClick={event => toggleFavorite(listing.id, event)}><Heart size={14} fill={favoriteIds.has(String(listing.id)) ? 'currentColor' : 'none'}/></button>}</div>
                   <h3>{listing.productName}</h3><p className="market-crop-type">{listing.cropType}</p>
                   <p className={`market-stock ${listing.available === false ? 'unavailable' : ''}`}>{listing.available === false ? 'सध्या उपलब्ध नाही' : `${formatQuantity(listing)} उपलब्ध`}</p>
                   {accountType === 'farmer' ? farmerPriceComparison(listing) : priceDisplay(listing)}
+                  {offersView && <p className="market-offer-saving"><Tag size={13}/> बचत: {formatPrice(Number(listing.pricePerUnit) - effectivePrice(listing), listing.unit)}</p>}
                   {accountType !== 'farmer' && <>
                     <div className="market-seller"><UserRound size={13}/><b>{listing.sellerName}</b>{listing.sellerVerified&&<span className="market-seller-verification" title={`सेंद्रिय प्रमाणपत्र ${listing.sellerCertificateValidUntil ? `वैध: ${listing.sellerCertificateValidUntil}` : 'पडताळलेले'}`}><ShieldCheck size={11}/> पडताळलेले</span>}{Number(listing.sellerReviewCount)>0&&<span className="market-seller-rating"><Star size={11} fill="currentColor"/>{Number(listing.sellerRating).toFixed(1)} ({Number(listing.sellerReviewCount).toLocaleString('mr-IN')})</span>}</div>
                     <SellerReviews listing={listing} request={request}/>

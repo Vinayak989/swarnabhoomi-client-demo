@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { CheckCircle2, ExternalLink, Leaf, LoaderCircle, Pencil, Save, ShieldCheck, UserRound } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Camera, CheckCircle2, ExternalLink, Leaf, LoaderCircle, Pencil, Save, ShieldCheck, Trash2, UserRound } from 'lucide-react';
+import AccountAvatar from './AccountAvatar.jsx';
+import { prepareProfilePhoto } from './profilePhotoUpload.js';
 import './accountProfile.css';
 import './accountProfileSummary.css';
 import SpeechTextInput from './SpeechTextInput.jsx';
@@ -39,6 +41,8 @@ function AccountProfilePanel({ accountType, mobileNumber, profile, profileLoadin
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoInput = useRef(null);
   const isSeller = accountType === 'seller' || accountType === 'farmer';
   const hasSavedProfile = Boolean(profile?.profileId);
   const accountLabel = accountType === 'farmer' ? 'शेतकरी' : accountType === 'seller' ? 'विक्रेता' : 'खरेदीदार';
@@ -54,8 +58,33 @@ function AccountProfilePanel({ accountType, mobileNumber, profile, profileLoadin
     setNotice('');
   }
 
+  async function uploadPhoto(event) {
+    const file = event.target.files?.[0]; event.target.value = '';
+    if (!file) return;
+    setPhotoBusy(true); setError(''); setNotice('');
+    try {
+      const body = new FormData(); body.append('file', await prepareProfilePhoto(file));
+      const response = await apiFetch('/api/profile/photo', { method: 'POST', body });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message || 'प्रोफाइल फोटो जतन करता आला नाही.');
+      onSaved({ ...profile, photoUrl: result.photoUrl }); setNotice('प्रोफाइल फोटो जतन झाला.');
+    } catch (failure) { setError(failure.message || 'प्रोफाइल फोटो जतन करता आला नाही.'); }
+    finally { setPhotoBusy(false); }
+  }
+
+  async function removePhoto() {
+    setPhotoBusy(true); setError(''); setNotice('');
+    try {
+      const response = await apiFetch('/api/profile/photo', { method: 'DELETE' });
+      if (!response.ok) throw new Error('प्रोफाइल फोटो काढता आला नाही.');
+      onSaved({ ...profile, photoUrl: null }); setNotice('प्रोफाइल फोटो काढला.');
+    } catch (failure) { setError(failure.message); }
+    finally { setPhotoBusy(false); }
+  }
+
   async function saveProfile(event) {
     event.preventDefault();
+    if (photoBusy) return;
     setSaving(true);
     setError('');
     setNotice('');
@@ -100,7 +129,7 @@ function AccountProfilePanel({ accountType, mobileNumber, profile, profileLoadin
 
   return <section className="account-profile-page" lang="mr">
     <header className="account-profile-hero">
-      <div className="account-profile-icon"><UserRound size={22}/></div>
+      <AccountAvatar className="account-profile-icon" photoUrl={profile?.photoUrl} apiFetch={apiFetch}/>
       <div><span>तुमचे खाते</span><h1>{accountLabel} प्रोफाइल</h1><p>तुमची संपर्क आणि ठिकाणाची माहिती जतन करा. ती प्रशासकाला व्यवस्थापन विभागात दिसेल.</p></div>
       <div className={`account-profile-completion ${profile?.complete ? 'complete' : ''}`}>
         {profile?.complete ? <CheckCircle2 size={16}/> : <ShieldCheck size={16}/>}
@@ -110,6 +139,16 @@ function AccountProfilePanel({ accountType, mobileNumber, profile, profileLoadin
 
     {error && <div className="account-profile-message error" role="alert">{error}</div>}
     {notice && <div className="account-profile-message success" role="status">{notice}</div>}
+
+    {!profileLoading && <section className="account-photo-editor" aria-label="प्रोफाइल फोटो">
+      <AccountAvatar className="account-photo-preview" photoUrl={profile?.photoUrl} apiFetch={apiFetch}/>
+      <div><h2>तुमचा प्रोफाइल फोटो</h2><p>तुमच्या खात्याला स्वतःची ओळख द्या.</p>
+        <input ref={photoInput} type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadPhoto} aria-label="प्रोफाइल फोटो निवडा"/>
+        <div className="account-photo-actions"><button type="button" disabled={photoBusy || saving} onClick={() => photoInput.current?.click()}>{photoBusy ? <LoaderCircle className="spin" size={15}/> : <Camera size={15}/>} {photoBusy ? 'फोटो जतन होत आहे…' : profile?.photoUrl ? 'फोटो बदला' : 'फोटो जोडा'}</button>
+          {profile?.photoUrl && <button type="button" disabled={photoBusy || saving} onClick={removePhoto}><Trash2 size={14}/> फोटो काढा</button>}</div>
+        <small>कॅमेरा किंवा गॅलरीतून JPG, PNG किंवा WEBP फोटो निवडा. फोटो लहान करून जतन केला जाईल.</small>
+      </div>
+    </section>}
 
     {profileLoading ? <div className="account-profile-loading"><LoaderCircle className="spin" size={19}/> प्रोफाइल उघडत आहे…</div> : hasSavedProfile && !editing ? <div className="account-profile-summary">
       <section className="account-profile-section">
@@ -156,7 +195,7 @@ function AccountProfilePanel({ accountType, mobileNumber, profile, profileLoadin
         </>}
       </section>}
 
-      <div className="account-profile-footer"><p>{hasSavedProfile ? 'माहिती अद्ययावत करण्यासाठी बदल जतन करा.' : 'तुमचा प्रोफाइल निर्देशक पूर्ण करण्यासाठी नाव, गाव, जिल्हा आणि राज्य भरा.'}</p><div className="account-profile-footer-actions">{hasSavedProfile && <button type="button" className="account-profile-cancel" onClick={() => { setForm(blankForm(profile)); setEditing(false); setNotice(''); setError(''); }}>रद्द करा</button>}<button type="submit" disabled={saving}>{saving ? <LoaderCircle className="spin" size={16}/> : <Save size={16}/>} {saving ? 'जतन होत आहे…' : hasSavedProfile ? 'बदल जतन करा' : 'प्रोफाइल जतन करा'}</button></div></div>
+      <div className="account-profile-footer"><p>{hasSavedProfile ? 'माहिती अद्ययावत करण्यासाठी बदल जतन करा.' : 'तुमचा प्रोफाइल निर्देशक पूर्ण करण्यासाठी नाव, गाव, जिल्हा आणि राज्य भरा.'}</p><div className="account-profile-footer-actions">{hasSavedProfile && <button type="button" className="account-profile-cancel" onClick={() => { setForm(blankForm(profile)); setEditing(false); setNotice(''); setError(''); }}>रद्द करा</button>}<button type="submit" disabled={saving || photoBusy}>{saving ? <LoaderCircle className="spin" size={16}/> : <Save size={16}/>} {saving ? 'जतन होत आहे…' : hasSavedProfile ? 'बदल जतन करा' : 'प्रोफाइल जतन करा'}</button></div></div>
     </form>}
   </section>;
 }

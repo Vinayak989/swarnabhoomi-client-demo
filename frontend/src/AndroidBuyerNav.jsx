@@ -1,8 +1,9 @@
-import { ClipboardList, LogOut, ShoppingBasket, ShoppingCart, UserRound } from 'lucide-react';
+import { ClipboardList, LogOut, ShoppingBasket, ShoppingCart, Tag, UserRound } from 'lucide-react';
 import AndroidScrollableNav from './AndroidScrollableNav.jsx';
 
 const ITEMS = [
   { id: 'browse', label: 'खरेदी', icon: ShoppingBasket },
+  { id: 'offers', label: 'विशेष ऑफर', icon: Tag },
   { id: 'cart', label: 'कार्ट', icon: ShoppingCart },
   { id: 'orders', label: 'ऑर्डर', icon: ClipboardList },
   { id: 'profile', label: 'प्रोफाइल', icon: UserRound },

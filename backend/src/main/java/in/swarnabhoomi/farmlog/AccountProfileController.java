@@ -23,16 +23,18 @@ public class AccountProfileController {
     private static final Set<String> ORGANIC_SYSTEMS = Set.of("PGS_INDIA", "NPOP_APEDA");
 
     private final AccountProfileRepository profiles;
+    private final ProfilePhotoService photos;
 
-    public AccountProfileController(AccountProfileRepository profiles) {
+    public AccountProfileController(AccountProfileRepository profiles, ProfilePhotoService photos) {
         this.profiles = profiles;
+        this.photos = photos;
     }
 
     @GetMapping
     @Transactional(readOnly = true)
     public ProfileResponse profile(@RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
         requireProfileRole(user);
-        return ProfileResponse.from(user, profiles.findByUserId(user.getId()).orElse(null));
+        return ProfileResponse.from(user, profiles.findByUserId(user.getId()).orElse(null), photos.exists(user.getId()));
     }
 
     @PutMapping
@@ -97,7 +99,7 @@ public class AccountProfileController {
             clearVerification(profile);
         }
 
-        return ProfileResponse.from(user, profiles.save(profile));
+        return ProfileResponse.from(user, profiles.save(profile), photos.exists(user.getId()));
     }
 
     private static void requireProfileRole(AppUser user) {
@@ -140,8 +142,8 @@ public class AccountProfileController {
             String organicCertificationSystem, String organicCertificationNumber,
             LocalDate organicCertificateValidUntil, String organicVerificationStatus,
             String organicVerificationNote, Instant organicVerificationCheckedAt,
-            boolean complete, Instant updatedAt) {
-        static ProfileResponse from(AppUser user, AccountProfile profile) {
+            boolean complete, Instant updatedAt, String photoUrl) {
+        static ProfileResponse from(AppUser user, AccountProfile profile, boolean hasPhoto) {
             String role = user.getRole();
             boolean complete = profile != null && profile.getFullName() != null
                     && profile.getVillage() != null && profile.getDistrict() != null && profile.getState() != null;
@@ -157,7 +159,7 @@ public class AccountProfileController {
                     profile == null ? "NOT_CLAIMED" : verificationStatus(profile),
                     profile == null ? null : profile.getOrganicVerificationNote(),
                     profile == null ? null : profile.getOrganicVerificationCheckedAt(), complete,
-                    profile == null ? null : profile.getUpdatedAt());
+                    profile == null ? null : profile.getUpdatedAt(), hasPhoto ? "/api/profile/photo" : null);
         }
 
         private static String verificationStatus(AccountProfile profile) {

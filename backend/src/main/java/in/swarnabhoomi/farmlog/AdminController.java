@@ -37,16 +37,18 @@ public class AdminController {
     private final FarmProductListingRepository listings;
     private final MarketplacePurchaseRequestRepository purchaseRequests;
     private final OrganicConsultantRepository consultantProfiles;
+    private final ProfilePhotoService profilePhotos;
 
     public AdminController(AppUserRepository users, AccountProfileRepository profiles, FarmEntryRepository entries,
             FarmProductListingRepository listings, MarketplacePurchaseRequestRepository purchaseRequests,
-            OrganicConsultantRepository consultantProfiles) {
+            OrganicConsultantRepository consultantProfiles, ProfilePhotoService profilePhotos) {
         this.users = users;
         this.profiles = profiles;
         this.entries = entries;
         this.listings = listings;
         this.purchaseRequests = purchaseRequests;
         this.consultantProfiles = consultantProfiles;
+        this.profilePhotos = profilePhotos;
     }
 
     @GetMapping("/overview")
@@ -80,7 +82,9 @@ public class AdminController {
         Map<Long, AccountProfile> profileByUserId = userIds.isEmpty() ? Map.of()
                 : profiles.findAllByUserIds(userIds).stream()
                         .collect(Collectors.toMap(AccountProfile::getUserId, Function.identity()));
-        return accountPage.map(account -> userRecord(account, profileByUserId.get(account.getId())));
+        Set<String> photoIds = profilePhotos.existingIds(userIds);
+        return accountPage.map(account -> userRecord(account, profileByUserId.get(account.getId()),
+                photoIds.contains(ProfilePhotoService.photoId(account.getId())) ? "/api/profile/photo/" + account.getId() : null));
     }
 
     @PatchMapping("/users/{id}/organic-verification")
@@ -182,7 +186,7 @@ public class AdminController {
         }
     }
 
-    private static UserRecord userRecord(AppUser user, AccountProfile profile) {
+    private static UserRecord userRecord(AppUser user, AccountProfile profile, String photoUrl) {
         return new UserRecord(user.getId(), user.getMobileNumber(), user.getRole(), user.getCreatedAt(),
                 profile == null ? null : profile.getFullName(), profile == null ? null : profile.getBusinessName(),
                 profile == null ? null : profile.getVillage(), profile == null ? null : profile.getTaluka(),
@@ -197,7 +201,7 @@ public class AdminController {
                 profile == null ? null : profile.getOrganicVerificationCheckedAt(),
                 profile != null && profile.getOrganicVerificationCheckedBy() != null,
                 profile != null && profile.getFullName() != null && profile.getVillage() != null
-                        && profile.getDistrict() != null && profile.getState() != null);
+                        && profile.getDistrict() != null && profile.getState() != null, photoUrl);
     }
 
     private static String organicVerificationStatus(AccountProfile profile) {
@@ -247,7 +251,7 @@ public class AdminController {
             String pincode, String address, String about, String organicCertificationSystem,
             String organicCertificationNumber, LocalDate organicCertificateValidUntil,
             String organicVerificationStatus, String organicVerificationNote,
-            Instant organicVerificationCheckedAt, boolean organicVerificationReviewed, boolean profileComplete) {}
+            Instant organicVerificationCheckedAt, boolean organicVerificationReviewed, boolean profileComplete, String photoUrl) {}
 
     public record VerificationReviewRequest(String status, String note) {}
     public record VerificationRecord(Long userId, String status, String note, Instant checkedAt) {}

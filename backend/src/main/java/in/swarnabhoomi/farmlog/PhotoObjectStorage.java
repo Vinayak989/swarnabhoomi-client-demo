@@ -71,4 +71,10 @@ public class PhotoObjectStorage {
     public String newPhotoId() {
         return UUID.randomUUID().toString();
     }
+
+    public void delete(FarmPhoto photo) {
+        if (photo.getS3Key() != null && !photo.getS3Key().isBlank() && isS3Enabled()) {
+            clientProvider.getObject().deleteObject(request -> request.bucket(bucket).key(photo.getS3Key()));
+        }
+    }
 }
