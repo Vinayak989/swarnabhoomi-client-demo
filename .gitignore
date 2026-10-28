@@ -4,6 +4,7 @@ backend/target/
 backend/data/
 backend/uploads/
 .tools/
+.backups/
 *.log
 *.zip
 .env

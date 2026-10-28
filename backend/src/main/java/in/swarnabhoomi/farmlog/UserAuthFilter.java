@@ -24,9 +24,11 @@ public class UserAuthFilter extends OncePerRequestFilter {
     private static final Pattern MARKETPLACE_SELLER = Pattern.compile(
             "^/api/marketplace/seller/listings/[0-9]+(?:/purchase-requests(?:/[0-9]+)?)?$");
     private final AuthService authService;
+    private final DatabaseExportAccess databaseExportAccess;
 
-    public UserAuthFilter(AuthService authService) {
+    public UserAuthFilter(AuthService authService, DatabaseExportAccess databaseExportAccess) {
         this.authService = authService;
+        this.databaseExportAccess = databaseExportAccess;
     }
 
     @Override
@@ -42,6 +44,7 @@ public class UserAuthFilter extends OncePerRequestFilter {
                 || "POST".equalsIgnoreCase(method) && (path.equals("/api/marketplace/listings")
                     || path.equals("/api/marketplace/photos") || MARKETPLACE_PURCHASE.matcher(path).matches());
         return "OPTIONS".equalsIgnoreCase(method)
+                || databaseExportAccess.isAuthorized(request)
                 || !path.startsWith("/api/")
                 || path.equals("/api/health")
                 || path.startsWith("/api/auth/") && !path.equals("/api/auth/me") && !path.equals("/api/auth/logout")
