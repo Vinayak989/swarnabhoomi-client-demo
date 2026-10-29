@@ -41,7 +41,7 @@ public class OrganicConsultantController {
                 ? payments.findAllBySeller_IdAndStatus(user.getId(), ConsultantContactPayment.Status.PAID).stream()
                         .map(payment -> payment.getConsultant().getId()).collect(java.util.stream.Collectors.toSet())
                 : Set.of();
-        return repository.findTop200ByOrderByCreatedAtDesc().stream()
+        return repository.findTop200ByDeletedAtIsNullOrderByCreatedAtDesc().stream()
                 .map(consultant -> {
                     boolean unlocked = unlockedConsultantIds.contains(consultant.getId());
                     boolean canSeeContact = !seller || unlocked;
@@ -52,10 +52,11 @@ public class OrganicConsultantController {
     }
 
     @PostMapping("/{consultantId}/contact-payment/order")
+    @Transactional
     public ContactPaymentOrder createContactPaymentOrder(@PathVariable Long consultantId,
             @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
         requireSeller(user);
-        OrganicConsultant consultant = repository.findById(consultantId)
+        OrganicConsultant consultant = repository.findActiveByIdForUpdate(consultantId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "सल्लागार सापडला नाही."));
         if (payments.existsBySeller_IdAndConsultant_IdAndStatus(user.getId(), consultantId,
                 ConsultantContactPayment.Status.PAID)) {
@@ -97,14 +98,22 @@ public class OrganicConsultantController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "या पेमेंटची परवानगी नाही.");
         }
         if (payment.getStatus() == ConsultantContactPayment.Status.PAID) {
-            return new ContactPaymentVerification(true, "सल्लागाराचा संपर्क खुला झाला आहे.");
+            return paymentVerification(payment, "सल्लागाराचा संपर्क खुला झाला आहे.");
         }
         paymentService.verifyCapturedPayment(payment.getRazorpayOrderId(), request.paymentId(), request.signature());
         payment.setRazorpayPaymentId(request.paymentId());
         payment.setStatus(ConsultantContactPayment.Status.PAID);
         payment.setPaidAt(java.time.Instant.now());
         payments.save(payment);
-        return new ContactPaymentVerification(true, "₹९९ पेमेंट यशस्वी. सल्लागाराचा संपर्क खुला झाला आहे.");
+        return paymentVerification(payment, "₹९९ पेमेंट यशस्वी. सल्लागाराचा संपर्क खुला झाला आहे.");
+    }
+
+    private static ContactPaymentVerification paymentVerification(ConsultantContactPayment payment, String message) {
+        if (payment.getConsultant().getDeletedAt() != null) {
+            return new ContactPaymentVerification(false,
+                    "पेमेंटची नोंद जतन झाली आहे. हा सल्लागार यादीत उपलब्ध नाही. मदतीतून प्रशासकाशी संपर्क करा.");
+        }
+        return new ContactPaymentVerification(true, message);
     }
 
     @PostMapping

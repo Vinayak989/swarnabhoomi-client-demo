@@ -59,7 +59,7 @@ public class AdminController {
                 users.countByRole("seller"),
                 users.countByRole("farmer"),
                 users.countByRole("consultant"),
-                consultantProfiles.count(),
+                consultantProfiles.countByDeletedAtIsNull(),
                 listings.count(),
                 listings.countByAvailableTrue(),
                 purchaseRequests.count(),
@@ -133,8 +133,23 @@ public class AdminController {
             @RequestParam(defaultValue = "50") int size,
             @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
         requireAdmin(user);
-        return consultantProfiles.findAllByOrderByCreatedAtDesc(pageRequest(page, size))
+        return consultantProfiles.findAllByDeletedAtIsNullOrderByCreatedAtDesc(pageRequest(page, size))
                 .map(AdminController::consultantRecord);
+    }
+
+    @DeleteMapping("/consultants/{id}")
+    @org.springframework.web.bind.annotation.ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
+    public void deleteConsultant(@PathVariable Long id,
+            @RequestAttribute(UserAuthFilter.USER_ATTRIBUTE) AppUser user) {
+        requireAdmin(user);
+        OrganicConsultant consultant = consultantProfiles.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "सल्लागार सापडला नाही."));
+        if (consultant.getDeletedAt() == null) {
+            // Retain the record referenced by past or in-flight ₹99 contact payments.
+            consultant.setDeletedAt(Instant.now());
+            consultantProfiles.save(consultant);
+        }
     }
 
     @GetMapping("/daily-entries")

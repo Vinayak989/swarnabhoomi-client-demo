@@ -36,3 +36,7 @@ Restore into a **new isolated MySQL schema first**, using a matching native MySQ
 Development verification restored a native backup into a separate local schema and compared deterministic full-data dumps; all rows and photo BLOBs matched byte for byte. The existing H2 archives were left intact.
 
 The separate low-memory MySQL maintenance task was deferred at the user's request; this rollout does not claim that tuning is applied.
+
+## Admin removal of consultants
+
+Admin → सेंद्रिय सल्लागार includes a confirmed **हटवा** action. The admin-only DELETE endpoint archives the profile with `deleted_at`; directory queries, admin lists and profile counts exclude it. New ₹99 contact-payment orders are blocked for an archived profile. Existing payment records and consultant references remain intact, and an already captured payment can still be verified without reopening the removed profile. Migration `consultant-removal-v2` adds the nullable timestamp after a successful native MySQL backup and before Hibernate validation.

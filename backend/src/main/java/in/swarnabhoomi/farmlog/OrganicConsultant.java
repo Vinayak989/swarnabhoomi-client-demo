@@ -43,6 +43,8 @@ public class OrganicConsultant {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
+    private Instant deletedAt;
+
     @PrePersist
     void setCreatedAt() {
         if (createdAt == null) createdAt = Instant.now();
@@ -64,4 +66,6 @@ public class OrganicConsultant {
     public AppUser getOwner() { return owner; }
     public void setOwner(AppUser value) { owner = value; }
     public Instant getCreatedAt() { return createdAt; }
+    public Instant getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(Instant value) { deletedAt = value; }
 }

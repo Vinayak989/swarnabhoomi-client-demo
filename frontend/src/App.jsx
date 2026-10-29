@@ -477,7 +477,7 @@ const ADMIN_SECTIONS = {
   buyers: { label: 'खरेदीदार प्रोफाइल', endpoint: '/users?role=buyer', columns: ['नाव / संपर्क', 'ठिकाण', 'प्रमाणपत्र', 'पडताळणी', 'नोंदणी'] },
   sellers: { label: 'विक्रेता प्रोफाइल', endpoint: '/users?role=seller', columns: ['नाव / संपर्क', 'ठिकाण', 'प्रमाणपत्र', 'पडताळणी', 'नोंदणी'] },
   farmers: { label: 'शेतकरी प्रोफाइल', endpoint: '/users?role=farmer', columns: ['नाव / संपर्क', 'ठिकाण', 'प्रमाणपत्र', 'पडताळणी', 'नोंदणी'] },
-  consultants: { label: 'सेंद्रिय सल्लागार', endpoint: '/consultants', columns: ['नाव', 'मोबाईल क्रमांक', 'सेवा क्षेत्र', 'तज्ज्ञता', 'अनुभव', 'नोंदणी दिनांक'] },
+  consultants: { label: 'सेंद्रिय सल्लागार', endpoint: '/consultants', columns: ['नाव', 'मोबाईल क्रमांक', 'सेवा क्षेत्र', 'तज्ज्ञता', 'अनुभव', 'नोंदणी दिनांक', 'कृती'] },
   entries: { label: 'शेतकऱ्यांच्या दैनिक नोंदी', endpoint: '/daily-entries', columns: ['दिनांक', 'शेतकरी मोबाईल', 'पीक / विभाग', 'आजची कामे', 'उत्पादन', 'तपशील'] },
   listings: { label: 'विक्रीच्या नोंदी', endpoint: '/listings', columns: ['माल', 'विक्रेता', 'प्रमाण', 'भाव', 'स्थिती', 'दिनांक'] },
   requests: { label: 'खरेदी विनंत्या', endpoint: '/purchase-requests', columns: ['खरेदीदार', 'माल / विक्रेता', 'प्रमाण', 'स्थिती', 'दिनांक'] },
@@ -519,6 +519,20 @@ function AdminOverview({apiBase,apiFetch}){
   const rows=page?.content||[];
   const filteredRows=rows.filter(row=>Object.values(row).join(' ').toLocaleLowerCase('mr-IN').includes(search.toLocaleLowerCase('mr-IN')));
   function selectSection(next){setSection(next);setPageIndex(0);setSearch('')}
+  const [deletingConsultantId,setDeletingConsultantId]=useState(null);
+  const sectionRef=useRef(section);sectionRef.current=section;
+  async function removeConsultant(row){
+    if(deletingConsultantId!==null||!window.confirm(`${row.name} यांना सल्लागार यादीतून हटवायचे आहे का?`))return;
+    setDeletingConsultantId(row.id);setError('');setNotice('');
+    try{
+      const response=await apiFetch(`${apiBase}/admin/consultants/${row.id}`,{method:'DELETE'});
+      if(!response.ok){const result=await response.json().catch(()=>({}));throw new Error(result.message||'सल्लागार हटवता आला नाही. पुन्हा प्रयत्न करा.');}
+      setNotice('सल्लागार यादीतून हटवला.');
+      if(sectionRef.current==='consultants'&&pageIndex>0&&rows.length===1)setPageIndex(value=>Math.max(0,value-1));
+      setReload(value=>value+1);
+    }catch(exception){setError(exception.message||'सल्लागार हटवता आला नाही.');}
+    finally{setDeletingConsultantId(null);}
+  }
   async function saveConsultant(event){
     event.preventDefault();setConsultantSaving(true);setError('');setNotice('');
     try{
@@ -560,7 +574,7 @@ function AdminOverview({apiBase,apiFetch}){
       <td><span className={`admin-status ${String(row.organicVerificationStatus||'NOT_CLAIMED').toLowerCase()}`}>{({NOT_CLAIMED:'दावा नाही',PENDING:'तपासणी बाकी',VERIFIED:'तपासले',EXPIRED:'कालबाह्य',NOT_VERIFIED:'पुष्टी नाही'})[row.organicVerificationStatus]||'तपासणी बाकी'}</span>{row.organicVerificationCheckedAt&&<small>तपासणी: {adminDate(row.organicVerificationCheckedAt)}</small>}{row.organicVerificationNote&&<small>{row.organicVerificationNote}</small>}{row.organicCertificationNumber&&<details className="admin-row-details"><summary>पोर्टल / निकाल</summary><div className="admin-organic-review-links"><a href="https://pgsindia-ncof.gov.in/consumer_ver.aspx" target="_blank" rel="noreferrer">PGS-India तपासा</a><a href="https://npop.apeda.gov.in/Certification-Body-Operator-Details" target="_blank" rel="noreferrer">APEDA तपासा</a><a href="https://jaivikbharat.fssai.gov.in/" target="_blank" rel="noreferrer">Jaivik Bharat शोधा</a></div><div className="admin-organic-review-actions"><button type="button" onClick={()=>reviewOrganicVerification(row.id,'VERIFIED')} disabled={reviewingUserId!==null}>{reviewingUserId===row.id?'जतन…':'तपासले'}</button><button type="button" className="reject" onClick={()=>reviewOrganicVerification(row.id,'NOT_VERIFIED')} disabled={reviewingUserId!==null}>पुष्टी नाही</button></div></details>}</td>
       <td>{adminDate(row.createdAt)}</td>
     </tr>);
-    if(section==='consultants')return filteredRows.map(row=><tr key={row.id}><td><b>{row.name}</b>{row.introduction&&<small>{row.introduction}</small>}</td><td>{row.phone}</td><td>{row.serviceArea}</td><td>{row.expertise}</td><td>{Number(row.experienceYears||0).toLocaleString('mr-IN')} वर्षे</td><td>{adminDate(row.createdAt)}</td></tr>);
+    if(section==='consultants')return filteredRows.map(row=><tr key={row.id}><td><b>{row.name}</b>{row.introduction&&<small>{row.introduction}</small>}</td><td>{row.phone}</td><td>{row.serviceArea}</td><td>{row.expertise}</td><td>{Number(row.experienceYears||0).toLocaleString('mr-IN')} वर्षे</td><td>{adminDate(row.createdAt)}</td><td><button type="button" className="admin-consultant-delete" aria-label={`${row.name} सल्लागार हटवा`} disabled={deletingConsultantId!==null} onClick={()=>removeConsultant(row)}>{deletingConsultantId===row.id?<LoaderCircle size={15} className="spin"/>:<Trash2 size={15}/>} {deletingConsultantId===row.id?'हटवत आहे…':'हटवा'}</button></td></tr>);
     if(section==='entries')return filteredRows.map(row=><tr key={row.id}><td>{adminDate(row.entryDate)}</td><td><b>{row.farmerMobileNumber||'—'}</b></td><td>{row.farmSection||'—'}</td><td className="admin-work-cell">{row.workDone||'—'}</td><td>{row.productionKg==null?'—':`${Number(row.productionKg).toLocaleString('mr-IN')} किलो`}</td><td><details className="admin-row-details"><summary>संपूर्ण नोंद</summary><dl>{[['हंगाम',row.seasonName],['क्षेत्र (एकर)',row.plotAreaAcres],['हवामान',row.weather],['हवामान तपशील',row.weatherDetails],['पिनकोड',row.pincode],['साहित्य',row.materials],['पाणी (लिटर)',row.waterLitres],['निविष्ठेचा प्रकार',row.applicationKind],['निविष्ठा',row.applicationName],['निविष्ठेचे प्रमाण',row.applicationAmount==null?'':`${row.applicationAmount} ${row.applicationUnit||''}`],['मजूर',row.workerCount],['मजुरी खर्च',adminMoney(row.laborCost)],['साहित्य खर्च',adminMoney(row.materialsCost)],['इतर खर्च',adminMoney(row.otherCost)],['विक्री',row.soldKg==null?'—':`${row.soldKg} किलो`],['विक्री उत्पन्न',adminMoney(row.saleIncome)],['पीक स्थिती',row.cropCondition],['मातीची नोंद',row.soilNotes],['कीड / रोग',row.pestDisease],['तीव्रता',row.issueSeverity],['केलेला उपाय',row.intervention],['पुढील पाहणी',adminDate(row.followUpDate)],['उद्याची योजना',row.tomorrowPlan],['विशेष नोंद',row.specialNote],['शेताचा फोटो',row.photoUrl],['पावती फोटो',row.receiptPhotoUrls]].filter(([,value])=>value!=null&&value!=='').map(([label,value])=><React.Fragment key={label}><dt>{label}</dt><dd>{value}</dd></React.Fragment>)}</dl></details></td></tr>);
     if(section==='messageReports')return filteredRows.map(row=><tr key={row.id}>
       <td><b>{row.reporterName||`खाते #${row.reporterUserId}`}</b><small>{adminRoleLabel(row.reporterRole)} · खाते #{Number(row.reporterUserId).toLocaleString('mr-IN')}</small><small>{row.reporterMobileNumber||'मोबाईल उपलब्ध नाही'}</small></td>
