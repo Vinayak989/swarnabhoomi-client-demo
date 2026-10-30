@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Sprout, Plus, Search, CloudSun, Sun, Cloud, CloudRain, ImagePlus, Leaf, Wallet, Boxes, TrendingUp, CalendarDays, ChevronRight, ChevronDown, X, Save, Trash2, MapPin, LoaderCircle, FileDown, FileSpreadsheet, Activity, Bell, CheckCircle2, BookOpen, ShoppingBasket, HandHelping, ArrowUp, Shield, RefreshCw, UserRound, ArrowRight, MoreHorizontal, LogOut, Pencil, MessageCircle } from 'lucide-react';
+import { Sprout, Plus, Search, CloudSun, Sun, Cloud, CloudRain, ImagePlus, Camera, Leaf, Wallet, Boxes, TrendingUp, CalendarDays, ChevronRight, ChevronDown, X, Save, Trash2, MapPin, LoaderCircle, FileDown, FileSpreadsheet, Activity, Bell, CheckCircle2, BookOpen, ShoppingBasket, HandHelping, ArrowUp, Shield, RefreshCw, UserRound, ArrowRight, MoreHorizontal, LogOut, Pencil, MessageCircle } from 'lucide-react';
 import farmLogo from './image/WhatsApp Image 2026-10-20 at 2.00.01 PM.jpeg';
 import farmerRoleLogo from './image/farmer-role-cartoon.jpg';
 import buyerRoleLogo from './image/buyer-role-cartoon.jpg';
@@ -324,14 +324,6 @@ function App(){
     setPhotoUploading(false);
     setPhotoError('');
     setPreview('');
-    if(!file.type.startsWith('image/')){
-      setPhotoError('कृपया फोटो फाइल निवडा.');
-      return;
-    }
-    if(file.size>10_000_000){
-      setPhotoError('फोटो १० MB पेक्षा लहान निवडा.');
-      return;
-    }
     setPreview(URL.createObjectURL(file));
     setPhotoUploading(true);
     const task=uploadEntryPhoto(apiFetch,file);
@@ -339,8 +331,8 @@ function App(){
     try{
       const url=await task;
       if(photoUploadRef.current===task){set('photoUrl',url);setPreview('')}
-    }catch{
-      if(photoUploadRef.current===task){setPhotoError('फोटो अपलोड झाला नाही. कृपया पुन्हा प्रयत्न करा.');setPreview('')}
+    }catch(error){
+      if(photoUploadRef.current===task){setPhotoError(error.message==='Photo upload failed.'?'फोटो अपलोड झाला नाही. कृपया पुन्हा प्रयत्न करा.':error.message||'फोटो जोडता आला नाही. पुन्हा प्रयत्न करा.');setPreview('')}
     }finally{
       if(photoUploadRef.current===task)setPhotoUploading(false);
     }
@@ -352,6 +344,7 @@ function App(){
     set('photoUrl','');
     setPreview('');
   }
+  useEffect(()=>()=>{if(preview)URL.revokeObjectURL(preview)},[preview]);
   async function remove(id){if(!confirm('ही नोंद हटवायची आहे का?'))return;await apiFetch(`${API}/entries/${id}`,{method:'DELETE'});load()}
   if(!authUser||!authToken){
     if(!selectedAccount)return <div className={entryAppClass}><AccountSelection lastAccountType={lastAccountType} onSelect={chooseAccount}/></div>;
@@ -404,9 +397,13 @@ function App(){
       <Field label="विशेष नोंद"><textarea rows="2" value={form.specialNote} onChange={e=>set('specialNote',e.target.value)} placeholder="काही विशेष सांगायचे असल्यास..."/></Field>
       <div className="photo-upload">
         <label>
-          <input type="file" accept="image/*" onChange={e=>{void upload(e.target.files?.[0]);e.target.value=''}}/>
+          <input type="file" accept="image/*" aria-label="गॅलरीतून शेताचा फोटो निवडा" disabled={photoUploading||loading} onChange={e=>{const input=e.currentTarget;void upload(input.files?.[0]).finally(()=>{input.value=''})}}/>
           <ImagePlus size={22}/>
-          <span className="photo-picker-copy"><b>{photoUploading?'फोटो अपलोड होत आहे…':form.photoUrl?'फोटो बदला':'शेताचा फोटो जोडा'}</b><small>कॅमेरा किंवा गॅलरी · कमाल १० MB</small></span>
+          <span className="photo-picker-copy"><b>{photoUploading?'फोटो तयार व अपलोड होत आहे…':form.photoUrl?'फोटो बदला':'गॅलरीतून फोटो जोडा'}</b><small>कॅमेऱ्याचे मोठे फोटो आपोआप लहान होतील</small></span>
+        </label>
+        <label className="entry-camera-picker">
+          <input type="file" accept="image/*" capture="environment" aria-label="कॅमेऱ्याने शेताचा फोटो काढा" disabled={photoUploading||loading} onChange={e=>{const input=e.currentTarget;void upload(input.files?.[0]).finally(()=>{input.value=''})}}/>
+          <Camera size={22}/><span className="photo-picker-copy"><b>फोटो काढा</b><small>फोनचा कॅमेरा वापरा</small></span>
         </label>
         {preview?<PhotoThumbnail image={preview} alt="निवडलेला फोटो"/>:form.photoUrl&&<ProtectedPhoto src={form.photoUrl} auth={authToken} alt="नोंदीतील शेत फोटो"/>}
         {(form.photoUrl||preview||photoError)&&<button type="button" className="remove-entry-photo" onClick={clearPhoto}>फोटो काढा</button>}

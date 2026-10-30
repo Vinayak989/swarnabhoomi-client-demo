@@ -8,6 +8,8 @@
 .photo-upload .photo-thumb-trigger{display:block;flex:none;padding:0;border:0;border-radius:8px;background:transparent;overflow:hidden;cursor:pointer}
 .photo-upload .photo-thumb-trigger img{display:block;width:50px;height:50px;object-fit:cover}
 .photo-upload{flex-wrap:wrap}
+.photo-upload .entry-camera-picker{border:1px solid #d5e4cf;border-radius:9px;padding:10px 12px;background:#f1f7ed;color:#356d43;cursor:pointer}
+.photo-upload label:has(input:disabled){opacity:.6;cursor:wait}
 .photo-upload .photo-picker-copy{display:flex;flex-direction:column;gap:3px}
 .photo-upload .photo-upload-status{color:#357348;font-weight:700}
 .photo-upload .error{flex-basis:100%;margin:0;color:#ad5146}

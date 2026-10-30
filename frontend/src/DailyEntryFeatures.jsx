@@ -3,6 +3,7 @@ import { Bug, ChevronDown, ImagePlus, Sprout, Trash2 } from 'lucide-react';
 import { Bell, LoaderCircle } from 'lucide-react';
 import { getBrowserPushSubscriptionId } from './reminderNotifications.js';
 import SpeechTextInput from './SpeechTextInput.jsx';
+import { prepareUploadPhoto } from './photoUpload.js';
 import './dailyEntryFeatures.css';
 
 const templates = [
@@ -186,7 +187,7 @@ export function ReceiptUploader({ value, onChange, uploadFile, apiFetch, onError
     } catch { onError?.(); }
     finally { setUploading(false); }
   }
-  return <section className="daily-feature-card receipt-card"><div className="daily-feature-title"><ImagePlus size={17}/><div><b>खर्चाच्या पावत्या</b><small>खत, बियाणे किंवा मजुरीची पावती जोडा</small></div></div><label className="receipt-picker"><input type="file" accept="image/*" multiple onChange={e => { const files = [...(e.target.files || [])]; if (files.length) addFiles(files); e.target.value = ''; }}/><ImagePlus size={17}/>{uploading ? 'फोटो अपलोड होत आहेत…' : 'पावतीचे फोटो निवडा'}</label>{urls.length > 0 && <div className="receipt-thumbs">{urls.map((url, index) => <ReceiptPhoto key={`${url}-${index}`} url={url} apiFetch={apiFetch} onRemove={() => onChange(JSON.stringify(urls.filter((_, itemIndex) => itemIndex !== index)))}/>)}</div>}</section>;
+  return <section className="daily-feature-card receipt-card"><div className="daily-feature-title"><ImagePlus size={17}/><div><b>खर्चाच्या पावत्या</b><small>खत, बियाणे किंवा मजुरीची पावती जोडा</small></div></div><label className="receipt-picker"><input type="file" accept="image/*" multiple disabled={uploading} onChange={e => { const input = e.currentTarget; const files = [...(input.files || [])]; if (files.length) void addFiles(files).finally(() => { input.value = ''; }); }}/><ImagePlus size={17}/>{uploading ? 'फोटो अपलोड होत आहेत…' : 'पावतीचे फोटो निवडा'}</label>{urls.length > 0 && <div className="receipt-thumbs">{urls.map((url, index) => <ReceiptPhoto key={`${url}-${index}`} url={url} apiFetch={apiFetch} onRemove={() => onChange(JSON.stringify(urls.filter((_, itemIndex) => itemIndex !== index)))}/>)}</div>}</section>;
 }
 
 export function ReceiptGallery({ value, apiFetch }) {
@@ -197,7 +198,7 @@ export function ReceiptGallery({ value, apiFetch }) {
 
 export async function uploadEntryPhoto(apiFetch, file) {
   const data = new FormData();
-  data.append('file', file);
+  data.append('file', await prepareUploadPhoto(file));
   const response = await apiFetch(`${(import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')}/api/photos`, { method: 'POST', body: data });
   if (!response.ok) throw new Error('Photo upload failed.');
   return (await response.json()).url;
