@@ -139,6 +139,39 @@
   font-size: 12px;
 }
 
+.farmer-dashboard-section {
+  max-width: 1000px;
+  margin: 0 auto 18px;
+  padding: clamp(14px, 2.4vw, 22px);
+  border: 1px solid #e2eade;
+  border-radius: 18px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 10px 30px rgb(36 72 40 / 6%);
+}
+
+.farmer-dashboard-section > h2 {
+  margin: 0 0 14px;
+  color: #294732;
+  font-size: 16px;
+}
+
+.farmer-dashboard-entries {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.farmer-dashboard-entries > .welcome,
+.farmer-dashboard-entries > .stats,
+.farmer-dashboard-entries > .entries-head,
+.farmer-dashboard-entries > .entry-list,
+.farmer-dashboard-entries > .empty,
+.farmer-dashboard-entries > .offline-queue-status,
+.farmer-dashboard-entries > .material-inventory {
+  max-width: 100%;
+}
+
 .farmer-menu-card {
   position: relative;
   display: flex;
