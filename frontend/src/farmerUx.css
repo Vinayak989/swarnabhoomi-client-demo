@@ -17,7 +17,41 @@
 }
 
 .farmer-menu-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
   margin-bottom: 24px;
+}
+
+.farmer-tabs-edit-button,
+.farmer-tab-save-button {
+  display: inline-flex;
+  min-height: 40px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 13px;
+  border: 1px solid #d5e4d1;
+  border-radius: 11px;
+  background: #fff;
+  color: #426a47;
+  font: 700 12px 'DM Sans', 'Noto Sans Devanagari', sans-serif;
+  cursor: pointer;
+}
+
+.farmer-tabs-edit-button:hover,
+.farmer-tab-save-button:hover:not(:disabled) {
+  border-color: #9fbd98;
+  background: #f3f8f0;
+}
+
+.farmer-tabs-edit-button:focus-visible,
+.farmer-tab-save-button:focus-visible,
+.farmer-tab-choice:focus-within {
+  outline: 3px solid rgb(91 145 89 / 28%);
+  outline-offset: 2px;
 }
 
 .farmer-menu-heading h1 {
@@ -37,6 +71,108 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
+}
+
+.farmer-tab-settings {
+  padding: 18px;
+  border: 1px solid #e0e9db;
+  border-radius: 17px;
+  background: rgb(255 255 255 / 92%);
+  box-shadow: 0 12px 34px rgb(45 76 43 / 5%);
+}
+
+.farmer-tab-settings-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 13px;
+  color: #304936;
+  font-size: 13px;
+}
+
+.farmer-tab-settings-intro span {
+  color: #7d8f80;
+  font-size: 11px;
+}
+
+.farmer-tab-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.farmer-tab-choice {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid #e5ece1;
+  border-radius: 13px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease;
+}
+
+.farmer-tab-choice.selected {
+  border-color: #a9c8a4;
+  background: #f5faf2;
+}
+
+.farmer-tab-choice input {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  margin: 0;
+  accent-color: #397849;
+}
+
+.farmer-tab-choice .farmer-menu-icon {
+  width: 37px;
+  height: 37px;
+  border-radius: 11px;
+}
+
+.farmer-tab-choice .farmer-menu-card-copy {
+  gap: 3px;
+}
+
+.farmer-tab-choice .farmer-menu-card-copy b {
+  font-size: 12px;
+}
+
+.farmer-tab-choice .farmer-menu-card-copy small {
+  font-size: 10px;
+}
+
+.farmer-tab-settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 13px;
+}
+
+.farmer-tab-save-button {
+  border-color: #347447;
+  background: #347447;
+  color: #fff;
+}
+
+.farmer-tab-save-button:hover:not(:disabled) {
+  border-color: #285f39;
+  background: #285f39;
+  color: #fff;
+}
+
+.farmer-tab-save-button:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+
+.farmer-tab-selection-warning {
+  margin: 11px 0 0;
+  color: #a04f3c;
+  font-size: 12px;
 }
 
 .farmer-menu-card {
@@ -259,6 +395,39 @@
 @media (max-width: 700px) {
   .farmer-menu-page {
     margin-top: 12px;
+  }
+
+  .farmer-menu-heading {
+    gap: 10px;
+  }
+
+  .farmer-tabs-edit-button {
+    min-height: 36px;
+    padding-inline: 9px;
+    font-size: 10px;
+  }
+
+  .farmer-tab-settings {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .farmer-tab-settings-intro {
+    align-items: flex-start;
+    font-size: 11px;
+  }
+
+  .farmer-tab-settings-intro span {
+    text-align: right;
+    font-size: 9px;
+  }
+
+  .farmer-tab-choice-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .farmer-tab-choice {
+    padding: 9px;
   }
 
   .farmer-menu-heading {
