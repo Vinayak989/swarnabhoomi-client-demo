@@ -23,6 +23,186 @@ body:has(.android-entry-mode) {
   padding: 0 clamp(12px, 3vw, 24px) calc(106px + env(safe-area-inset-bottom, 0px));
 }
 
+.android-app-mode.farmer-navigation-mode .main {
+  width: min(100%, 1050px);
+  max-width: 100%;
+  margin: 0 auto;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+.android-app-mode.farmer-dashboard-navigation-mode .sidebar {
+  display: none;
+}
+
+.android-app-mode.farmer-dashboard-navigation-mode .main {
+  margin: 0 auto;
+  padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+}
+
+.android-app-mode.farmer-navigation-mode .farmer-menu-page {
+  width: min(100%, 760px);
+  margin: 10px auto 0;
+}
+
+.android-app-mode.farmer-navigation-mode .farmer-menu-heading {
+  margin: 0 2px 16px;
+}
+
+.android-app-mode.farmer-navigation-mode .farmer-menu-heading h1 {
+  color: var(--app-dark);
+  font-size: clamp(24px, 6vw, 32px);
+}
+
+.android-app-mode.farmer-navigation-mode .farmer-menu-heading p {
+  max-width: 460px;
+  color: #718477;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.android-app-mode.farmer-navigation-mode .farmer-tab-settings {
+  margin-bottom: 14px;
+  padding: clamp(13px, 3vw, 19px);
+  border-color: #dce9d8;
+  border-radius: 21px;
+  box-shadow: 0 12px 28px rgb(33 75 42 / 8%);
+}
+
+.android-app-mode.farmer-navigation-mode .farmer-tab-choice-grid {
+  grid-template-columns: 1fr;
+  gap: 9px;
+}
+
+.android-app-mode.farmer-navigation-mode .farmer-tab-choice {
+  min-height: 65px;
+  padding: 11px 12px;
+  border-radius: 15px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.android-app-mode.farmer-navigation-mode .farmer-tab-choice input {
+  width: 21px;
+  height: 21px;
+}
+
+.android-app-mode.farmer-navigation-mode .farmer-open-dashboard {
+  min-height: 52px;
+  margin-top: 13px;
+  border-radius: 15px;
+  font-size: 13px;
+}
+
+.android-app-mode.farmer-dashboard-navigation-mode .farmer-app-context {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 11px;
+  margin: 5px 0 15px;
+  padding: 11px 13px;
+  border: 1px solid #e0eadc;
+  border-radius: 17px;
+  background: rgb(255 255 255 / 88%);
+  box-shadow: 0 7px 20px rgb(28 68 36 / 5%);
+  color: #617664;
+}
+
+.farmer-app-context-icon {
+  display: grid;
+  width: 39px;
+  height: 39px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 13px;
+  background: #eaf4e7;
+  color: #397849;
+}
+
+.farmer-app-context > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 3px;
+}
+
+.farmer-app-context b {
+  color: #36563c;
+  font-size: 12px;
+}
+
+.farmer-app-context small {
+  overflow: hidden;
+  color: #829182;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.android-app-mode.farmer-dashboard-navigation-mode .farmer-app-page-hero {
+  display: flex;
+  min-height: 116px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 16px;
+  padding: 19px;
+  border: 1px solid #dce9d8;
+  border-radius: 21px;
+  background: linear-gradient(120deg, #e8f3e4, #f8faef);
+  box-shadow: 0 10px 24px rgb(33 75 42 / 6%);
+}
+
+.farmer-app-page-hero > div > span {
+  color: #638268;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.farmer-app-page-hero h1 {
+  margin: 7px 0 3px;
+  color: #294d33;
+  font-size: clamp(20px, 5vw, 26px);
+}
+
+.farmer-app-page-hero p {
+  margin: 0;
+  color: #718477;
+  font-size: 11px;
+}
+
+.farmer-app-page-hero-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 16px;
+  background: #fff;
+  color: #478250;
+  box-shadow: 0 4px 12px rgb(33 75 42 / 8%);
+}
+
+.android-app-mode.farmer-dashboard-navigation-mode .farmer-dashboard-section:not(.farmer-dashboard-entries) {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.android-app-mode.farmer-dashboard-navigation-mode .farmer-dashboard-section:not(.farmer-dashboard-entries) > h2 {
+  display: none;
+}
+
+.android-app-mode.farmer-dashboard-navigation-mode .farmer-app-bottom-nav-item {
+  flex: 0 0 104px;
+  min-width: 104px;
+}
+
+.android-app-mode.farmer-dashboard-navigation-mode .topbar-actions {
+  gap: 6px;
+}
+
 .android-app-mode .topbar {
   height: calc(75px + env(safe-area-inset-top, 0px));
   margin: 0 calc(-1 * clamp(12px, 3vw, 24px)) 18px;
@@ -379,6 +559,28 @@ body:has(.android-app-mode .daily-entry-overlay) { overflow: hidden; }
 }
 
 @media (max-width: 600px) {
+  .android-app-mode.android-role-farmer .farmer-menu-back span,
+  .android-app-mode.android-role-farmer .farmer-profile-button span,
+  .android-app-mode.android-role-farmer .logout-button span {
+    display: none;
+  }
+  .android-app-mode.android-role-farmer .farmer-menu-back,
+  .android-app-mode.android-role-farmer .farmer-profile-button,
+  .android-app-mode.android-role-farmer .logout-button {
+    width: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    justify-content: center;
+    padding: 0;
+  }
+  .android-app-mode.farmer-dashboard-navigation-mode .farmer-app-page-hero {
+    min-height: 103px;
+    padding: 15px;
+  }
+  .android-app-mode.farmer-dashboard-navigation-mode .farmer-app-context {
+    margin-bottom: 12px;
+    padding: 9px 11px;
+  }
   .android-role-buyer .market-hero-actions .market-hero-cta:not(.primary) { display: none; }
   .android-role-buyer .market-listings { padding: 11px; }
   .android-role-buyer .market-listing-card { grid-template-columns: minmax(86px, 31%) minmax(0, 1fr); }
