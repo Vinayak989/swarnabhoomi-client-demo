@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Sprout, Plus, Search, CloudSun, Sun, Cloud, CloudRain, ImagePlus, Camera, Leaf, Wallet, Boxes, TrendingUp, CalendarDays, ChevronRight, ChevronDown, X, Save, Trash2, MapPin, LoaderCircle, FileDown, FileSpreadsheet, Activity, Bell, CheckCircle2, BookOpen, ShoppingBasket, HandHelping, ArrowUp, Shield, RefreshCw, UserRound, ArrowRight, MoreHorizontal, LogOut, Pencil, MessageCircle } from 'lucide-react';
+import { Sprout, Plus, Search, CloudSun, Sun, Cloud, CloudRain, ImagePlus, Camera, Leaf, Wallet, Boxes, CalendarDays, ChevronRight, ChevronDown, X, Save, Trash2, MapPin, LoaderCircle, FileDown, FileSpreadsheet, Activity, Bell, CheckCircle2, BookOpen, ShoppingBasket, HandHelping, ArrowUp, Shield, RefreshCw, UserRound, ArrowRight, LogOut, Pencil, MessageCircle, Home } from 'lucide-react';
 import farmLogo from './image/WhatsApp Image 2026-10-20 at 2.00.01 PM.jpeg';
 import farmerRoleLogo from './image/farmer-role-cartoon.jpg';
 import buyerRoleLogo from './image/buyer-role-cartoon.jpg';
@@ -29,6 +29,7 @@ import './auth.css';
 import './adminMarketplace.css';
 import './androidApp.css';
 import './dailyEntryEdit.css';
+import './farmerUx.css';
 import { AdminBackups, PublicBatchPage, ReturnsPanel } from './TradeFeatures.jsx';
 import { EntryMaterialPicker, MaterialInventory } from './MaterialInventory.jsx';
 
@@ -106,28 +107,62 @@ function readSessionUser() {
   } catch { return null; }
 }
 
+function readDailyEntryDraft(userId) {
+  if (!userId) return null;
+  try {
+    const draft = JSON.parse(localStorage.getItem(`swarnabhoomi-entry-draft-${userId}`) || 'null');
+    return draft?.open && draft.form ? draft : null;
+  } catch { return null; }
+}
+
+const FARMER_MENU_COPY = {
+  entries: 'आज शेतात केलेली कामे आणि फोटो जतन करा.',
+  profits: 'खर्च, विक्री आणि शेतीचा नफा पाहा.',
+  reminders: 'कामे आणि पुढील पाहणीसाठी आठवण ठेवा.',
+  assistant: 'शेतीविषयक प्रश्न विचारा आणि मार्गदर्शन घ्या.',
+  marketplace: 'तुमचा शेतमाल विक्रीसाठी नोंदवा.',
+  prices: 'शेतमालाचे बाजारभाव पाहा.',
+  consultants: 'सेंद्रिय शेतीच्या सल्लागारांशी संपर्क करा.',
+  schemes: 'शेतकऱ्यांसाठी सरकारी योजनांची माहिती पाहा.',
+  profile: 'तुमची वैयक्तिक आणि शेतीची माहिती सांभाळा.'
+};
+
 function initialBuyerView(){const view=new URLSearchParams(window.location.search).get('view');return ['browse','offers','cart','orders','recurring','bulk','returns'].includes(view)?view:'browse';}
+function FarmerMenu({onSelect,profileComplete}){
+  const tabs=['entries','profits',...ACCOUNT_TYPES.find(account=>account.id==='farmer').tabs.filter(tab=>tab!=='entries')];
+  return <section className="farmer-menu-page" aria-labelledby="farmer-menu-title">
+    <div className="farmer-menu-heading"><span className="eyebrow"><span className="pulse"/> शेतकरी मेनू</span><h1 id="farmer-menu-title">नमस्कार, शेतकरी मित्रा! 🌱</h1><p>पुढे काय करायचे ते निवडा.</p></div>
+    <div className="farmer-menu-grid">{tabs.map(tab=>{
+      const item=NAV_ITEMS[tab],Icon=item.icon,label=tab==='profits'?'शेतीचा नफा':accountTabLabel(ACCOUNT_TYPES[0],tab);
+      return <button type="button" className="farmer-menu-card" key={tab} onClick={()=>onSelect(tab)} aria-label={`${label} उघडा`}>
+        <span className="farmer-menu-icon"><Icon size={22}/></span><span className="farmer-menu-card-copy"><b>{label}</b><small>{FARMER_MENU_COPY[tab]}</small></span><ChevronRight size={18}/>
+        {tab==='profile'&&!profileComplete&&<i>माहिती भरा</i>}
+      </button>;
+    })}</div>
+  </section>;
+}
 function App(){
   const appEnvironment=getAppEnvironment();
   const mobileAppMode=appEnvironment.isApp;
+  const initialUser=readSessionUser();
+  const initialEntryDraft=readDailyEntryDraft(initialUser?.id);
   const entryAppClass=mobileAppMode?`android-entry-mode${appEnvironment.isIOS?' ios-entry-mode':''}`:'';
   useEffect(()=>{
     if(mobileAppMode&&appEnvironment.isIOS)return observeIOSViewport();
   },[mobileAppMode,appEnvironment.isIOS]);
-  const [authUser,setAuthUser]=useState(readSessionUser);
+  const [authUser,setAuthUser]=useState(initialUser);
   const [authToken,setAuthToken]=useState(()=>sessionStorage.getItem('swarnabhoomi-user-token')||'');
   const [accountProfile,setAccountProfile]=useState(null),[accountProfileLoading,setAccountProfileLoading]=useState(false);
   const [selectedAccount,setSelectedAccount]=useState(null);
-  const [accountType,setAccountType]=useState(()=>readSessionUser()?.role||null),[lastAccountType,setLastAccountType]=useState(readAccountType);
-  const [activeTab,setActiveTab]=useState(()=>{const role=readSessionUser()?.role;const account=ACCOUNT_TYPES.find(item=>item.id===role);const requested=new URLSearchParams(window.location.search).get('tab');return account?.tabs.includes(requested)?requested:(account?.homeTab||'entries')});
+  const [accountType,setAccountType]=useState(()=>initialUser?.role||null),[lastAccountType,setLastAccountType]=useState(readAccountType);
+  const [activeTab,setActiveTab]=useState(()=>{const account=ACCOUNT_TYPES.find(item=>item.id===initialUser?.role);const requested=new URLSearchParams(window.location.search).get('tab');return account?.tabs.includes(requested)?requested:(requested==='profits'&&account?.id==='farmer'?'entries':account?.id==='farmer'?'farmer-menu':account?.homeTab||'entries')});
   const [entrySubTab,setEntrySubTab]=useState(()=>new URLSearchParams(window.location.search).get('tab')==='profits'?'profits':'entries');
   const [showBackToTop,setShowBackToTop]=useState(false);
-  const [androidMoreOpen,setAndroidMoreOpen]=useState(false);
   const [schemeFeed,setSchemeFeed]=useState(null),[schemeLoading,setSchemeLoading]=useState(false),[schemeRefreshing,setSchemeRefreshing]=useState(false),[schemeError,setSchemeError]=useState('');
   const mainRef=useRef(null);
   const photoUploadRef=useRef(null);
   const [quickTemplatesOpen,setQuickTemplatesOpen]=useState(false),[weatherOpen,setWeatherOpen]=useState(false);
-  const [entries,setEntries]=useState([]),[form,setForm]=useState(fresh),[open,setOpen]=useState(false),[editingEntryId,setEditingEntryId]=useState(null),[search,setSearch]=useState(''),[loading,setLoading]=useState(false),[weatherBusy,setWeatherBusy]=useState(false),[weatherError,setWeatherError]=useState(''),[preview,setPreview]=useState(''),[pdfBusy,setPdfBusy]=useState(false),[photoUploading,setPhotoUploading]=useState(false),[photoError,setPhotoError]=useState(''),[activeRecord,setActiveRecord]=useState(null),[analyticsMetric,setAnalyticsMetric]=useState(null),[assistantMessages,setAssistantMessages]=useState([]);
+  const [entries,setEntries]=useState([]),[form,setForm]=useState(()=>initialEntryDraft?.form||fresh()),[open,setOpen]=useState(()=>Boolean(initialEntryDraft)),[editingEntryId,setEditingEntryId]=useState(()=>initialEntryDraft?.editingEntryId||null),[search,setSearch]=useState(''),[loading,setLoading]=useState(false),[weatherBusy,setWeatherBusy]=useState(false),[weatherError,setWeatherError]=useState(''),[preview,setPreview]=useState(''),[pdfBusy,setPdfBusy]=useState(false),[photoUploading,setPhotoUploading]=useState(false),[photoError,setPhotoError]=useState(''),[activeRecord,setActiveRecord]=useState(null),[analyticsMetric,setAnalyticsMetric]=useState(null),[assistantMessages,setAssistantMessages]=useState([]);
   const [pdfBusyEntryId,setPdfBusyEntryId]=useState(null);
   const [supportUnread,setSupportUnread]=useState(0);
   const [supportOpen,setSupportOpen]=useState(false);
@@ -142,25 +177,27 @@ function App(){
   const currentAccount=ACCOUNT_TYPES.find(account=>account.id===accountType)||ACCOUNT_TYPES[0];
   const androidBuyerTitle=activeTab==='marketplace'&&accountType==='buyer'
     ? ({browse:'ताजे शेतमाल',offers:'विशेष ऑफर',cart:'माझे कार्ट',orders:'माझ्या ऑर्डर',recurring:'नियमित खरेदी',bulk:'घाऊक खरेदी',returns:'परतावा व बदल'})[androidBuyerView] : null;
+  const activeTabTitle=activeTab==='farmer-menu'?'मुख्य मेनू':activeTab==='entries'&&entrySubTab==='profits'?'शेतीचा नफा':androidBuyerTitle||accountTabLabel(currentAccount,activeTab);
   function openAndroidBuyerView(view){
     setAndroidBuyerView(view);
     setAndroidBuyerViewRequest(current=>({view,nonce:current.nonce+1}));
     setActiveTab('marketplace');
   }
-  const logout=useCallback(()=>{
+  const logout=useCallback((preserveEntryDraft=false)=>{
     const token=sessionStorage.getItem('swarnabhoomi-user-token');
     if(token)fetch(`${API}/auth/logout`,{method:'POST',headers:{Authorization:`Bearer ${token}`}}).catch(()=>{});
+    if(preserveEntryDraft!==true)try{Object.keys(localStorage).filter(key=>key.startsWith('swarnabhoomi-entry-draft-')).forEach(key=>localStorage.removeItem(key))}catch{}
     sessionStorage.removeItem('swarnabhoomi-user-token');
     sessionStorage.removeItem('swarnabhoomi-user');
     sessionStorage.removeItem('swarnabhoomi-auth');
     sessionStorage.removeItem('swarnabhoomi-marketplace-auth');
-    setAuthToken('');setAuthUser(null);setSelectedAccount(null);setAccountType(null);setEntries([]);setAssistantMessages([]);setSchemeFeed(null);setAccountProfile(null);setSupportUnread(0);setSupportOpen(false);setAndroidBuyerView('browse');setAndroidBuyerViewRequest({view:'browse',nonce:0});setAndroidBuyerUnread(0);
+    setAuthToken('');setAuthUser(null);setSelectedAccount(null);setAccountType(null);setEntries([]);setAssistantMessages([]);setSchemeFeed(null);setAccountProfile(null);setSupportUnread(0);setSupportOpen(false);setAndroidBuyerView('browse');setAndroidBuyerViewRequest({view:'browse',nonce:0});setAndroidBuyerUnread(0);setOpen(false);setForm(fresh());setEditingEntryId(null);
   },[]);
   const apiFetch=useCallback((url,options={})=>{
     const headers={...(options.headers||{}),...(authToken?{Authorization:`Bearer ${authToken}`}:{})};
     const creatingEntry=String(url)===`${API}/entries`&&(options.method||'GET').toUpperCase()==='POST';
     if(creatingEntry&&!navigator.onLine)return queueFarmEntry(options.body,authUser?.id);
-    const request=fetch(url,{...options,headers}).then(response=>{if(response.status===401&&authToken)logout();return response});
+    const request=fetch(url,{...options,headers}).then(response=>{if(response.status===401&&authToken)logout(true);return response});
     return creatingEntry?request.then(response=>response.status>=500?queueFarmEntry(options.body,authUser?.id):response).catch(error=>{if(error instanceof TypeError)return queueFarmEntry(options.body,authUser?.id);throw error}):request;
   },[authToken,authUser,logout]);
   useEffect(()=>{
@@ -192,9 +229,11 @@ function App(){
     sessionStorage.setItem('swarnabhoomi-user-token',result.token);
     sessionStorage.setItem('swarnabhoomi-user',JSON.stringify(sessionUser));
     setAuthToken(result.token);setAuthUser(sessionUser);setAccountType(account.id);setSelectedAccount(null);setAndroidBuyerView('browse');setAndroidBuyerViewRequest({view:'browse',nonce:0});setAndroidBuyerUnread(0);
+    const savedEntryDraft=account.id==='farmer'?readDailyEntryDraft(sessionUser.id):null;
+    setForm(savedEntryDraft?.form||fresh());setEditingEntryId(savedEntryDraft?.editingEntryId||null);setOpen(Boolean(savedEntryDraft));setPreview('');photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');
     const requested=new URLSearchParams(window.location.search).get('tab');
     const showProfitReport=account.id==='farmer'&&requested==='profits';
-    setActiveTab(showProfitReport?'entries':account.tabs.includes(requested)?requested:account.homeTab);
+    setActiveTab(showProfitReport?'entries':account.tabs.includes(requested)?requested:account.id==='farmer'?'farmer-menu':account.homeTab);
     setEntrySubTab(showProfitReport?'profits':'entries');
     setAssistantMessages([]);
     try{localStorage.setItem('swarnabhoomi-account-role',account.id)}catch{}
@@ -225,6 +264,14 @@ function App(){
   useEffect(()=>{const main=mainRef.current;if(!main)return;window.scrollTo({top:0,behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});main.classList.remove('tab-entering');void main.offsetWidth;main.classList.add('tab-entering')},[activeTab,accountType]);
   useEffect(()=>{const updateVisibility=()=>setShowBackToTop(window.scrollY>480);updateVisibility();window.addEventListener('scroll',updateVisibility,{passive:true});return()=>window.removeEventListener('scroll',updateVisibility)},[]);
   useEffect(()=>()=>{if(preview?.startsWith('blob:'))URL.revokeObjectURL(preview)},[preview]);
+  useEffect(()=>{
+    if(!authUser?.id||accountType!=='farmer')return;
+    const key=`swarnabhoomi-entry-draft-${authUser.id}`;
+    try{
+      if(open)localStorage.setItem(key,JSON.stringify({open:true,form,editingEntryId}));
+      else localStorage.removeItem(key);
+    }catch{}
+  },[accountType,authUser?.id,editingEntryId,form,open]);
   const totals=useMemo(()=>entries.reduce((a,e)=>({cost:a.cost+Number(e.laborCost||0)+Number(e.materialsCost||0)+Number(e.otherCost||0),income:a.income+Number(e.saleIncome||0),production:a.production+Number(e.productionKg||0)}),{cost:0,income:0,production:0}),[entries]);
   const assistantFarmData=useMemo(()=>{
     const recentEntries=[...entries].sort((a,b)=>String(b.entryDate||'').localeCompare(String(a.entryDate||''))).slice(0,5).map(entry=>{
@@ -255,6 +302,11 @@ function App(){
   },[entries,totals]);
   const filtered=entries.filter(e=>`${e.farmSection||''} ${e.workDone||''} ${e.entryDate||''}`.toLowerCase().includes(search.toLowerCase()));
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  function selectFarmerMenuItem(tab){
+    if(tab==='profits'){setActiveTab('entries');setEntrySubTab('profits');return;}
+    if(tab==='entries')setEntrySubTab('entries');
+    setActiveTab(tab);
+  }
   async function downloadPdf(selectedEntries,busyEntryId=null){
     if(pdfBusy||!selectedEntries.length)return;
     const exportEntries=[...selectedEntries];
@@ -351,13 +403,13 @@ function App(){
     return <div className={entryAppClass}><AuthPanel account={selectedAccount} apiBase={API} onAuthenticated={result=>enterAccount(result,selectedAccount)} onBack={()=>setSelectedAccount(null)}/></div>;
   }
   if(!accountType)return <div className={entryAppClass}><AccountSelection lastAccountType={lastAccountType} onSelect={chooseAccount}/></div>;
-  return <div className={`app-shell${mobileAppMode?` mobile-app-mode android-app-mode android-role-${accountType} android-tab-${activeTab}${appEnvironment.isIOS?' ios-app-mode':''}`:''}`}>
-    <aside className="sidebar"><div className="brand"><img className="brand-logo" src={farmLogo} alt="स्वर्णभूमी सेंद्रिय शेतीचे चिन्ह"/></div><div className="nav-label">मुख्य मेनू</div>{currentAccount.tabs.map(tab=>{const item=NAV_ITEMS[tab],Icon=item.icon,label=accountTabLabel(currentAccount,tab);return <button type="button" key={tab} className={`nav ${activeTab===tab?'active':''}`} onClick={()=>setActiveTab(tab)} aria-label={label} title={label}><Icon size={18}/>{label}{tab==='profile'&&!accountProfile?.complete&&<span className="profile-completion-indicator">भरायचे</span>}</button>})}<div className="sidebar-tip"><Leaf size={19}/><b>आजची छोटी नोंद,<br/>उद्याची मोठी भरभराट.</b><span>तुमच्या शेताचा प्रत्येक दिवस जपून ठेवा.</span><div className="tip-leaves">✳　✳</div></div><button type="button" className="profile account-profile" onClick={logout} aria-label="लॉगआउट"><AccountAvatar photoUrl={accountProfile?.photoUrl} apiFetch={apiFetch} className="avatar"/><span><b>{currentAccount.label} खाते</b><small>{authUser.mobileNumber} · लॉगआउट</small></span><ChevronRight size={16}/></button></aside>
-    <main ref={mainRef} className="main"><header className="topbar"><div className="android-app-titlebar"><img src="/images/app-icon-192.png" alt=""/><div><span>स्वर्णभूमी · {currentAccount.label}</span><b>{androidBuyerTitle||accountTabLabel(currentAccount,activeTab)}</b></div></div><button type="button" className="android-app-profile" onClick={()=>currentAccount.tabs.includes('profile')?setActiveTab('profile'):setAndroidMoreOpen(true)} aria-label="प्रोफाइल उघडा"><AccountAvatar photoUrl={accountProfile?.photoUrl} apiFetch={apiFetch} className="account-menu-avatar"/></button><div className="web-topbar-title"><span className="crumb">स्वर्णभूमी　/　</span><b>{accountTabLabel(currentAccount,activeTab)}</b></div><div className="today"><CalendarDays size={16}/>{new Date().toLocaleDateString('mr-IN',{weekday:'long',day:'numeric',month:'long'})}</div></header>
-      {['farmer','seller','buyer'].includes(accountType)&&!accountProfile?.complete&&activeTab!=='profile'&&<div className="profile-reminder-banner" role="status"><Shield size={16}/><span>तुमचे प्रोफाइल अपूर्ण आहे. खरेदीदार आणि प्रशासकांसाठी माहिती पूर्ण करा.</span><button type="button" onClick={()=>setActiveTab('profile')}>प्रोफाइल पूर्ण करा <ArrowRight size={14}/></button></div>}
-      {accountType==='farmer'&&<GovernmentSchemeBanner announcements={schemeFeed?.announcements||[]} onOpen={()=>setActiveTab('schemes')}/>}
+  return <div className={`app-shell${mobileAppMode?` mobile-app-mode android-app-mode android-role-${accountType} android-tab-${activeTab}${appEnvironment.isIOS?' ios-app-mode':''}`:''}${accountType==='farmer'?' farmer-navigation-mode':''}`}>
+    {accountType!=='farmer'&&<aside className="sidebar"><div className="brand"><img className="brand-logo" src={farmLogo} alt="स्वर्णभूमी सेंद्रिय शेतीचे चिन्ह"/></div><div className="nav-label">मुख्य मेनू</div>{currentAccount.tabs.map(tab=>{const item=NAV_ITEMS[tab],Icon=item.icon,label=accountTabLabel(currentAccount,tab);return <button type="button" key={tab} className={`nav ${activeTab===tab?'active':''}`} onClick={()=>setActiveTab(tab)} aria-label={label} title={label}><Icon size={18}/>{label}{tab==='profile'&&!accountProfile?.complete&&<span className="profile-completion-indicator">भरायचे</span>}</button>})}<div className="sidebar-tip"><Leaf size={19}/><b>आजची छोटी नोंद,<br/>उद्याची मोठी भरभराट.</b><span>तुमच्या शेताचा प्रत्येक दिवस जपून ठेवा.</span><div className="tip-leaves">✳　✳</div></div><div className="profile account-profile"><AccountAvatar photoUrl={accountProfile?.photoUrl} apiFetch={apiFetch} className="avatar"/><span><b>{currentAccount.label} खाते</b><small>{authUser.mobileNumber}</small></span></div></aside>}
+    <main ref={mainRef} className="main"><header className="topbar"><div className="android-app-titlebar"><img src="/images/app-icon-192.png" alt=""/><div><span>स्वर्णभूमी · {currentAccount.label}</span><b>{activeTabTitle}</b></div></div><div className="web-topbar-title"><span className="crumb">स्वर्णभूमी　/　</span><b>{activeTabTitle}</b></div><div className="topbar-actions">{accountType==='farmer'&&activeTab!=='farmer-menu'&&<button type="button" className="farmer-menu-back" onClick={()=>setActiveTab('farmer-menu')}><Home size={16}/><span>मेनू</span></button>}<div className="today"><CalendarDays size={16}/>{new Date().toLocaleDateString('mr-IN',{weekday:'long',day:'numeric',month:'long'})}</div><button type="button" className="logout-button" onClick={logout} aria-label="लॉगआउट"><LogOut size={17}/><span>लॉगआउट</span></button></div></header>
+      {['farmer','seller','buyer'].includes(accountType)&&!accountProfile?.complete&&activeTab!=='profile'&&activeTab!=='farmer-menu'&&<div className="profile-reminder-banner" role="status"><Shield size={16}/><span>तुमचे प्रोफाइल अपूर्ण आहे. खरेदीदार आणि प्रशासकांसाठी माहिती पूर्ण करा.</span><button type="button" onClick={()=>setActiveTab('profile')}>प्रोफाइल पूर्ण करा <ArrowRight size={14}/></button></div>}
+      {accountType==='farmer'&&activeTab==='entries'&&entrySubTab==='entries'&&<GovernmentSchemeBanner announcements={schemeFeed?.announcements||[]} onOpen={()=>setActiveTab('schemes')}/>}
       {activeTab==='entries'&&accountType==='farmer'&&<div className="entry-subtabs" role="tablist" aria-label="दैनिक नोंद विभाग"><button type="button" role="tab" aria-selected={entrySubTab==='entries'} className={`entry-subtab ${entrySubTab==='entries'?'active':''}`} onClick={()=>setEntrySubTab('entries')}><CalendarDays size={16}/> दैनिक नोंद</button><button type="button" role="tab" aria-selected={entrySubTab==='profits'} className={`entry-subtab ${entrySubTab==='profits'?'active':''}`} onClick={()=>setEntrySubTab('profits')}><Wallet size={16}/> शेतीचा नफा</button></div>}
-      {activeTab==='entries'&&entrySubTab==='entries'?<>
+      {activeTab==='farmer-menu'&&accountType==='farmer'?<FarmerMenu onSelect={selectFarmerMenuItem} profileComplete={accountProfile?.complete}/>:activeTab==='entries'&&entrySubTab==='entries'?<>
       <section className="welcome"><div><span className="eyebrow"><span className="pulse"/> तुमच्या शेताची डायरी</span><h1>नमस्कार, शेतकरी मित्रा! <span>🌱</span></h1><p>आज शेतात काय घडलं? तुमची नोंद इथे जतन करा.</p></div><button className="primary" onClick={()=>{setForm(fresh());setEditingEntryId(null);setPreview('');photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');setQuickTemplatesOpen(false);setWeatherOpen(false);setOpen(true)}}><Plus size={19}/> आजची नोंद लिहा</button><div className="welcome-art"><span>☀️</span><div>〰️〰️</div></div></section>
       <section className="stats"><Stat icon={<Wallet/>} label="एकूण खर्च" value={<AnimatedMetric value={totals.cost} format="money"/>} tone="peach" analyticsKey="cost" onAnalytics={setAnalyticsMetric}/><Stat icon={<TrendingUp/>} label="एकूण उत्पन्न" value={<AnimatedMetric value={totals.income} format="money"/>} tone="green" analyticsKey="income" onAnalytics={setAnalyticsMetric}/><Stat icon={<Boxes/>} label="एकूण उत्पादन" value={<AnimatedMetric value={totals.production} format="quantity"/>} tone="blue" analyticsKey="production" onAnalytics={setAnalyticsMetric}/><div className="stat-card net"><div className="net-label">निव्वळ शिल्लक</div><strong><AnimatedMetric value={totals.income-totals.cost} format="money"/></strong><span>आतापर्यंतची कमाई</span><div className="net-icon">↗</div></div></section>
       <OfflineQueueStatus ownerId={authUser.id}/>
@@ -376,41 +428,48 @@ function App(){
     </main>
     {['farmer','seller','buyer','admin'].includes(accountType)&&!open&&!supportOpen&&<button ref={supportFabRef} type="button" className="support-fab" onClick={()=>setSupportOpen(true)} aria-label={supportUnread?`मदत व संवाद, ${supportUnread} न वाचलेले संदेश`:'मदत व संवाद उघडा'}><MessageCircle size={18}/><span>मदत</span>{supportUnread>0&&<b>{supportUnread>99?'99+':supportUnread}</b>}</button>}
     {supportOpen&&<SupportChatDialog role={accountType} apiFetch={apiFetch} apiBase={API} onUnreadChange={setSupportUnread} onClose={closeSupport}/>}
-    {mobileAppMode&&!open&&accountType==='buyer'&&<AndroidBuyerNav activeTab={activeTab} view={androidBuyerView} unreadOrders={androidBuyerUnread} onOpenView={openAndroidBuyerView} onProfile={()=>setActiveTab('profile')} onLogout={logout}/>}
-    {mobileAppMode&&!open&&accountType!=='buyer'&&<><AndroidScrollableNav activeKey={activeTab} ariaLabel="मुख्य अॅप नेव्हिगेशन">{currentAccount.tabs.map(tab=>{const item=NAV_ITEMS[tab],Icon=item.icon,label=accountTabLabel(currentAccount,tab);return <button type="button" key={tab} className={`android-bottom-nav-item ${activeTab===tab?'active':''}`} onClick={()=>{setActiveTab(tab);setAndroidMoreOpen(false)}} aria-label={label} aria-current={activeTab===tab?'page':undefined}><span className="android-bottom-icon"><Icon size={21}/>{tab==='profile'&&!accountProfile?.complete&&<i/>}</span><span>{label}</span></button>})}<button type="button" className={`android-bottom-nav-item ${androidMoreOpen?'active':''}`} onClick={()=>setAndroidMoreOpen(value=>!value)} aria-expanded={androidMoreOpen} aria-label="अधिक पर्याय"><span className="android-bottom-icon"><MoreHorizontal size={22}/></span><span>अधिक</span></button></AndroidScrollableNav>{androidMoreOpen&&<div className="android-more-layer" onMouseDown={event=>{if(event.target===event.currentTarget)setAndroidMoreOpen(false)}}><section className="android-more-sheet" role="dialog" aria-modal="true" aria-label="अधिक पर्याय"><div className="android-sheet-handle"/><div className="android-more-heading"><div><span>स्वर्णभूमी</span><h2>अधिक पर्याय</h2></div><button type="button" onClick={()=>setAndroidMoreOpen(false)} aria-label="बंद करा"><X size={20}/></button></div><div className="android-more-list"><button type="button" className="android-logout-item" onClick={logout}><span className="android-more-icon"><LogOut size={19}/></span><span>लॉगआउट</span><ChevronRight size={17}/></button></div><div className="android-account-caption"><span className="android-account-avatar">{currentAccount.initials}</span><span><b>{currentAccount.label} खाते</b><small>{authUser.mobileNumber}</small></span></div></section></div>}</>}
+    {mobileAppMode&&!open&&accountType==='buyer'&&<AndroidBuyerNav activeTab={activeTab} view={androidBuyerView} unreadOrders={androidBuyerUnread} onOpenView={openAndroidBuyerView} onProfile={()=>setActiveTab('profile')}/>}
+    {mobileAppMode&&!open&&accountType!=='buyer'&&accountType!=='farmer'&&<AndroidScrollableNav activeKey={activeTab} ariaLabel="मुख्य अॅप नेव्हिगेशन">{currentAccount.tabs.map(tab=>{const item=NAV_ITEMS[tab],Icon=item.icon,label=accountTabLabel(currentAccount,tab);return <button type="button" key={tab} className={`android-bottom-nav-item ${activeTab===tab?'active':''}`} onClick={()=>setActiveTab(tab)} aria-label={label} aria-current={activeTab===tab?'page':undefined}><span className="android-bottom-icon"><Icon size={21}/>{tab==='profile'&&!accountProfile?.complete&&<i/>}</span><span>{label}</span></button>})}</AndroidScrollableNav>}
     {showBackToTop&&!open&&!analyticsMetric&&<button type="button" className="back-to-top" onClick={()=>window.scrollTo({top:0,behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})} aria-label="पृष्ठाच्या वर जा"><ArrowUp size={17}/><span>वर जा</span></button>}
     {analyticsMetric&&<AnalyticsDialog metric={analyticsMetric} entries={entries} onClose={()=>setAnalyticsMetric(null)}/>}
-    {open&&<div className="overlay daily-entry-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setOpen(false)}}><form className="dialog" role="dialog" aria-modal="true" aria-labelledby="daily-entry-title" onSubmit={save}><div className="dialog-head"><div><span className="eyebrow">शेताची रोजची डायरी</span><h2 id="daily-entry-title">{editingEntryId?'नोंद संपादित करा':'आजची नोंद लिहा'} <span>🌱</span></h2></div><button type="button" className="close" onClick={()=>setOpen(false)} aria-label="नोंद बंद करा"><X/></button></div><div className="form-scroll">
-      <div className="form-grid"><Field label="दिनांक" required><input type="date" value={form.entryDate} onChange={e=>set('entryDate',e.target.value)} required/></Field><Field label="पीक निवडा"><select value={form.cropName} onChange={e=>set('cropName',e.target.value)}><option value="">पीक निवडा...</option>{Object.entries(CROP_GROUPS).map(([group,crops])=><optgroup label={group} key={group}>{crops.map(crop=><option value={crop} key={crop}>{crop}</option>)}</optgroup>)}<option value="इतर">इतर पीक — नाव लिहा</option></select></Field></div>
+    {open&&<div className="overlay daily-entry-overlay"><form className="dialog" role="dialog" aria-modal="true" aria-labelledby="daily-entry-title" onSubmit={save}><div className="dialog-head"><div><span className="eyebrow">शेताची रोजची डायरी</span><h2 id="daily-entry-title">{editingEntryId?'नोंद संपादित करा':'आजची नोंद लिहा'} <span>🌱</span></h2></div><button type="button" className="close" onClick={()=>setOpen(false)} aria-label="नोंद बंद करा"><X/></button></div><div className="form-scroll">
+       <p className="daily-entry-helper">फक्त दिनांक आणि आजची कामे लिहून नोंद जतन करा. बाकी माहिती ऐच्छिक आहे.</p>
+       <div className="form-grid"><Field label="दिनांक" required><input type="date" value={form.entryDate} onChange={e=>set('entryDate',e.target.value)} required/></Field><Field label="पीक निवडा"><select value={form.cropName} onChange={e=>set('cropName',e.target.value)}><option value="">पीक निवडा...</option>{Object.entries(CROP_GROUPS).map(([group,crops])=><optgroup label={group} key={group}>{crops.map(crop=><option value={crop} key={crop}>{crop}</option>)}</optgroup>)}<option value="इतर">इतर पीक — नाव लिहा</option></select></Field></div>
       {form.cropName==='इतर'&&<Field label="पिकाचे नाव"><input placeholder="तुमच्या पिकाचे नाव लिहा" value={form.cropCustom} onChange={e=>set('cropCustom',e.target.value)}/></Field>}
-      <Field label="शेताचा विभाग / प्लॉट"><input placeholder="उदा. पूर्वेकडचा प्लॉट / गट क्रमांक १२" value={form.plotName} onChange={e=>set('plotName',e.target.value)}/></Field><PlotSeasonFields form={form} set={set}/>
+       <details className="daily-entry-details"><summary><span><MapPin size={17}/> शेत, हंगाम आणि हवामान <small>ऐच्छिक</small></span><ChevronDown size={17}/></summary>
+       <Field label="शेताचा विभाग / प्लॉट"><input placeholder="उदा. पूर्वेकडचा प्लॉट / गट क्रमांक १२" value={form.plotName} onChange={e=>set('plotName',e.target.value)}/></Field><PlotSeasonFields form={form} set={set}/>
       <section className="form-section daily-weather-section">
         <button type="button" className="form-section-toggle" onClick={()=>setWeatherOpen(value=>!value)} aria-expanded={weatherOpen} aria-controls="daily-weather-options"><span><CloudSun size={18}/> आजचे हवामान</span><ChevronDown className={weatherOpen?'daily-feature-chevron expanded':'daily-feature-chevron'} size={18}/></button>
         {weatherOpen&&<div id="daily-weather-options"><div className="weather-options">{[['ऊन',<Sun/>],['ढगाळ',<Cloud/>],['पाऊस',<CloudRain/>],['ऊन आणि ढगाळ',<CloudSun/>]].map(([w,icon])=><button type="button" key={w} className={`weather-option ${form.weather===w?'selected':''}`} onClick={()=>set('weather',w)}>{icon}{w}</button>)}</div><div className="pin-row"><div className="pin-input"><MapPin size={17}/><input inputMode="numeric" maxLength="6" placeholder="पिनकोड टाका (६ अंक)" value={form.pincode} onChange={e=>set('pincode',e.target.value.replace(/\D/g,''))}/></div><button type="button" className="outline" onClick={getWeather} disabled={weatherBusy||form.pincode.length!==6}>{weatherBusy?<LoaderCircle className="spin" size={16}/>:<CloudSun size={16}/>} हवामान मिळवा</button></div>{form.weatherDetails&&<div className="weather-result"><b><MapPin size={14}/> {JSON.parse(form.weatherDetails).district}, {JSON.parse(form.weatherDetails).state}</b><span>{JSON.parse(form.weatherDetails).warning}</span><small>{JSON.parse(form.weatherDetails).note}</small><small>स्रोत: <a href={JSON.parse(form.weatherDetails).sourceUrl} target="_blank" rel="noreferrer">IMD</a></small></div>}{weatherError&&<div className="error">{weatherError}</div>}</div>}
       </section>
+       </details>
       <QuickEntryTemplates expanded={quickTemplatesOpen} onToggle={()=>setQuickTemplatesOpen(value=>!value)} onApply={template=>{setForm(current=>({...current,...template}));setQuickTemplatesOpen(false)}}/>
-      <Field label="आज केलेली कामे"><textarea rows="2" placeholder="उदा. तण काढले, पाणी दिले..." value={form.workDone} onChange={e=>set('workDone',e.target.value)}/></Field><Field label="वापरलेले साहित्य / खते"><textarea rows="2" placeholder="उदा. शेणखत २ पोती, ठिबक दुरुस्ती..." value={form.materials} onChange={e=>set('materials',e.target.value)}/></Field>
+       <Field label="आज शेतात काय काम केले?"><textarea rows="2" placeholder="उदा. तण काढले, पाणी दिले..." value={form.workDone} onChange={e=>set('workDone',e.target.value)}/></Field><Field label="वापरलेले साहित्य / खते (ऐच्छिक)"><textarea rows="2" placeholder="उदा. शेणखत २ पोती, ठिबक दुरुस्ती..." value={form.materials} onChange={e=>set('materials',e.target.value)}/></Field>
+       <div className="photo-upload">
+         <label>
+           <input type="file" accept="image/*" aria-label="गॅलरीतून शेताचा फोटो निवडा" disabled={photoUploading||loading} onChange={e=>{const input=e.currentTarget;void upload(input.files?.[0]).finally(()=>{input.value=''})}}/>
+           <ImagePlus size={22}/>
+           <span className="photo-picker-copy"><b>{photoUploading?'फोटो तयार व अपलोड होत आहे…':form.photoUrl?'फोटो बदला':'गॅलरीतून फोटो जोडा'}</b><small>मोठे फोटो आपोआप लहान होतील</small></span>
+         </label>
+         <label className="entry-camera-picker">
+           <input type="file" accept="image/*" capture="environment" aria-label="कॅमेऱ्याने शेताचा फोटो काढा" disabled={photoUploading||loading} onChange={e=>{const input=e.currentTarget;void upload(input.files?.[0]).finally(()=>{input.value=''})}}/>
+           <Camera size={22}/><span className="photo-picker-copy"><b>फोटो काढा</b><small>कॅमेरा वापरा</small></span>
+         </label>
+         {preview?<PhotoThumbnail image={preview} alt="निवडलेला फोटो"/>:form.photoUrl&&<ProtectedPhoto src={form.photoUrl} auth={authToken} alt="नोंदीतील शेत फोटो"/>}
+         {(form.photoUrl||preview||photoError)&&<button type="button" className="remove-entry-photo" onClick={clearPhoto}>फोटो काढा</button>}
+         {photoUploading&&<small className="photo-upload-status" role="status">फोटो अपलोड होत आहे…</small>}
+         {!photoUploading&&form.photoUrl&&!photoError&&<small className="photo-upload-status" role="status">फोटो जोडला आहे</small>}
+         {photoError&&<small className="error" role="alert">{photoError} दुसरा फोटो निवडा किंवा “फोटो काढा” वापरा.</small>}
+       </div>
+       <details className="daily-entry-details"><summary><span><Wallet size={17}/> खर्च आणि उत्पादन <small>ऐच्छिक</small></span><ChevronDown size={17}/></summary>
       <section className="form-section"><h3><Wallet size={18}/> मजुरी व खर्च</h3><div className="form-grid three"><Field label="मजूर संख्या"><input type="number" min="0" value={form.workerCount} onChange={e=>set('workerCount',e.target.value)} placeholder="०"/></Field><Field label="मजुरी खर्च (₹)"><input type="number" min="0" value={form.laborCost} onChange={e=>set('laborCost',e.target.value)} placeholder="०"/></Field><Field label="खते / साहित्य खर्च (₹)"><input type="number" min="0" value={form.materialsCost} onChange={e=>set('materialsCost',e.target.value)} placeholder="०"/></Field><Field label="इतर खर्च (₹)"><input type="number" min="0" value={form.otherCost} onChange={e=>set('otherCost',e.target.value)} placeholder="०"/></Field></div></section>
       <EntryMaterialPicker apiFetch={apiFetch} apiBase={API} value={form.materialUsages} onChange={value=>set('materialUsages',value)} onCost={cost=>set('materialsCost',cost)}/>
       <section className="form-section"><h3><Boxes size={18}/> उत्पादन व विक्री</h3><div className="form-grid three"><Field label="उत्पादन (किलो)"><input type="number" min="0" value={form.productionKg} onChange={e=>set('productionKg',e.target.value)} placeholder="०"/></Field><Field label="विक्री (किलो)"><input type="number" min="0" value={form.soldKg} onChange={e=>set('soldKg',e.target.value)} placeholder="०"/></Field><Field label="विक्रीतून पैसे (₹)"><input type="number" min="0" value={form.saleIncome} onChange={e=>set('saleIncome',e.target.value)} placeholder="०"/></Field></div><div className="calculation">आजचा खर्च <b>{money(Number(form.laborCost||0)+Number(form.materialsCost||0)+Number(form.otherCost||0))}</b><span>•</span> निव्वळ उत्पन्न <b>{money(Number(form.saleIncome||0)-Number(form.laborCost||0)-Number(form.materialsCost||0)-Number(form.otherCost||0))}</b></div></section>
+       </details>
+       <details className="daily-entry-details"><summary><span><Sprout size={17}/> पीक निरीक्षण आणि पुढील कामे <small>ऐच्छिक</small></span><ChevronDown size={17}/></summary>
       <section className="form-section crop-soil-observations"><h3><Sprout size={18}/> पीक व माती निरीक्षण</h3><div className="form-grid"><Field label="पिकाची सद्यस्थिती"><textarea rows="2" value={form.cropCondition} onChange={e=>set('cropCondition',e.target.value)} placeholder="पिकाची वाढ, कीड, फुलोरा..."/></Field><Field label="माती व सेंद्रिय शेती निरीक्षण"><textarea rows="2" value={form.soilNotes} onChange={e=>set('soilNotes',e.target.value)} placeholder="मातीतील ओलावा, गांडूळखत..."/></Field></div></section><IssueTrackingFields form={form} set={set} apiFetch={apiFetch} apiBase={API} userId={authUser.id}/><Field label="उद्याची नियोजित कामे"><input value={form.tomorrowPlan} onChange={e=>set('tomorrowPlan',e.target.value)} placeholder="उद्या कोणते काम करायचे?"/></Field>
       <Field label="विशेष नोंद"><textarea rows="2" value={form.specialNote} onChange={e=>set('specialNote',e.target.value)} placeholder="काही विशेष सांगायचे असल्यास..."/></Field>
-      <div className="photo-upload">
-        <label>
-          <input type="file" accept="image/*" aria-label="गॅलरीतून शेताचा फोटो निवडा" disabled={photoUploading||loading} onChange={e=>{const input=e.currentTarget;void upload(input.files?.[0]).finally(()=>{input.value=''})}}/>
-          <ImagePlus size={22}/>
-          <span className="photo-picker-copy"><b>{photoUploading?'फोटो तयार व अपलोड होत आहे…':form.photoUrl?'फोटो बदला':'गॅलरीतून फोटो जोडा'}</b><small>कॅमेऱ्याचे मोठे फोटो आपोआप लहान होतील</small></span>
-        </label>
-        <label className="entry-camera-picker">
-          <input type="file" accept="image/*" capture="environment" aria-label="कॅमेऱ्याने शेताचा फोटो काढा" disabled={photoUploading||loading} onChange={e=>{const input=e.currentTarget;void upload(input.files?.[0]).finally(()=>{input.value=''})}}/>
-          <Camera size={22}/><span className="photo-picker-copy"><b>फोटो काढा</b><small>फोनचा कॅमेरा वापरा</small></span>
-        </label>
-        {preview?<PhotoThumbnail image={preview} alt="निवडलेला फोटो"/>:form.photoUrl&&<ProtectedPhoto src={form.photoUrl} auth={authToken} alt="नोंदीतील शेत फोटो"/>}
-        {(form.photoUrl||preview||photoError)&&<button type="button" className="remove-entry-photo" onClick={clearPhoto}>फोटो काढा</button>}
-        {photoUploading&&<small className="photo-upload-status" role="status">फोटो अपलोड होत आहे…</small>}
-        {!photoUploading&&form.photoUrl&&!photoError&&<small className="photo-upload-status" role="status">फोटो जोडला आहे</small>}
-        {photoError&&<small className="error" role="alert">{photoError} दुसरा फोटो निवडा किंवा “फोटो काढा” वापरा.</small>}
-      </div>
+       </details>
     </div><div className="dialog-footer"><span><Leaf size={16}/> {photoUploading?'फोटो अपलोड होईपर्यंत थांबा':'तुमची नोंद सुरक्षित जतन केली जाईल'}</span><button className="primary" disabled={loading||photoUploading||!!photoError}>{loading||photoUploading?<LoaderCircle className="spin" size={17}/>:<Save size={17}/>} {photoUploading?'फोटो अपलोड होत आहे…':editingEntryId?'बदल जतन करा':'नोंद जतन करा'}</button></div></form></div>}
   </div>
 }

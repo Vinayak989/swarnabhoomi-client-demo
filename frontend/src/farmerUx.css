@@ -1,0 +1,332 @@
+.app-shell.farmer-navigation-mode .main {
+  margin-inline: auto;
+}
+
+.sidebar .account-profile {
+  cursor: default;
+}
+
+.sidebar .account-profile:hover {
+  background: transparent;
+}
+
+.farmer-menu-page {
+  max-width: 1000px;
+  margin: 34px auto 0;
+  padding-bottom: 30px;
+}
+
+.farmer-menu-heading {
+  margin-bottom: 24px;
+}
+
+.farmer-menu-heading h1 {
+  margin: 10px 0 6px;
+  color: #294732;
+  font-size: clamp(23px, 4vw, 32px);
+  letter-spacing: -.04em;
+}
+
+.farmer-menu-heading p {
+  margin: 0;
+  color: #718477;
+  font-size: 14px;
+}
+
+.farmer-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.farmer-menu-card {
+  position: relative;
+  display: flex;
+  min-height: 112px;
+  align-items: center;
+  gap: 13px;
+  padding: 17px;
+  border: 1px solid #e3ebdf;
+  border-radius: 16px;
+  background: rgb(255 255 255 / 94%);
+  color: #3d5742;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+.farmer-menu-card:hover {
+  transform: translateY(-2px);
+  border-color: #a9c8a4;
+  box-shadow: 0 10px 24px rgb(35 77 42 / 9%);
+}
+
+.farmer-menu-icon {
+  display: grid;
+  width: 45px;
+  height: 45px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 14px;
+  background: #edf6e9;
+  color: #387248;
+}
+
+.farmer-menu-card-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 6px;
+}
+
+.farmer-menu-card-copy b {
+  color: #304936;
+  font-size: 14px;
+}
+
+.farmer-menu-card-copy small {
+  color: #829084;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.farmer-menu-card > svg {
+  flex: 0 0 auto;
+  color: #9aa99a;
+}
+
+.farmer-menu-card > i {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  color: #9a6940;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.logout-button,
+.farmer-menu-back {
+  display: inline-flex;
+  min-height: 38px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid #dbe7d8;
+  border-radius: 10px;
+  background: #fff;
+  color: #48634d;
+  font: 700 11px 'DM Sans', 'Noto Sans Devanagari', sans-serif;
+  cursor: pointer;
+}
+
+.logout-button {
+  border-color: #ecdcd6;
+  color: #9b584b;
+}
+
+.logout-button:hover {
+  background: #fff6f2;
+}
+
+.farmer-menu-back:hover {
+  background: #f1f7ee;
+}
+
+.daily-entry-helper {
+  margin: 0 0 14px;
+  padding: 11px 13px;
+  border-radius: 9px;
+  background: #eef6eb;
+  color: #4d7052;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.daily-entry-details {
+  margin: 12px 0;
+  overflow: hidden;
+  border: 1px solid #e3ebe0;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.daily-entry-details > summary {
+  display: flex;
+  min-height: 50px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  color: #47664c;
+  font-size: 12px;
+  font-weight: 750;
+  list-style: none;
+  cursor: pointer;
+}
+
+.daily-entry-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.daily-entry-details > summary > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.daily-entry-details > summary > span > svg,
+.daily-entry-details > summary > svg {
+  flex: 0 0 auto;
+  color: #66946b;
+}
+
+.daily-entry-details > summary small {
+  color: #9aa79b;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.daily-entry-details[open] > summary {
+  border-bottom: 1px solid #edf1ea;
+}
+
+.daily-entry-details > .field,
+.daily-entry-details > .form-grid,
+.daily-entry-details > .form-section,
+.daily-entry-details > .daily-weather-section {
+  margin-right: 14px;
+  margin-left: 14px;
+}
+
+.daily-entry-details > .form-section:first-of-type {
+  margin-top: 8px;
+}
+
+.android-app-mode .topbar-actions {
+  flex: 0 0 auto;
+  gap: 7px;
+}
+
+.android-app-mode .logout-button,
+.android-app-mode .farmer-menu-back {
+  min-height: 38px;
+  padding-inline: 9px;
+  border-color: rgb(255 255 255 / 30%);
+  background: rgb(255 255 255 / 15%);
+  color: white;
+  font-size: 10px;
+}
+
+.android-app-mode .logout-button {
+  border-color: rgb(255 240 234 / 45%);
+  background: rgb(124 45 39 / 22%);
+}
+
+.android-app-mode .farmer-menu-back:hover,
+.android-app-mode .logout-button:hover {
+  background: rgb(255 255 255 / 24%);
+}
+
+.android-app-mode.android-role-farmer .android-app-profile {
+  display: none;
+}
+
+.android-app-mode.android-role-farmer .main {
+  padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+}
+
+.android-app-mode .farmer-menu-page {
+  margin-top: 20px;
+}
+
+@media (max-width: 900px) {
+  .farmer-menu-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .farmer-menu-page {
+    margin-top: 12px;
+  }
+
+  .farmer-menu-heading {
+    margin-bottom: 17px;
+  }
+
+  .farmer-menu-heading p {
+    font-size: 12px;
+  }
+
+  .farmer-menu-grid {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+
+  .farmer-menu-card {
+    min-height: 82px;
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .farmer-menu-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .farmer-menu-card-copy {
+    gap: 3px;
+  }
+
+  .farmer-menu-card-copy b {
+    font-size: 13px;
+  }
+
+  .farmer-menu-card-copy small {
+    font-size: 10px;
+  }
+
+  .topbar-actions {
+    gap: 6px;
+  }
+
+  .logout-button,
+  .farmer-menu-back {
+    min-height: 35px;
+    gap: 5px;
+    padding-inline: 8px;
+    font-size: 10px;
+  }
+
+  .today {
+    display: none;
+  }
+
+  .farmer-navigation-mode .web-topbar-title {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .farmer-navigation-mode .web-topbar-title .crumb {
+    display: none;
+  }
+
+  .daily-entry-helper {
+    margin-bottom: 12px;
+    font-size: 10px;
+  }
+}

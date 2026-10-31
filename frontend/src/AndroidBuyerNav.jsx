@@ -1,4 +1,4 @@
-import { ClipboardList, LogOut, ShoppingBasket, ShoppingCart, Tag, UserRound } from 'lucide-react';
+import { ClipboardList, ShoppingBasket, ShoppingCart, Tag, UserRound } from 'lucide-react';
 import AndroidScrollableNav from './AndroidScrollableNav.jsx';
 
 const ITEMS = [
@@ -6,18 +6,16 @@ const ITEMS = [
   { id: 'offers', label: 'विशेष ऑफर', icon: Tag },
   { id: 'cart', label: 'कार्ट', icon: ShoppingCart },
   { id: 'orders', label: 'ऑर्डर', icon: ClipboardList },
-  { id: 'profile', label: 'प्रोफाइल', icon: UserRound },
-  { id: 'logout', label: 'बाहेर', icon: LogOut }
+  { id: 'profile', label: 'प्रोफाइल', icon: UserRound }
 ];
 
-export default function AndroidBuyerNav({ activeTab, view, unreadOrders = 0, onOpenView, onProfile, onLogout }) {
+export default function AndroidBuyerNav({ activeTab, view, unreadOrders = 0, onOpenView, onProfile }) {
   return <AndroidScrollableNav activeKey={`${activeTab}:${view}`} className="android-buyer-nav" ariaLabel="खरेदीदार अॅप नेव्हिगेशन">
     {ITEMS.map(item => {
       const Icon = item.icon;
       const active = item.id === 'profile' ? activeTab === 'profile'
-        : item.id !== 'logout' && activeTab === 'marketplace' && view === item.id;
-      const onClick = item.id === 'profile' ? onProfile
-        : item.id === 'logout' ? onLogout : () => onOpenView(item.id);
+        : activeTab === 'marketplace' && view === item.id;
+      const onClick = item.id === 'profile' ? onProfile : () => onOpenView(item.id);
       return <button type="button" key={item.id}
         className={`android-bottom-nav-item ${active ? 'active' : ''}`}
         onClick={onClick} aria-label={item.label} aria-current={active ? 'page' : undefined}>
