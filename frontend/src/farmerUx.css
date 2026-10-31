@@ -2,6 +2,51 @@
   margin-inline: auto;
 }
 
+.app-shell.farmer-dashboard-navigation-mode .main {
+  margin-inline: 0;
+  margin-left: 248px;
+}
+
+.farmer-tab-sidebar {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.farmer-tab-sidebar .brand {
+  flex: 0 0 auto;
+}
+
+.farmer-tab-sidebar .nav-label {
+  margin-top: 38px;
+}
+
+.farmer-tab-sidebar .nav {
+  width: 100%;
+  min-height: 44px;
+  flex: 0 0 auto;
+}
+
+.farmer-sidebar-edit {
+  display: flex;
+  min-height: 42px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  margin-top: auto;
+  padding: 10px 12px;
+  border: 1px solid #dce8d9;
+  border-radius: 10px;
+  background: #fff;
+  color: #55765a;
+  font: 650 11px 'DM Sans', 'Noto Sans Devanagari', sans-serif;
+  cursor: pointer;
+}
+
+.farmer-sidebar-edit:hover {
+  background: #f1f7ee;
+}
+
 .sidebar .account-profile {
   cursor: default;
 }
@@ -87,6 +132,34 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 9px;
+}
+
+.farmer-open-dashboard {
+  display: flex;
+  width: 100%;
+  min-height: 45px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 11px;
+  background: #397849;
+  color: #fff;
+  font: 700 12px 'DM Sans', 'Noto Sans Devanagari', sans-serif;
+  cursor: pointer;
+  transition: background-color .16s ease, transform .16s ease;
+}
+
+.farmer-open-dashboard:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #2f663e;
+}
+
+.farmer-open-dashboard:disabled {
+  background: #aab9aa;
+  cursor: not-allowed;
 }
 
 .farmer-tab-choice {
@@ -388,6 +461,51 @@
   padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
 }
 
+.android-app-mode.farmer-dashboard-navigation-mode .sidebar {
+  display: flex;
+  width: 76px;
+  align-items: center;
+  padding: 18px 8px;
+}
+
+.android-app-mode.farmer-dashboard-navigation-mode .main {
+  width: calc(100% - 76px);
+  max-width: none;
+  margin: 0 0 0 76px;
+  padding: 0 15px calc(32px + env(safe-area-inset-bottom, 0px));
+}
+
+.android-app-mode.farmer-dashboard-navigation-mode .farmer-tab-sidebar .brand {
+  justify-content: center;
+  padding: 0;
+}
+
+.android-app-mode.farmer-dashboard-navigation-mode .farmer-tab-sidebar .brand-logo {
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+}
+
+.android-app-mode.farmer-dashboard-navigation-mode .farmer-tab-sidebar .nav-label {
+  display: none;
+}
+
+.android-app-mode.farmer-dashboard-navigation-mode .farmer-tab-sidebar .nav {
+  justify-content: center;
+  gap: 0;
+  margin-top: 13px;
+  padding: 11px 0;
+  font-size: 0;
+}
+
+.android-app-mode.farmer-dashboard-navigation-mode .farmer-sidebar-edit {
+  width: 48px;
+  justify-content: center;
+  gap: 0;
+  padding: 10px 0;
+  font-size: 0;
+}
+
 .android-app-mode .farmer-menu-page {
   margin-top: 20px;
 }
@@ -398,7 +516,61 @@
   }
 }
 
+@media (max-width: 1050px) {
+  .app-shell.farmer-dashboard-navigation-mode:not(.android-app-mode) .main {
+    margin-left: 210px;
+  }
+}
+
 @media (max-width: 700px) {
+  .app-shell.farmer-dashboard-navigation-mode .sidebar {
+    width: 60px;
+    align-items: center;
+    padding: 18px 8px;
+  }
+
+  .app-shell.farmer-dashboard-navigation-mode .main {
+    width: calc(100% - 60px);
+    margin-left: 60px;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .farmer-tab-sidebar .brand {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .farmer-tab-sidebar .brand-logo {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+  }
+
+  .farmer-tab-sidebar .nav-label {
+    display: none;
+  }
+
+  .farmer-tab-sidebar .nav {
+    justify-content: center;
+    gap: 0;
+    margin-top: 13px;
+    padding: 11px 0;
+    font-size: 0;
+  }
+
+  .app-shell.farmer-dashboard-navigation-mode .farmer-tab-sidebar .nav:not(.active) {
+    display: flex;
+  }
+
+  .farmer-sidebar-edit {
+    width: 42px;
+    justify-content: center;
+    gap: 0;
+    padding: 10px 0;
+    font-size: 0;
+  }
+
   .farmer-menu-page {
     margin-top: 12px;
   }
@@ -498,5 +670,22 @@
   .daily-entry-helper {
     margin-bottom: 12px;
     font-size: 10px;
+  }
+}
+
+@media (max-width: 700px) {
+  .android-app-mode.farmer-dashboard-navigation-mode .sidebar {
+    width: 60px;
+  }
+
+  .android-app-mode.farmer-dashboard-navigation-mode .main {
+    width: calc(100% - 60px);
+    margin-left: 60px;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .android-app-mode.farmer-dashboard-navigation-mode .farmer-tab-sidebar .nav {
+    display: flex;
   }
 }
