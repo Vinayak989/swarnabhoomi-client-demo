@@ -15,6 +15,26 @@
 .daily-feature-chevron { flex: none; color: #758074; transition: transform .18s ease; }
 .daily-feature-chevron.expanded { transform: rotate(180deg); }
 .daily-weather-section { margin: 18px 0; }
+.daily-plot-section { margin: 18px 0; }
+.daily-form-section-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
+.daily-form-section-icon { width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 10px; background: #edf5ea; color: #47784c; }
+.daily-form-section-heading h3 { margin: 0; color: #334b39; font-size: 13px; }
+.daily-form-section-heading small { display: block; margin-top: 3px; color: #839082; font-size: 10px; line-height: 1.5; }
+.daily-weather-section > .field { max-width: 290px; }
+.daily-weather-status { display: flex; align-items: center; gap: 7px; margin-top: 9px; color: #52785a; font-size: 11px; }
+.daily-weather-section .weather-options { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+.daily-weather-section .weather-option { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 7px 10px; border: 1px solid #dce7d9; border-radius: 9px; background: #f8faf6; color: #58715b; font: inherit; font-size: 11px; cursor: pointer; }
+.daily-weather-section .weather-option.selected { border-color: #68a06d; background: #edf6ea; color: #2f713e; box-shadow: 0 0 0 2px rgb(81 137 87 / 10%); }
+.daily-weather-section .weather-option:focus-visible { outline: 2px solid #548f5d; outline-offset: 2px; }
+.daily-weather-section .weather-result { margin-top: 12px; border: 1px solid #e0ebdc; }
+.daily-weather-section .weather-result > strong { color: #347447; font-size: 12px; }
+.daily-weather-section .weather-result a { color: #397348; }
+@media (max-width: 700px) {
+  .daily-form-section-heading h3 { font-size: 12px; }
+  .daily-weather-section > .field { max-width: none; }
+  .daily-weather-section .weather-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .daily-weather-section .weather-option { min-height: 40px; }
+}
 .form-section-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0; border: 0; background: transparent; color: #334b39; font: inherit; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; }
 .form-section-toggle > span { display: inline-flex; align-items: center; gap: 8px; }
 .form-section-toggle > span svg { color: #62885d; }

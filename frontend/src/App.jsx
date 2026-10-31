@@ -21,7 +21,7 @@ import AndroidBuyerNav from './AndroidBuyerNav.jsx';
 import AndroidScrollableNav from './AndroidScrollableNav.jsx';
 import { getAppEnvironment, observeIOSViewport } from './appEnvironment.js';
 import { Landmark } from 'lucide-react';
-import { FollowUpReminderButton, IssueTrackingFields, OfflineQueueStatus, PlotSeasonFields, ReceiptGallery, downloadEntriesCsv, uploadEntryPhoto } from './DailyEntryFeatures.jsx';
+import { FollowUpReminderButton, IssueTrackingFields, OfflineQueueStatus, ReceiptGallery, downloadEntriesCsv, uploadEntryPhoto } from './DailyEntryFeatures.jsx';
 import { queueFarmEntry } from './offlineEntrySync.js';
 import { createDailyEntryPdf } from './dailyEntryPdf.js';
 import './brand.css';
@@ -47,7 +47,7 @@ const fresh = () => ({materialUsages:[],clientRequestId:requestId(),entryDate:ne
 const money = n => `₹${Number(n||0).toLocaleString('en-IN')}`;
 const day = s => s ? new Date(`${s}T00:00:00`).toLocaleDateString('mr-IN',{day:'numeric',month:'short',year:'numeric'}) : 'दिनांक नाही';
 const entryCost = e => Number(e.laborCost||0)+Number(e.materialsCost||0)+Number(e.otherCost||0);
-const weatherDetailText = raw => {if(!raw)return '';try{const d=typeof raw==='string'?JSON.parse(raw):raw;return [d.district,d.state,d.warning,d.note].filter(Boolean).join(' · ')}catch{return String(raw)}};
+const weatherDetailText = raw => {if(!raw)return '';try{const d=typeof raw==='string'?JSON.parse(raw):raw;const current=[d.condition,d.temperatureC!=null?`${d.temperatureC}°C`:null].filter(Boolean).join(' ');return [d.district,d.state,current,d.warning,d.note].filter(Boolean).join(' · ')}catch{return String(raw)}};
 const entryPrintPhotos = entry => {
   const photos=[];
   if(entry.photoUrl)photos.push({url:entry.photoUrl,label:'शेताचा फोटो'});
@@ -188,7 +188,7 @@ function App(){
   const [schemeFeed,setSchemeFeed]=useState(null),[schemeLoading,setSchemeLoading]=useState(false),[schemeRefreshing,setSchemeRefreshing]=useState(false),[schemeError,setSchemeError]=useState('');
   const mainRef=useRef(null);
   const photoUploadRef=useRef(null);
-  const [weatherOpen,setWeatherOpen]=useState(false);
+  const weatherRequestRef=useRef(0);
   const [entries,setEntries]=useState([]),[form,setForm]=useState(()=>initialEntryDraft?.form||fresh()),[open,setOpen]=useState(()=>Boolean(initialEntryDraft)),[editingEntryId,setEditingEntryId]=useState(()=>initialEntryDraft?.editingEntryId||null),[search,setSearch]=useState(''),[loading,setLoading]=useState(false),[weatherBusy,setWeatherBusy]=useState(false),[weatherError,setWeatherError]=useState(''),[preview,setPreview]=useState(''),[pdfBusy,setPdfBusy]=useState(false),[photoUploading,setPhotoUploading]=useState(false),[photoError,setPhotoError]=useState(''),[activeRecord,setActiveRecord]=useState(null),[analyticsMetric,setAnalyticsMetric]=useState(null),[assistantMessages,setAssistantMessages]=useState([]);
   const [pdfBusyEntryId,setPdfBusyEntryId]=useState(null);
   const [supportUnread,setSupportUnread]=useState(0);
@@ -335,6 +335,8 @@ function App(){
     return {summary,recentEntries,context:JSON.stringify({summary,recentEntries})};
   },[entries,totals]);
   const filtered=entries.filter(e=>`${e.farmSection||''} ${e.workDone||''} ${e.entryDate||''}`.toLowerCase().includes(search.toLowerCase()));
+  let weatherInfo=null;
+  try{weatherInfo=form.weatherDetails?JSON.parse(form.weatherDetails):null}catch{}
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
   function toggleFarmerMenuTab(tab){
     if(!FARMER_MENU_TABS.includes(tab))return;
@@ -385,7 +387,7 @@ function App(){
       setPdfBusyEntryId(null);
     }
   }
-  function editEntry(entry){const [cropLabel='',...plotParts]=String(entry.farmSection||'').split(/\s+—\s+/);const knownCrop=Object.values(CROP_GROUPS).flat().includes(cropLabel);const nextForm=fresh();Object.keys(nextForm).forEach(key=>{if(key in entry&&key!=='clientRequestId')nextForm[key]=entry[key]===null||entry[key]===undefined?'':String(entry[key])});nextForm.materialUsages=Array.isArray(entry.materialUsages)?entry.materialUsages.map(use=>({...use})):[];nextForm.clientRequestId=entry.clientRequestId||nextForm.clientRequestId;nextForm.cropName=knownCrop?cropLabel:cropLabel?'इतर':'';nextForm.cropCustom=knownCrop?'':cropLabel;nextForm.plotName=plotParts.join(' — ');setForm(nextForm);setEditingEntryId(entry.id);setPreview('');photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');setWeatherError('');setWeatherOpen(Boolean(entry.weather||entry.weatherDetails||entry.pincode));setOpen(true)}
+  function editEntry(entry){const [cropLabel='',...plotParts]=String(entry.farmSection||'').split(/\s+—\s+/);const knownCrop=Object.values(CROP_GROUPS).flat().includes(cropLabel);const nextForm=fresh();Object.keys(nextForm).forEach(key=>{if(key in entry&&key!=='clientRequestId')nextForm[key]=entry[key]===null||entry[key]===undefined?'':String(entry[key])});nextForm.materialUsages=Array.isArray(entry.materialUsages)?entry.materialUsages.map(use=>({...use})):[];nextForm.clientRequestId=entry.clientRequestId||nextForm.clientRequestId;nextForm.cropName=knownCrop?cropLabel:cropLabel?'इतर':'';nextForm.cropCustom=knownCrop?'':cropLabel;nextForm.plotName=plotParts.join(' — ');weatherRequestRef.current+=1;setWeatherBusy(false);setForm(nextForm);setEditingEntryId(entry.id);setPreview('');photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');setWeatherError('');setOpen(true)}
   async function save(e){
     e.preventDefault();
     if(loading)return;
@@ -410,7 +412,34 @@ function App(){
       alert(error?.message==='Photo upload failed.'?'फोटो अपलोड झाला नाही. कृपया फोटो पुन्हा निवडा.':error.message||'नोंद जतन करता आली नाही. पुन्हा प्रयत्न करा.');
     }finally{setLoading(false)}
   }
-  async function getWeather(){setWeatherBusy(true);setWeatherError('');try{const r=await apiFetch(`${API}/weather/${form.pincode}`);const contentType=r.headers.get('content-type')||'';if(!contentType.toLowerCase().includes('json'))throw Error('हवामान सर्व्हरकडून JSON प्रतिसाद मिळाला नाही. Java सर्व्हर सुरू आहे का ते तपासा.');let d;try{d=await r.json()}catch{throw Error('हवामान सर्व्हरकडून वाचता न येणारा प्रतिसाद मिळाला.')}if(!r.ok)throw Error(d.message||(r.status>=500?'IMD हवामान सेवा सध्या उपलब्ध नाही. हवामान हाताने निवडा.':'हवामान माहिती मिळाली नाही.'));set('weatherDetails',JSON.stringify(d));}catch(e){setWeatherError(e instanceof TypeError?'हवामान सर्व्हरशी संपर्क होऊ शकला नाही. Java सर्व्हर सुरू आहे का ते तपासा.':e.message)}finally{setWeatherBusy(false)}}
+  async function getWeather(pincode=form.pincode){
+    const request=++weatherRequestRef.current;
+    setWeatherBusy(true);
+    setWeatherError('');
+    try{
+      const r=await apiFetch(`${API}/weather/${pincode}`);
+      const contentType=r.headers.get('content-type')||'';
+      if(!contentType.toLowerCase().includes('json'))throw Error('हवामान सर्व्हरकडून वाचता येणारा प्रतिसाद मिळाला नाही.');
+      let data;
+      try{data=await r.json()}catch{throw Error('हवामान सर्व्हरकडून वाचता न येणारा प्रतिसाद मिळाला.')}
+      if(!r.ok)throw Error(data.message||(r.status>=500?'हवामान सेवा सध्या उपलब्ध नाही. हवामान हाताने निवडा.':'हवामान माहिती मिळाली नाही.'));
+      if(request!==weatherRequestRef.current)return;
+      if(!data.condition)throw Error('या पिनकोडसाठी हवामान सापडले नाही.');
+      setForm(current=>({...current,weather:data.condition,weatherDetails:JSON.stringify(data)}));
+    }catch(error){
+      if(request===weatherRequestRef.current)setWeatherError(error instanceof TypeError?'हवामान सर्व्हरशी संपर्क होऊ शकला नाही. कृपया पुन्हा प्रयत्न करा.':error.message);
+    }finally{
+      if(request===weatherRequestRef.current)setWeatherBusy(false);
+    }
+  }
+  function changeWeatherPincode(value){
+    const pincode=value.replace(/\D/g,'').slice(0,6);
+    weatherRequestRef.current+=1;
+    setWeatherBusy(false);
+    setWeatherError('');
+    setForm(current=>({...current,pincode,weather:'',weatherDetails:''}));
+    if(pincode.length===6&&/^[1-9][0-9]{5}$/.test(pincode))void getWeather(pincode);
+  }
   async function upload(file){
     if(!file)return;
     photoUploadRef.current=null;
@@ -456,11 +485,11 @@ function App(){
       {accountType==='farmer'&&farmerMenuTabs.includes('schemes')&&activeTab==='entries'&&entrySubTab==='entries'&&<GovernmentSchemeBanner announcements={schemeFeed?.announcements||[]} onOpen={()=>setActiveTab('schemes')}/>}
       {activeTab==='entries'&&accountType==='farmer'&&farmerMenuTabs.includes('entries')&&farmerMenuTabs.includes('profits')&&<div className="entry-subtabs" role="tablist" aria-label="दैनिक नोंद विभाग"><button type="button" role="tab" aria-selected={entrySubTab==='entries'} className={`entry-subtab ${entrySubTab==='entries'?'active':''}`} onClick={()=>setEntrySubTab('entries')}><CalendarDays size={16}/> दैनिक नोंद</button><button type="button" role="tab" aria-selected={entrySubTab==='profits'} className={`entry-subtab ${entrySubTab==='profits'?'active':''}`} onClick={()=>setEntrySubTab('profits')}><Wallet size={16}/> शेतीचा नफा</button></div>}
       {farmerSelectionPage&&<FarmerMenu selectedTabs={farmerMenuTabs} onToggleTab={toggleFarmerMenuTab} onOpenDashboard={openFarmerDashboard}/>}{((farmerDashboardPage&&activeFarmerSection==='entries')||(activeTab==='entries'&&entrySubTab==='entries'))?<div className="farmer-dashboard-section farmer-dashboard-entries">
-      <section className="welcome"><div><span className="eyebrow"><span className="pulse"/> तुमच्या शेताची डायरी</span><h1>नमस्कार, शेतकरी मित्रा! <span>🌱</span></h1><p>आज शेतात काय घडलं? तुमची नोंद इथे जतन करा.</p></div><button className="primary" onClick={()=>{setForm(fresh());setEditingEntryId(null);setPreview('');photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');setWeatherOpen(false);setOpen(true)}}><Plus size={19}/> आजची नोंद लिहा</button><div className="welcome-art"><span>☀️</span><div>〰️〰️</div></div></section>
+      <section className="welcome"><div><span className="eyebrow"><span className="pulse"/> तुमच्या शेताची डायरी</span><h1>नमस्कार, शेतकरी मित्रा! <span>🌱</span></h1><p>आज शेतात काय घडलं? तुमची नोंद इथे जतन करा.</p></div><button className="primary" onClick={()=>{weatherRequestRef.current+=1;setWeatherBusy(false);setForm(fresh());setEditingEntryId(null);setPreview('');photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');setWeatherError('');setOpen(true)}}><Plus size={19}/> आजची नोंद लिहा</button><div className="welcome-art"><span>☀️</span><div>〰️〰️</div></div></section>
       <section className="stats"><Stat icon={<Wallet/>} label="एकूण खर्च" value={<AnimatedMetric value={totals.cost} format="money"/>} tone="peach" analyticsKey="cost" onAnalytics={setAnalyticsMetric}/><Stat icon={<TrendingUp/>} label="एकूण उत्पन्न" value={<AnimatedMetric value={totals.income} format="money"/>} tone="green" analyticsKey="income" onAnalytics={setAnalyticsMetric}/><Stat icon={<Boxes/>} label="एकूण उत्पादन" value={<AnimatedMetric value={totals.production} format="quantity"/>} tone="blue" analyticsKey="production" onAnalytics={setAnalyticsMetric}/><div className="stat-card net"><div className="net-label">निव्वळ शिल्लक</div><strong><AnimatedMetric value={totals.income-totals.cost} format="money"/></strong><span>आतापर्यंतची कमाई</span><div className="net-icon">↗</div></div></section>
       <OfflineQueueStatus ownerId={authUser.id}/>
       <section className="entries-head"><div><h2>शेतातील नोंदी</h2><p>तुमच्या रोजच्या कामांचा लेखाजोखा</p></div><div className="tools"><div className="search"><Search size={17}/><SpeechTextInput><input placeholder="नोंदी शोधा..." value={search} onChange={e=>setSearch(e.target.value)}/></SpeechTextInput></div><button className="outline pdf-export" onClick={()=>void downloadPdf(filtered)} disabled={!filtered.length||pdfBusy} title="दिसणाऱ्या नोंदींची PDF तयार करा">{pdfBusy?<LoaderCircle className="spin" size={15}/>:<FileDown size={15}/>} PDF डाउनलोड</button><button type="button" className="outline csv-export" onClick={() => downloadEntriesCsv(filtered)} disabled={!filtered.length} title="दिसणाऱ्या नोंदी Excel किंवा CSV मध्ये डाउनलोड करा"><FileSpreadsheet size={15}/> CSV डाउनलोड</button><button className="filter">सर्व नोंदी⌄</button></div></section>
-      {!filtered.length?<div className="empty"><div className="empty-icon">🌾</div><h3>{entries.length?'नोंद सापडली नाही':'तुमची पहिली नोंद लिहा'}</h3><p>शेतातल्या छोट्या-मोठ्या गोष्टी नोंदवा. त्या पुढच्या हंगामात उपयोगी पडतील.</p><button className="primary" onClick={()=>{setForm(fresh());setEditingEntryId(null);setPreview('');photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');setWeatherOpen(false);setOpen(true)}}><Plus size={18}/> नवी नोंद</button></div>:<div className="entry-list">{filtered.map(e=><article className={`entry-card ${activeRecord===e.id?'details-open':''}`} key={e.id} tabIndex={0} aria-describedby={`record-details-${e.id}`} onClick={()=>{if(window.matchMedia?.('(hover: none)').matches)setActiveRecord(current=>current===e.id?null:e.id)}} onKeyDown={event=>{if(event.key==='Escape')setActiveRecord(null)}}><div className="entry-date"><div className="date-icon"><CalendarDays size={18}/></div><div><b>{day(e.entryDate)}</b><small>{e.weather||'हवामान नोंदले नाही'}</small></div></div><div className="entry-crop"><small>पीक / विभाग</small><b>{e.farmSection||'—'}</b></div><div className="entry-work"><small>आजची कामे</small><b>{e.workDone||'—'}</b></div><div className="entry-money"><small>खर्च　·　उत्पन्न</small><b>{money(entryCost(e))} <span>·</span> {money(e.saleIncome)}</b></div><div className="entry-actions">{e.photoUrl&&<ProtectedPhoto src={e.photoUrl} auth={authToken} alt="शेत फोटो"/>}<button type="button" className="entry-pdf-download" title="या नोंदीचा PDF डाउनलोड करा" aria-label={`दिनांक ${day(e.entryDate)} च्या नोंदीचा PDF डाउनलोड करा`} disabled={pdfBusy} onClick={event=>{event.stopPropagation();void downloadPdf([e],e.id)}}>{pdfBusyEntryId===e.id?<LoaderCircle className="spin" size={15}/>:<FileDown size={15}/>}<span>PDF डाउनलोड</span></button><button type="button" className="edit-entry" title="नोंद संपादित करा" aria-label="नोंद संपादित करा" onClick={event=>{event.stopPropagation();editEntry(e)}}><Pencil size={15}/></button><button type="button" className="delete" title="नोंद हटवा" aria-label="नोंद हटवा" onClick={event=>{event.stopPropagation();remove(e.id)}}><Trash2 size={16}/></button></div><div className="record-details-popup" id={`record-details-${e.id}`} role="tooltip" onClick={event=>event.stopPropagation()}><RecordDetails entry={e} apiFetch={apiFetch} userId={authUser.id}/></div></article>)}</div>}
+      {!filtered.length?<div className="empty"><div className="empty-icon">🌾</div><h3>{entries.length?'नोंद सापडली नाही':'तुमची पहिली नोंद लिहा'}</h3><p>शेतातल्या छोट्या-मोठ्या गोष्टी नोंदवा. त्या पुढच्या हंगामात उपयोगी पडतील.</p><button className="primary" onClick={()=>{weatherRequestRef.current+=1;setWeatherBusy(false);setForm(fresh());setEditingEntryId(null);setPreview('');photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');setWeatherError('');setOpen(true)}}><Plus size={18}/> नवी नोंद</button></div>:<div className="entry-list">{filtered.map(e=><article className={`entry-card ${activeRecord===e.id?'details-open':''}`} key={e.id} tabIndex={0} aria-describedby={`record-details-${e.id}`} onClick={()=>{if(window.matchMedia?.('(hover: none)').matches)setActiveRecord(current=>current===e.id?null:e.id)}} onKeyDown={event=>{if(event.key==='Escape')setActiveRecord(null)}}><div className="entry-date"><div className="date-icon"><CalendarDays size={18}/></div><div><b>{day(e.entryDate)}</b><small>{e.weather||'हवामान नोंदले नाही'}</small></div></div><div className="entry-crop"><small>पीक / विभाग</small><b>{e.farmSection||'—'}</b></div><div className="entry-work"><small>आजची कामे</small><b>{e.workDone||'—'}</b></div><div className="entry-money"><small>खर्च　·　उत्पन्न</small><b>{money(entryCost(e))} <span>·</span> {money(e.saleIncome)}</b></div><div className="entry-actions">{e.photoUrl&&<ProtectedPhoto src={e.photoUrl} auth={authToken} alt="शेत फोटो"/>}<button type="button" className="entry-pdf-download" title="या नोंदीचा PDF डाउनलोड करा" aria-label={`दिनांक ${day(e.entryDate)} च्या नोंदीचा PDF डाउनलोड करा`} disabled={pdfBusy} onClick={event=>{event.stopPropagation();void downloadPdf([e],e.id)}}>{pdfBusyEntryId===e.id?<LoaderCircle className="spin" size={15}/>:<FileDown size={15}/>}<span>PDF डाउनलोड</span></button><button type="button" className="edit-entry" title="नोंद संपादित करा" aria-label="नोंद संपादित करा" onClick={event=>{event.stopPropagation();editEntry(e)}}><Pencil size={15}/></button><button type="button" className="delete" title="नोंद हटवा" aria-label="नोंद हटवा" onClick={event=>{event.stopPropagation();remove(e.id)}}><Trash2 size={16}/></button></div><div className="record-details-popup" id={`record-details-${e.id}`} role="tooltip" onClick={event=>event.stopPropagation()}><RecordDetails entry={e} apiFetch={apiFetch} userId={authUser.id}/></div></article>)}</div>}
       <footer>🌿　तुमच्या कष्टांना योग्य नोंद — स्वर्णभूमी</footer></div>:activeTab==='entries'&&entrySubTab==='profits'?<FarmProfitPanel entries={entries}/>:activeTab==='reminders'?<ReminderPanel apiFetch={apiFetch} apiBase={API} entries={entries} userId={authUser.id} onUnauthorized={logout}/>:null}
 
       {farmerDashboardPage&&activeFarmerSection==='profits'&&<FarmerDashboardSection title={NAV_ITEMS.profits.label}><FarmProfitPanel entries={entries}/></FarmerDashboardSection>}
@@ -490,13 +519,20 @@ function App(){
        <p className="daily-entry-helper">फक्त दिनांक आणि आजची कामे लिहून नोंद जतन करा. बाकी माहिती ऐच्छिक आहे.</p>
        <div className="form-grid"><Field label="दिनांक" required><input type="date" value={form.entryDate} onChange={e=>set('entryDate',e.target.value)} required/></Field><Field label="पीक निवडा"><select value={form.cropName} onChange={e=>set('cropName',e.target.value)}><option value="">पीक निवडा...</option>{Object.entries(CROP_GROUPS).map(([group,crops])=><optgroup label={group} key={group}>{crops.map(crop=><option value={crop} key={crop}>{crop}</option>)}</optgroup>)}<option value="इतर">इतर पीक — नाव लिहा</option></select></Field></div>
       {form.cropName==='इतर'&&<Field label="पिकाचे नाव"><input placeholder="तुमच्या पिकाचे नाव लिहा" value={form.cropCustom} onChange={e=>set('cropCustom',e.target.value)}/></Field>}
-       <details className="daily-entry-details"><summary><span><MapPin size={17}/> शेत, हंगाम आणि हवामान <small>ऐच्छिक</small></span><ChevronDown size={17}/></summary>
-       <Field label="शेताचा विभाग / प्लॉट"><input placeholder="उदा. पूर्वेकडचा प्लॉट / गट क्रमांक १२" value={form.plotName} onChange={e=>set('plotName',e.target.value)}/></Field><PlotSeasonFields form={form} set={set}/>
-      <section className="form-section daily-weather-section">
-        <button type="button" className="form-section-toggle" onClick={()=>setWeatherOpen(value=>!value)} aria-expanded={weatherOpen} aria-controls="daily-weather-options"><span><CloudSun size={18}/> आजचे हवामान</span><ChevronDown className={weatherOpen?'daily-feature-chevron expanded':'daily-feature-chevron'} size={18}/></button>
-        {weatherOpen&&<div id="daily-weather-options"><div className="weather-options">{[['ऊन',<Sun/>],['ढगाळ',<Cloud/>],['पाऊस',<CloudRain/>],['ऊन आणि ढगाळ',<CloudSun/>]].map(([w,icon])=><button type="button" key={w} className={`weather-option ${form.weather===w?'selected':''}`} onClick={()=>set('weather',w)}>{icon}{w}</button>)}</div><div className="pin-row"><div className="pin-input"><MapPin size={17}/><input inputMode="numeric" maxLength="6" placeholder="पिनकोड टाका (६ अंक)" value={form.pincode} onChange={e=>set('pincode',e.target.value.replace(/\D/g,''))}/></div><button type="button" className="outline" onClick={getWeather} disabled={weatherBusy||form.pincode.length!==6}>{weatherBusy?<LoaderCircle className="spin" size={16}/>:<CloudSun size={16}/>} हवामान मिळवा</button></div>{form.weatherDetails&&<div className="weather-result"><b><MapPin size={14}/> {JSON.parse(form.weatherDetails).district}, {JSON.parse(form.weatherDetails).state}</b><span>{JSON.parse(form.weatherDetails).warning}</span><small>{JSON.parse(form.weatherDetails).note}</small><small>स्रोत: <a href={JSON.parse(form.weatherDetails).sourceUrl} target="_blank" rel="noreferrer">IMD</a></small></div>}{weatherError&&<div className="error">{weatherError}</div>}</div>}
-      </section>
-       </details>
+       <section className="form-section daily-plot-section" aria-labelledby="daily-plot-title">
+         <div className="daily-form-section-heading"><span className="daily-form-section-icon"><MapPin size={18}/></span><div><h3 id="daily-plot-title">शेताचा प्लॉट</h3><small>कोणत्या प्लॉटमध्ये काम केले ते लिहा.</small></div></div>
+         <div className="form-grid"><Field label="प्लॉट / गट क्रमांक (ऐच्छिक)"><input placeholder="उदा. पूर्वेकडचा प्लॉट किंवा गट क्रमांक १२" value={form.plotName} onChange={e=>set('plotName',e.target.value)}/></Field><Field label="प्लॉटचे क्षेत्र (एकर)"><input type="number" min="0" step="0.01" placeholder="उदा. १.५" value={form.plotAreaAcres} onChange={e=>set('plotAreaAcres',e.target.value)}/></Field></div>
+       </section>
+       <section className="form-section daily-weather-section" aria-labelledby="daily-weather-title">
+         <div className="daily-form-section-heading"><span className="daily-form-section-icon"><CloudSun size={18}/></span><div><h3 id="daily-weather-title">आजचे हवामान</h3><small>पिनकोड टाका. हवामान आपोआप निवडले जाईल.</small></div></div>
+         <Field label="पिनकोड"><input inputMode="numeric" maxLength="6" placeholder="६ अंकी पिनकोड" value={form.pincode} onChange={event=>changeWeatherPincode(event.target.value)}/></Field>
+         <div className="weather-options" aria-label="हवामान निवडा">
+           {[['ऊन',<Sun size={16}/>],['ऊन आणि ढगाळ',<CloudSun size={16}/>],['ढगाळ',<Cloud size={16}/>],['पाऊस',<CloudRain size={16}/>]].map(([label,icon])=><button type="button" key={label} className={`weather-option ${form.weather===label?'selected':''}`} onClick={()=>set('weather',label)} aria-pressed={form.weather===label}>{icon}{label}</button>)}
+         </div>
+         {weatherBusy&&<div className="daily-weather-status" role="status"><LoaderCircle className="spin" size={15}/> पिनकोडनुसार हवामान शोधत आहोत…</div>}
+         {weatherInfo&&<div className="weather-result" aria-live="polite"><b><MapPin size={14}/> {weatherInfo.district}, {weatherInfo.state}</b><strong>{weatherInfo.condition}{weatherInfo.temperatureC!=null?` · ${weatherInfo.temperatureC}°C`:''}</strong>{weatherInfo.warning&&<span>{weatherInfo.warning}</span>}<small>{weatherInfo.note}</small><small>हवामान स्रोत: <a href={weatherInfo.sourceUrl||'https://open-meteo.com/'} target="_blank" rel="noreferrer">Open-Meteo</a>{weatherInfo.warningSourceUrl&&<> · इशारा स्रोत: <a href={weatherInfo.warningSourceUrl} target="_blank" rel="noreferrer">IMD</a></>}</small></div>}
+         {weatherError&&<div className="error" role="alert">{weatherError} हवामान हाताने निवडू शकता.</div>}
+       </section>
        <Field label="आज शेतात काय काम केले?"><textarea rows="2" placeholder="उदा. तण काढले, पाणी दिले..." value={form.workDone} onChange={e=>set('workDone',e.target.value)}/></Field><Field label="वापरलेले साहित्य / खते (ऐच्छिक)"><textarea rows="2" placeholder="उदा. शेणखत २ पोती, ठिबक दुरुस्ती..." value={form.materials} onChange={e=>set('materials',e.target.value)}/></Field>
        <div className="photo-upload">
          <label>
