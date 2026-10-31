@@ -240,8 +240,7 @@
 .farmer-dashboard-entries > .entries-head,
 .farmer-dashboard-entries > .entry-list,
 .farmer-dashboard-entries > .empty,
-.farmer-dashboard-entries > .offline-queue-status,
-.farmer-dashboard-entries > .material-inventory {
+.farmer-dashboard-entries > .offline-queue-status {
   max-width: 100%;
 }
 
