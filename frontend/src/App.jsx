@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Sprout, Plus, Search, CloudSun, Sun, Cloud, CloudRain, ImagePlus, Camera, Leaf, Wallet, Boxes, TrendingUp, CalendarDays, ChevronRight, ChevronDown, X, Save, Trash2, MapPin, LoaderCircle, FileDown, FileSpreadsheet, Activity, Bell, CheckCircle2, BookOpen, ShoppingBasket, HandHelping, ArrowUp, Shield, RefreshCw, UserRound, ArrowRight, LogOut, Pencil, MessageCircle, Home, Settings2 } from 'lucide-react';
+import { Sprout, Plus, Search, CloudSun, Sun, Cloud, CloudRain, ImagePlus, Camera, Leaf, Wallet, Boxes, TrendingUp, CalendarDays, ChevronRight, ChevronDown, X, Save, Trash2, MapPin, LoaderCircle, FileDown, FileSpreadsheet, Activity, Bell, CheckCircle2, BookOpen, ShoppingBasket, HandHelping, ArrowUp, Shield, RefreshCw, UserRound, ArrowRight, LogOut, Pencil, MessageCircle, Home } from 'lucide-react';
 import farmLogo from './image/WhatsApp Image 2026-10-20 at 2.00.01 PM.jpeg';
 import farmerRoleLogo from './image/farmer-role-cartoon.jpg';
 import buyerRoleLogo from './image/buyer-role-cartoon.jpg';
@@ -101,8 +101,7 @@ function readFarmerMenuTabs(userId) {
     if (!stored) return [...FARMER_MENU_TABS];
     const selected = JSON.parse(stored);
     if (!Array.isArray(selected)) return [...FARMER_MENU_TABS];
-    const valid = FARMER_MENU_TABS.filter(tab => selected.includes(tab));
-    return valid.length ? valid : [...FARMER_MENU_TABS];
+    return FARMER_MENU_TABS.filter(tab => selected.includes(tab));
   } catch { return [...FARMER_MENU_TABS]; }
 }
 function readAccountType() {
@@ -141,30 +140,28 @@ const FARMER_MENU_COPY = {
 };
 
 function initialBuyerView(){const view=new URLSearchParams(window.location.search).get('view');return ['browse','offers','cart','orders','recurring','bulk','returns'].includes(view)?view:'browse';}
-function FarmerMenu({onSelect,selectedTabs,tabDraft,editingTabs,onStartEditing,onCancelEditing,onToggleTab,onSaveTabs}){
+function FarmerMenu({onSelect,selectedTabs,onToggleTab}){
   return <section className="farmer-menu-page" aria-labelledby="farmer-menu-title">
     <div className="farmer-menu-heading">
-      <div><span className="eyebrow"><span className="pulse"/> शेतकरी मेनू</span><h1 id="farmer-menu-title">नमस्कार, शेतकरी मित्रा! 🌱</h1><p>{editingTabs?'मेनूमध्ये दिसावेत असे पर्याय निवडा.':'पुढे काय करायचे ते निवडा.'}</p></div>
-      <button type="button" className="farmer-tabs-edit-button" onClick={editingTabs?onCancelEditing:onStartEditing}><Settings2 size={16}/>{editingTabs?'रद्द करा':'टॅब निवडा'}</button>
+      <div><span className="eyebrow"><span className="pulse"/> शेतकरी मेनू</span><h1 id="farmer-menu-title">नमस्कार, शेतकरी मित्रा! 🌱</h1><p>टॅब निवडा. निवडलेले पर्याय खाली दिसतील.</p></div>
     </div>
-    {editingTabs?<div className="farmer-tab-settings" aria-label="दिसणारे टॅब निवडा">
-      <div className="farmer-tab-settings-intro"><b>तुमच्या मेनूमध्ये कोणते पर्याय दाखवायचे?</b><span>{tabDraft.length} पर्याय निवडले</span></div>
+    <div className="farmer-tab-settings" aria-label="दिसणारे टॅब निवडा">
+      <div className="farmer-tab-settings-intro"><b>मेनूमध्ये दाखवायचे टॅब</b><span>{selectedTabs.length} निवडले</span></div>
       <div className="farmer-tab-choice-grid">{FARMER_MENU_TABS.map(tab=>{
         const item=NAV_ITEMS[tab],Icon=item.icon,label=tab==='profits'?'शेतीचा नफा':accountTabLabel(ACCOUNT_TYPES[0],tab);
-        return <label className={`farmer-tab-choice ${tabDraft.includes(tab)?'selected':''}`} key={tab}>
-          <input type="checkbox" checked={tabDraft.includes(tab)} onChange={()=>onToggleTab(tab)}/>
+        return <label className={`farmer-tab-choice ${selectedTabs.includes(tab)?'selected':''}`} key={tab}>
+          <input type="checkbox" checked={selectedTabs.includes(tab)} onChange={()=>onToggleTab(tab)}/>
           <span className="farmer-menu-icon"><Icon size={19}/></span>
           <span className="farmer-menu-card-copy"><b>{label}</b><small>{FARMER_MENU_COPY[tab]}</small></span>
         </label>;
       })}</div>
-      {!tabDraft.length&&<p className="farmer-tab-selection-warning" role="status">कृपया किमान एक पर्याय निवडा.</p>}
-      <div className="farmer-tab-settings-actions"><button type="button" className="farmer-tab-save-button" onClick={onSaveTabs} disabled={!tabDraft.length}><Save size={16}/> निवड जतन करा</button></div>
-    </div>:selectedTabs.length?<div className="farmer-menu-grid">{selectedTabs.map(tab=>{
+    </div>
+    {selectedTabs.length?<><div className="farmer-selected-tabs-heading"><b>निवडलेले टॅब</b><span>उघडण्यासाठी टॅबवर टॅप करा</span></div><div className="farmer-menu-grid">{selectedTabs.map(tab=>{
       const item=NAV_ITEMS[tab],Icon=item.icon,label=tab==='profits'?'शेतीचा नफा':accountTabLabel(ACCOUNT_TYPES[0],tab);
       return <button type="button" className="farmer-menu-card" key={tab} onClick={()=>onSelect(tab)} aria-label={`${label} उघडा`}>
         <span className="farmer-menu-icon"><Icon size={22}/></span><span className="farmer-menu-card-copy"><b>{label}</b><small>{FARMER_MENU_COPY[tab]}</small></span><ChevronRight size={18}/>
       </button>;
-    })}</div>:<p className="farmer-tab-selection-warning" role="status">दाखवण्यासाठी टॅब निवडा.</p>}
+    })}</div></>:<p className="farmer-tab-selection-warning" role="status">दाखवण्यासाठी किमान एक टॅब निवडा.</p>}
   </section>;
 }
 function App(){
@@ -185,8 +182,6 @@ function App(){
   const [activeTab,setActiveTab]=useState(()=>{const account=ACCOUNT_TYPES.find(item=>item.id===initialUser?.role);const requested=new URLSearchParams(window.location.search).get('tab');const allowed=account?.id==='farmer'?(requested==='profile'||initialFarmerMenuTabs.includes(requested)):account?.tabs.includes(requested);return requested==='profits'&&account?.id==='farmer'&&initialFarmerMenuTabs.includes('profits')?'entries':allowed?requested:account?.id==='farmer'?'farmer-menu':account?.homeTab||'entries'});
   const [entrySubTab,setEntrySubTab]=useState(()=>new URLSearchParams(window.location.search).get('tab')==='profits'?'profits':'entries');
   const [farmerMenuTabs,setFarmerMenuTabs]=useState(initialFarmerMenuTabs);
-  const [farmerMenuTabDraft,setFarmerMenuTabDraft]=useState(initialFarmerMenuTabs);
-  const [editingFarmerTabs,setEditingFarmerTabs]=useState(false);
   const [showBackToTop,setShowBackToTop]=useState(false);
   const [schemeFeed,setSchemeFeed]=useState(null),[schemeLoading,setSchemeLoading]=useState(false),[schemeRefreshing,setSchemeRefreshing]=useState(false),[schemeError,setSchemeError]=useState('');
   const mainRef=useRef(null);
@@ -257,7 +252,7 @@ function App(){
     if(!account)return;
     const sessionUser=legacySellerInFarmerAccount?{...result.user,role:'farmer'}:result.user;
     const preferredFarmerTabs=account.id==='farmer'?readFarmerMenuTabs(sessionUser.id):[...FARMER_MENU_TABS];
-    setFarmerMenuTabs(preferredFarmerTabs);setFarmerMenuTabDraft(preferredFarmerTabs);setEditingFarmerTabs(false);
+    setFarmerMenuTabs(preferredFarmerTabs);
     sessionStorage.setItem('swarnabhoomi-user-token',result.token);
     sessionStorage.setItem('swarnabhoomi-user',JSON.stringify(sessionUser));
     setAuthToken(result.token);setAuthUser(sessionUser);setAccountType(account.id);setSelectedAccount(null);setAndroidBuyerView('browse');setAndroidBuyerViewRequest({view:'browse',nonce:0});setAndroidBuyerUnread(0);
@@ -335,16 +330,11 @@ function App(){
   },[entries,totals]);
   const filtered=entries.filter(e=>`${e.farmSection||''} ${e.workDone||''} ${e.entryDate||''}`.toLowerCase().includes(search.toLowerCase()));
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
-  function startFarmerTabEditing(){setFarmerMenuTabDraft(farmerMenuTabs);setEditingFarmerTabs(true)}
-  function cancelFarmerTabEditing(){setFarmerMenuTabDraft(farmerMenuTabs);setEditingFarmerTabs(false)}
   function toggleFarmerMenuTab(tab){
-    setFarmerMenuTabDraft(current=>current.includes(tab)?current.filter(item=>item!==tab):FARMER_MENU_TABS.filter(item=>current.includes(item)||item===tab));
-  }
-  function saveFarmerMenuTabs(){
-    const selected=FARMER_MENU_TABS.filter(tab=>farmerMenuTabDraft.includes(tab));
-    if(!selected.length)return;
-    try{localStorage.setItem(farmerMenuPreferenceKey(authUser?.id),JSON.stringify(selected))}catch{}
-    setFarmerMenuTabs(selected);setFarmerMenuTabDraft(selected);setEditingFarmerTabs(false);
+    if(!FARMER_MENU_TABS.includes(tab))return;
+    const selected=farmerMenuTabs.includes(tab)?farmerMenuTabs.filter(item=>item!==tab):FARMER_MENU_TABS.filter(item=>farmerMenuTabs.includes(item)||item===tab);
+    try{if(authUser?.id)localStorage.setItem(farmerMenuPreferenceKey(authUser.id),JSON.stringify(selected))}catch{}
+    setFarmerMenuTabs(selected);
   }
   function selectFarmerMenuItem(tab){
     if(tab==='profits'){setActiveTab('entries');setEntrySubTab('profits');return;}
@@ -453,7 +443,7 @@ function App(){
       {['seller','buyer'].includes(accountType)&&!accountProfile?.complete&&activeTab!=='profile'&&<div className="profile-reminder-banner" role="status"><Shield size={16}/><span>तुमचे प्रोफाइल अपूर्ण आहे. खरेदीदार आणि प्रशासकांसाठी माहिती पूर्ण करा.</span><button type="button" onClick={()=>setActiveTab('profile')}>प्रोफाइल पूर्ण करा <ArrowRight size={14}/></button></div>}
       {accountType==='farmer'&&farmerMenuTabs.includes('schemes')&&activeTab==='entries'&&entrySubTab==='entries'&&<GovernmentSchemeBanner announcements={schemeFeed?.announcements||[]} onOpen={()=>setActiveTab('schemes')}/>}
       {activeTab==='entries'&&accountType==='farmer'&&farmerMenuTabs.includes('entries')&&farmerMenuTabs.includes('profits')&&<div className="entry-subtabs" role="tablist" aria-label="दैनिक नोंद विभाग"><button type="button" role="tab" aria-selected={entrySubTab==='entries'} className={`entry-subtab ${entrySubTab==='entries'?'active':''}`} onClick={()=>setEntrySubTab('entries')}><CalendarDays size={16}/> दैनिक नोंद</button><button type="button" role="tab" aria-selected={entrySubTab==='profits'} className={`entry-subtab ${entrySubTab==='profits'?'active':''}`} onClick={()=>setEntrySubTab('profits')}><Wallet size={16}/> शेतीचा नफा</button></div>}
-      {activeTab==='farmer-menu'&&accountType==='farmer'?<FarmerMenu onSelect={selectFarmerMenuItem} selectedTabs={farmerMenuTabs} tabDraft={farmerMenuTabDraft} editingTabs={editingFarmerTabs} onStartEditing={startFarmerTabEditing} onCancelEditing={cancelFarmerTabEditing} onToggleTab={toggleFarmerMenuTab} onSaveTabs={saveFarmerMenuTabs}/>:activeTab==='entries'&&entrySubTab==='entries'?<>
+      {activeTab==='farmer-menu'&&accountType==='farmer'?<FarmerMenu onSelect={selectFarmerMenuItem} selectedTabs={farmerMenuTabs} onToggleTab={toggleFarmerMenuTab}/>:activeTab==='entries'&&entrySubTab==='entries'?<>
       <section className="welcome"><div><span className="eyebrow"><span className="pulse"/> तुमच्या शेताची डायरी</span><h1>नमस्कार, शेतकरी मित्रा! <span>🌱</span></h1><p>आज शेतात काय घडलं? तुमची नोंद इथे जतन करा.</p></div><button className="primary" onClick={()=>{setForm(fresh());setEditingEntryId(null);setPreview('');photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');setQuickTemplatesOpen(false);setWeatherOpen(false);setOpen(true)}}><Plus size={19}/> आजची नोंद लिहा</button><div className="welcome-art"><span>☀️</span><div>〰️〰️</div></div></section>
       <section className="stats"><Stat icon={<Wallet/>} label="एकूण खर्च" value={<AnimatedMetric value={totals.cost} format="money"/>} tone="peach" analyticsKey="cost" onAnalytics={setAnalyticsMetric}/><Stat icon={<TrendingUp/>} label="एकूण उत्पन्न" value={<AnimatedMetric value={totals.income} format="money"/>} tone="green" analyticsKey="income" onAnalytics={setAnalyticsMetric}/><Stat icon={<Boxes/>} label="एकूण उत्पादन" value={<AnimatedMetric value={totals.production} format="quantity"/>} tone="blue" analyticsKey="production" onAnalytics={setAnalyticsMetric}/><div className="stat-card net"><div className="net-label">निव्वळ शिल्लक</div><strong><AnimatedMetric value={totals.income-totals.cost} format="money"/></strong><span>आतापर्यंतची कमाई</span><div className="net-icon">↗</div></div></section>
       <OfflineQueueStatus ownerId={authUser.id}/>
