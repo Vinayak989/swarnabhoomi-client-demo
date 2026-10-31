@@ -250,7 +250,8 @@
 }
 
 .logout-button,
-.farmer-menu-back {
+.farmer-menu-back,
+.farmer-profile-button {
   display: inline-flex;
   min-height: 38px;
   flex: 0 0 auto;
@@ -276,6 +277,12 @@
 }
 
 .farmer-menu-back:hover {
+  background: #f1f7ee;
+}
+
+.farmer-profile-button.active,
+.farmer-profile-button:hover {
+  border-color: #a9c8a4;
   background: #f1f7ee;
 }
 
@@ -355,7 +362,8 @@
 }
 
 .android-app-mode .logout-button,
-.android-app-mode .farmer-menu-back {
+.android-app-mode .farmer-menu-back,
+.android-app-mode .farmer-profile-button {
   min-height: 38px;
   padding-inline: 9px;
   border-color: rgb(255 255 255 / 30%);
@@ -370,6 +378,7 @@
 }
 
 .android-app-mode .farmer-menu-back:hover,
+.android-app-mode .farmer-profile-button:hover,
 .android-app-mode .logout-button:hover {
   background: rgb(255 255 255 / 24%);
 }
@@ -471,7 +480,8 @@
   }
 
   .logout-button,
-  .farmer-menu-back {
+  .farmer-menu-back,
+  .farmer-profile-button {
     min-height: 35px;
     gap: 5px;
     padding-inline: 8px;

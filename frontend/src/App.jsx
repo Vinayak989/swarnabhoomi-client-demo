@@ -31,7 +31,7 @@ import './androidApp.css';
 import './dailyEntryEdit.css';
 import './farmerUx.css';
 import { AdminBackups, PublicBatchPage, ReturnsPanel } from './TradeFeatures.jsx';
-import { EntryMaterialPicker, MaterialInventory } from './MaterialInventory.jsx';
+import { MaterialInventory } from './MaterialInventory.jsx';
 
 const API = `${(import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')}/api`;
 const CROP_GROUPS = {
@@ -92,7 +92,7 @@ const ACCOUNT_TYPES = [
 ];
 const ADMIN_ACCOUNT = ACCOUNT_TYPES.find(account => account.id === 'admin');
 const PUBLIC_ACCOUNT_TYPES = ACCOUNT_TYPES.filter(account => !['admin', 'consultant', 'seller'].includes(account.id));
-const FARMER_MENU_TABS = ['entries', 'profits', ...ACCOUNT_TYPES.find(account => account.id === 'farmer').tabs.filter(tab => tab !== 'entries')];
+const FARMER_MENU_TABS = ['entries', 'profits', ...ACCOUNT_TYPES.find(account => account.id === 'farmer').tabs.filter(tab => tab !== 'entries' && tab !== 'profile')];
 const farmerMenuPreferenceKey = userId => `swarnabhoomi-farmer-menu-tabs-${userId}`;
 function readFarmerMenuTabs(userId) {
   if (!userId) return [...FARMER_MENU_TABS];
@@ -141,7 +141,7 @@ const FARMER_MENU_COPY = {
 };
 
 function initialBuyerView(){const view=new URLSearchParams(window.location.search).get('view');return ['browse','offers','cart','orders','recurring','bulk','returns'].includes(view)?view:'browse';}
-function FarmerMenu({onSelect,profileComplete,selectedTabs,tabDraft,editingTabs,onStartEditing,onCancelEditing,onToggleTab,onSaveTabs}){
+function FarmerMenu({onSelect,selectedTabs,tabDraft,editingTabs,onStartEditing,onCancelEditing,onToggleTab,onSaveTabs}){
   return <section className="farmer-menu-page" aria-labelledby="farmer-menu-title">
     <div className="farmer-menu-heading">
       <div><span className="eyebrow"><span className="pulse"/> शेतकरी मेनू</span><h1 id="farmer-menu-title">नमस्कार, शेतकरी मित्रा! 🌱</h1><p>{editingTabs?'मेनूमध्ये दिसावेत असे पर्याय निवडा.':'पुढे काय करायचे ते निवडा.'}</p></div>
@@ -163,7 +163,6 @@ function FarmerMenu({onSelect,profileComplete,selectedTabs,tabDraft,editingTabs,
       const item=NAV_ITEMS[tab],Icon=item.icon,label=tab==='profits'?'शेतीचा नफा':accountTabLabel(ACCOUNT_TYPES[0],tab);
       return <button type="button" className="farmer-menu-card" key={tab} onClick={()=>onSelect(tab)} aria-label={`${label} उघडा`}>
         <span className="farmer-menu-icon"><Icon size={22}/></span><span className="farmer-menu-card-copy"><b>{label}</b><small>{FARMER_MENU_COPY[tab]}</small></span><ChevronRight size={18}/>
-        {tab==='profile'&&!profileComplete&&<i>माहिती भरा</i>}
       </button>;
     })}</div>:<p className="farmer-tab-selection-warning" role="status">दाखवण्यासाठी टॅब निवडा.</p>}
   </section>;
@@ -183,7 +182,7 @@ function App(){
   const [accountProfile,setAccountProfile]=useState(null),[accountProfileLoading,setAccountProfileLoading]=useState(false);
   const [selectedAccount,setSelectedAccount]=useState(null);
   const [accountType,setAccountType]=useState(()=>initialUser?.role||null),[lastAccountType,setLastAccountType]=useState(readAccountType);
-  const [activeTab,setActiveTab]=useState(()=>{const account=ACCOUNT_TYPES.find(item=>item.id===initialUser?.role);const requested=new URLSearchParams(window.location.search).get('tab');const allowed=account?.id==='farmer'?initialFarmerMenuTabs.includes(requested):account?.tabs.includes(requested);return requested==='profits'&&account?.id==='farmer'&&initialFarmerMenuTabs.includes('profits')?'entries':allowed?requested:account?.id==='farmer'?'farmer-menu':account?.homeTab||'entries'});
+  const [activeTab,setActiveTab]=useState(()=>{const account=ACCOUNT_TYPES.find(item=>item.id===initialUser?.role);const requested=new URLSearchParams(window.location.search).get('tab');const allowed=account?.id==='farmer'?(requested==='profile'||initialFarmerMenuTabs.includes(requested)):account?.tabs.includes(requested);return requested==='profits'&&account?.id==='farmer'&&initialFarmerMenuTabs.includes('profits')?'entries':allowed?requested:account?.id==='farmer'?'farmer-menu':account?.homeTab||'entries'});
   const [entrySubTab,setEntrySubTab]=useState(()=>new URLSearchParams(window.location.search).get('tab')==='profits'?'profits':'entries');
   const [farmerMenuTabs,setFarmerMenuTabs]=useState(initialFarmerMenuTabs);
   const [farmerMenuTabDraft,setFarmerMenuTabDraft]=useState(initialFarmerMenuTabs);
@@ -265,7 +264,7 @@ function App(){
     const savedEntryDraft=account.id==='farmer'?readDailyEntryDraft(sessionUser.id):null;
     setForm(savedEntryDraft?.form||fresh());setEditingEntryId(savedEntryDraft?.editingEntryId||null);setOpen(Boolean(savedEntryDraft));setPreview('');photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');
     const requested=new URLSearchParams(window.location.search).get('tab');
-    const requestedAllowed=account.id==='farmer'?preferredFarmerTabs.includes(requested):account.tabs.includes(requested);
+    const requestedAllowed=account.id==='farmer'?(requested==='profile'||preferredFarmerTabs.includes(requested)):account.tabs.includes(requested);
     const showProfitReport=account.id==='farmer'&&requested==='profits'&&requestedAllowed;
     setActiveTab(showProfitReport?'entries':requestedAllowed?requested:account.id==='farmer'?'farmer-menu':account.homeTab);
     setEntrySubTab(showProfitReport?'profits':'entries');
@@ -450,11 +449,11 @@ function App(){
   if(!accountType)return <div className={entryAppClass}><AccountSelection lastAccountType={lastAccountType} onSelect={chooseAccount}/></div>;
   return <div className={`app-shell${mobileAppMode?` mobile-app-mode android-app-mode android-role-${accountType} android-tab-${activeTab}${appEnvironment.isIOS?' ios-app-mode':''}`:''}${accountType==='farmer'?' farmer-navigation-mode':''}`}>
     {accountType!=='farmer'&&<aside className="sidebar"><div className="brand"><img className="brand-logo" src={farmLogo} alt="स्वर्णभूमी सेंद्रिय शेतीचे चिन्ह"/></div><div className="nav-label">मुख्य मेनू</div>{currentAccount.tabs.map(tab=>{const item=NAV_ITEMS[tab],Icon=item.icon,label=accountTabLabel(currentAccount,tab);return <button type="button" key={tab} className={`nav ${activeTab===tab?'active':''}`} onClick={()=>setActiveTab(tab)} aria-label={label} title={label}><Icon size={18}/>{label}{tab==='profile'&&!accountProfile?.complete&&<span className="profile-completion-indicator">भरायचे</span>}</button>})}<div className="sidebar-tip"><Leaf size={19}/><b>आजची छोटी नोंद,<br/>उद्याची मोठी भरभराट.</b><span>तुमच्या शेताचा प्रत्येक दिवस जपून ठेवा.</span><div className="tip-leaves">✳　✳</div></div><div className="profile account-profile"><AccountAvatar photoUrl={accountProfile?.photoUrl} apiFetch={apiFetch} className="avatar"/><span><b>{currentAccount.label} खाते</b><small>{authUser.mobileNumber}</small></span></div></aside>}
-    <main ref={mainRef} className="main"><header className="topbar"><div className="android-app-titlebar"><img src="/images/app-icon-192.png" alt=""/><div><span>स्वर्णभूमी · {currentAccount.label}</span><b>{activeTabTitle}</b></div></div><div className="web-topbar-title"><span className="crumb">स्वर्णभूमी　/　</span><b>{activeTabTitle}</b></div><div className="topbar-actions">{accountType==='farmer'&&activeTab!=='farmer-menu'&&<button type="button" className="farmer-menu-back" onClick={()=>setActiveTab('farmer-menu')}><Home size={16}/><span>मेनू</span></button>}<div className="today"><CalendarDays size={16}/>{new Date().toLocaleDateString('mr-IN',{weekday:'long',day:'numeric',month:'long'})}</div><button type="button" className="logout-button" onClick={logout} aria-label="लॉगआउट"><LogOut size={17}/><span>लॉगआउट</span></button></div></header>
-      {['farmer','seller','buyer'].includes(accountType)&&!accountProfile?.complete&&activeTab!=='profile'&&activeTab!=='farmer-menu'&&(accountType!=='farmer'||farmerMenuTabs.includes('profile'))&&<div className="profile-reminder-banner" role="status"><Shield size={16}/><span>तुमचे प्रोफाइल अपूर्ण आहे. खरेदीदार आणि प्रशासकांसाठी माहिती पूर्ण करा.</span><button type="button" onClick={()=>setActiveTab('profile')}>प्रोफाइल पूर्ण करा <ArrowRight size={14}/></button></div>}
+    <main ref={mainRef} className="main"><header className="topbar"><div className="android-app-titlebar"><img src="/images/app-icon-192.png" alt=""/><div><span>स्वर्णभूमी · {currentAccount.label}</span><b>{activeTabTitle}</b></div></div><div className="web-topbar-title"><span className="crumb">स्वर्णभूमी　/　</span><b>{activeTabTitle}</b></div><div className="topbar-actions">{accountType==='farmer'&&activeTab!=='farmer-menu'&&<button type="button" className="farmer-menu-back" onClick={()=>setActiveTab('farmer-menu')}><Home size={16}/><span>मेनू</span></button>}<div className="today"><CalendarDays size={16}/>{new Date().toLocaleDateString('mr-IN',{weekday:'long',day:'numeric',month:'long'})}</div>{accountType==='farmer'&&<button type="button" className={`farmer-profile-button ${activeTab==='profile'?'active':''}`} onClick={()=>setActiveTab('profile')} aria-label="प्रोफाइल उघडा" title="प्रोफाइल"><UserRound size={16}/><span>प्रोफाइल</span></button>}<button type="button" className="logout-button" onClick={logout} aria-label="लॉगआउट"><LogOut size={17}/><span>लॉगआउट</span></button></div></header>
+      {['seller','buyer'].includes(accountType)&&!accountProfile?.complete&&activeTab!=='profile'&&<div className="profile-reminder-banner" role="status"><Shield size={16}/><span>तुमचे प्रोफाइल अपूर्ण आहे. खरेदीदार आणि प्रशासकांसाठी माहिती पूर्ण करा.</span><button type="button" onClick={()=>setActiveTab('profile')}>प्रोफाइल पूर्ण करा <ArrowRight size={14}/></button></div>}
       {accountType==='farmer'&&farmerMenuTabs.includes('schemes')&&activeTab==='entries'&&entrySubTab==='entries'&&<GovernmentSchemeBanner announcements={schemeFeed?.announcements||[]} onOpen={()=>setActiveTab('schemes')}/>}
       {activeTab==='entries'&&accountType==='farmer'&&farmerMenuTabs.includes('entries')&&farmerMenuTabs.includes('profits')&&<div className="entry-subtabs" role="tablist" aria-label="दैनिक नोंद विभाग"><button type="button" role="tab" aria-selected={entrySubTab==='entries'} className={`entry-subtab ${entrySubTab==='entries'?'active':''}`} onClick={()=>setEntrySubTab('entries')}><CalendarDays size={16}/> दैनिक नोंद</button><button type="button" role="tab" aria-selected={entrySubTab==='profits'} className={`entry-subtab ${entrySubTab==='profits'?'active':''}`} onClick={()=>setEntrySubTab('profits')}><Wallet size={16}/> शेतीचा नफा</button></div>}
-      {activeTab==='farmer-menu'&&accountType==='farmer'?<FarmerMenu onSelect={selectFarmerMenuItem} profileComplete={accountProfile?.complete} selectedTabs={farmerMenuTabs} tabDraft={farmerMenuTabDraft} editingTabs={editingFarmerTabs} onStartEditing={startFarmerTabEditing} onCancelEditing={cancelFarmerTabEditing} onToggleTab={toggleFarmerMenuTab} onSaveTabs={saveFarmerMenuTabs}/>:activeTab==='entries'&&entrySubTab==='entries'?<>
+      {activeTab==='farmer-menu'&&accountType==='farmer'?<FarmerMenu onSelect={selectFarmerMenuItem} selectedTabs={farmerMenuTabs} tabDraft={farmerMenuTabDraft} editingTabs={editingFarmerTabs} onStartEditing={startFarmerTabEditing} onCancelEditing={cancelFarmerTabEditing} onToggleTab={toggleFarmerMenuTab} onSaveTabs={saveFarmerMenuTabs}/>:activeTab==='entries'&&entrySubTab==='entries'?<>
       <section className="welcome"><div><span className="eyebrow"><span className="pulse"/> तुमच्या शेताची डायरी</span><h1>नमस्कार, शेतकरी मित्रा! <span>🌱</span></h1><p>आज शेतात काय घडलं? तुमची नोंद इथे जतन करा.</p></div><button className="primary" onClick={()=>{setForm(fresh());setEditingEntryId(null);setPreview('');photoUploadRef.current=null;setPhotoUploading(false);setPhotoError('');setQuickTemplatesOpen(false);setWeatherOpen(false);setOpen(true)}}><Plus size={19}/> आजची नोंद लिहा</button><div className="welcome-art"><span>☀️</span><div>〰️〰️</div></div></section>
       <section className="stats"><Stat icon={<Wallet/>} label="एकूण खर्च" value={<AnimatedMetric value={totals.cost} format="money"/>} tone="peach" analyticsKey="cost" onAnalytics={setAnalyticsMetric}/><Stat icon={<TrendingUp/>} label="एकूण उत्पन्न" value={<AnimatedMetric value={totals.income} format="money"/>} tone="green" analyticsKey="income" onAnalytics={setAnalyticsMetric}/><Stat icon={<Boxes/>} label="एकूण उत्पादन" value={<AnimatedMetric value={totals.production} format="quantity"/>} tone="blue" analyticsKey="production" onAnalytics={setAnalyticsMetric}/><div className="stat-card net"><div className="net-label">निव्वळ शिल्लक</div><strong><AnimatedMetric value={totals.income-totals.cost} format="money"/></strong><span>आतापर्यंतची कमाई</span><div className="net-icon">↗</div></div></section>
       <OfflineQueueStatus ownerId={authUser.id}/>
@@ -508,7 +507,6 @@ function App(){
        </div>
        <details className="daily-entry-details"><summary><span><Wallet size={17}/> खर्च आणि उत्पादन <small>ऐच्छिक</small></span><ChevronDown size={17}/></summary>
       <section className="form-section"><h3><Wallet size={18}/> मजुरी व खर्च</h3><div className="form-grid three"><Field label="मजूर संख्या"><input type="number" min="0" value={form.workerCount} onChange={e=>set('workerCount',e.target.value)} placeholder="०"/></Field><Field label="मजुरी खर्च (₹)"><input type="number" min="0" value={form.laborCost} onChange={e=>set('laborCost',e.target.value)} placeholder="०"/></Field><Field label="खते / साहित्य खर्च (₹)"><input type="number" min="0" value={form.materialsCost} onChange={e=>set('materialsCost',e.target.value)} placeholder="०"/></Field><Field label="इतर खर्च (₹)"><input type="number" min="0" value={form.otherCost} onChange={e=>set('otherCost',e.target.value)} placeholder="०"/></Field></div></section>
-      <EntryMaterialPicker apiFetch={apiFetch} apiBase={API} value={form.materialUsages} onChange={value=>set('materialUsages',value)} onCost={cost=>set('materialsCost',cost)}/>
       <section className="form-section"><h3><Boxes size={18}/> उत्पादन व विक्री</h3><div className="form-grid three"><Field label="उत्पादन (किलो)"><input type="number" min="0" value={form.productionKg} onChange={e=>set('productionKg',e.target.value)} placeholder="०"/></Field><Field label="विक्री (किलो)"><input type="number" min="0" value={form.soldKg} onChange={e=>set('soldKg',e.target.value)} placeholder="०"/></Field><Field label="विक्रीतून पैसे (₹)"><input type="number" min="0" value={form.saleIncome} onChange={e=>set('saleIncome',e.target.value)} placeholder="०"/></Field></div><div className="calculation">आजचा खर्च <b>{money(Number(form.laborCost||0)+Number(form.materialsCost||0)+Number(form.otherCost||0))}</b><span>•</span> निव्वळ उत्पन्न <b>{money(Number(form.saleIncome||0)-Number(form.laborCost||0)-Number(form.materialsCost||0)-Number(form.otherCost||0))}</b></div></section>
        </details>
        <details className="daily-entry-details"><summary><span><Sprout size={17}/> पीक निरीक्षण आणि पुढील कामे <small>ऐच्छिक</small></span><ChevronDown size={17}/></summary>
