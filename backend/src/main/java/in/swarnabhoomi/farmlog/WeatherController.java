@@ -102,11 +102,18 @@ public class WeatherController {
     }
 
     private Map<String, Object> fetchCurrentWeather(String district, String state) throws Exception {
+        String apiKey = System.getenv("OPEN_METEO_API_KEY");
+        boolean customerApi = apiKey != null && !apiKey.isBlank();
         String geocodingBase = System.getenv().getOrDefault(
-                "OPEN_METEO_GEOCODING_URL", "https://geocoding-api.open-meteo.com/v1/search");
+                "OPEN_METEO_GEOCODING_URL", customerApi
+                        ? "https://customer-geocoding-api.open-meteo.com/v1/search"
+                        : "https://geocoding-api.open-meteo.com/v1/search");
         String geocodingUrl = geocodingBase
                 + "?name=" + encode(district)
                 + "&count=10&language=en&format=json&countryCode=IN";
+        if (customerApi) {
+            geocodingUrl += "&apikey=" + encode(apiKey);
+        }
         JsonNode places = mapper.readTree(client.get().uri(geocodingUrl).retrieve().body(String.class))
                 .path("results");
         JsonNode place = choosePlace(places, district, state);
@@ -116,14 +123,15 @@ public class WeatherController {
         }
 
         String forecastBase = System.getenv().getOrDefault(
-                "OPEN_METEO_FORECAST_URL", "https://api.open-meteo.com/v1/forecast");
+                "OPEN_METEO_FORECAST_URL", customerApi
+                        ? "https://customer-api.open-meteo.com/v1/forecast"
+                        : "https://api.open-meteo.com/v1/forecast");
         String forecastUrl = forecastBase
                 + "?latitude=" + place.path("latitude").asText()
                 + "&longitude=" + place.path("longitude").asText()
                 + "&current=temperature_2m,weather_code,cloud_cover,precipitation"
                 + "&timezone=auto";
-        String apiKey = System.getenv("OPEN_METEO_API_KEY");
-        if (apiKey != null && !apiKey.isBlank()) {
+        if (customerApi) {
             forecastUrl += "&apikey=" + encode(apiKey);
         }
         JsonNode current = mapper.readTree(client.get().uri(forecastUrl).retrieve().body(String.class))
@@ -137,7 +145,9 @@ public class WeatherController {
         double precipitation = current.path("precipitation").asDouble(0);
         String condition = weatherCondition(weatherCode, cloudCover, precipitation);
         String forecastSource = System.getenv().getOrDefault(
-                "OPEN_METEO_FORECAST_URL", "https://api.open-meteo.com/v1/forecast");
+                "OPEN_METEO_FORECAST_URL", customerApi
+                        ? "https://customer-api.open-meteo.com/v1/forecast"
+                        : "https://api.open-meteo.com/v1/forecast");
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("district", district);
